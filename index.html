@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MTQ 2026 – Musabaqah Tilawatil Qur'an</title>
+  <meta name="description" content="Pendaftaran resmi MTQ 2026. Daftarkan diri Anda sebagai peserta Musabaqah Tilawatil Qur'an.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Favicon emoji -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>">
+</head>
+<body>
+
+<!-- ── NAVBAR ──────────────────────────── -->
+<nav class="navbar" id="navbar">
+  <div class="nav-logo">
+    <div class="logo-icon">📖</div>
+    <div>
+      <div class="logo-text">MTQ 2026</div>
+      <div class="logo-sub">Musabaqah Tilawatil Qur'an</div>
+    </div>
+  </div>
+  <ul class="nav-links">
+    <li><a href="#beranda" class="active">Beranda</a></li>
+    <li><a href="#pengumuman">Pengumuman</a></li>
+    <li><a href="#jadwal">Jadwal</a></li>
+    <li><a href="#faq">FAQ</a></li>
+    <li><a href="#kontak">Kontak</a></li>
+    <li><a href="daftar.html" class="nav-cta">Daftar Sekarang</a></li>
+  </ul>
+  <div class="nav-actions">
+    <button class="dark-toggle" id="darkToggle" title="Toggle Dark Mode">🌙</button>
+    <button class="hamburger" id="hamburger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+<nav class="mobile-nav" id="mobileNav">
+  <a href="#beranda">🏠 Beranda</a>
+  <a href="#pengumuman">📢 Pengumuman</a>
+  <a href="#jadwal">📅 Jadwal</a>
+  <a href="#faq">❓ FAQ</a>
+  <a href="#kontak">📞 Kontak</a>
+  <a href="daftar.html" style="color:var(--gold-bright);font-weight:700">✨ Daftar Sekarang</a>
+</nav>
+
+<!-- ── HERO ────────────────────────────── -->
+<section class="hero" id="beranda">
+  <span class="hero-badge">📖 Pendaftaran Resmi Dibuka</span>
+  <div class="hero-arabic">بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ</div>
+  <h1>Pendaftaran <span>MTQ</span><br>Tahun 2026</h1>
+  <p class="hero-tagline">
+    Musabaqah Tilawatil Qur'an — Ajang pembinaan dan pengembangan seni baca Al-Qur'an
+    bagi generasi penerus bangsa.
+  </p>
+
+  <div class="hero-actions">
+    <a href="daftar.html" class="btn btn-primary btn-lg">
+      ✨ Daftar Sekarang
+    </a>
+    <a href="#jadwal" class="btn btn-secondary btn-lg">
+      📅 Lihat Jadwal
+    </a>
+  </div>
+
+  <div class="hero-info">
+    <div class="hero-info-card">
+      <div class="icon">📅</div>
+      <div class="label">Tanggal</div>
+      <div class="value" data-info="date">15 Agustus 2026</div>
+    </div>
+    <div class="hero-info-card">
+      <div class="icon">📍</div>
+      <div class="label">Lokasi</div>
+      <div class="value" data-info="location">GOR Kota Indramayu</div>
+    </div>
+    <div class="hero-info-card">
+      <div class="icon">🌟</div>
+      <div class="label">Tema</div>
+      <div class="value" data-info="theme" style="font-size:12px">Dengan Al-Qur'an Membangun Generasi Emas</div>
+    </div>
+  </div>
+
+  <div class="scroll-hint">
+    <span class="arrow">↓</span>
+    <span>Scroll</span>
+  </div>
+</section>
+
+<!-- ── COUNTDOWN ────────────────────────── -->
+<div class="countdown-section" id="countdown-section">
+  <div class="countdown-title">⏳ Hitung Mundur Pelaksanaan MTQ</div>
+  <div class="countdown-grid">
+    <div class="countdown-box">
+      <span class="num" id="cdDays">00</span>
+      <div class="unit">Hari</div>
+    </div>
+    <div class="countdown-box">
+      <span class="num" id="cdHours">00</span>
+      <div class="unit">Jam</div>
+    </div>
+    <div class="countdown-box">
+      <span class="num" id="cdMins">00</span>
+      <div class="unit">Menit</div>
+    </div>
+    <div class="countdown-box">
+      <span class="num" id="cdSecs">00</span>
+      <div class="unit">Detik</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── STATISTIK ─────────────────────────── -->
+<section class="stats-section">
+  <div class="container">
+    <div class="section-header animate-in">
+      <div class="section-eyebrow">📊 Statistik Realtime</div>
+      <h2 class="section-title">Data Peserta MTQ 2026</h2>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card animate-in">
+        <div class="stat-icon">👥</div>
+        <div class="stat-num" data-stat="total">0</div>
+        <div class="stat-label">Total Pendaftar</div>
+      </div>
+      <div class="stat-card animate-in">
+        <div class="stat-icon">✅</div>
+        <div class="stat-num" data-stat="verified">0</div>
+        <div class="stat-label">Terverifikasi</div>
+      </div>
+      <div class="stat-card animate-in">
+        <div class="stat-icon">🏆</div>
+        <div class="stat-num" data-stat="cabangs">0</div>
+        <div class="stat-label">Cabang Lomba</div>
+      </div>
+      <div class="stat-card animate-in">
+        <div class="stat-icon">🕌</div>
+        <div class="stat-num" data-stat="kecamatans">0</div>
+        <div class="stat-label">Kecamatan/Kafilah</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PENGUMUMAN ───────────────────────── -->
+<section class="section" id="pengumuman" style="background:var(--gray-50)">
+  <div class="container">
+    <div class="section-header animate-in">
+      <div class="section-eyebrow">📢 Terbaru</div>
+      <h2 class="section-title">Pengumuman MTQ</h2>
+      <p class="section-subtitle">Informasi terkini seputar pelaksanaan MTQ 2026</p>
+    </div>
+    <div class="announcement-grid">
+      <div class="ann-card animate-in">
+        <div class="ann-card-header">
+          <span class="ann-badge info">Info</span>
+          <span class="ann-date">1 Juli 2026</span>
+        </div>
+        <div class="ann-card-body">
+          <h3>Pendaftaran Resmi Dibuka</h3>
+          <p>Pendaftaran MTQ 2026 telah resmi dibuka. Peserta dapat mendaftar secara online melalui website ini hingga 31 Juli 2026.</p>
+        </div>
+      </div>
+      <div class="ann-card animate-in">
+        <div class="ann-card-header">
+          <span class="ann-badge important">Penting</span>
+          <span class="ann-date">5 Juli 2026</span>
+        </div>
+        <div class="ann-card-body">
+          <h3>Persyaratan Berkas Pendaftaran</h3>
+          <p>Seluruh peserta wajib melampirkan pas foto, KTP/KK orang tua, dan surat rekomendasi dari instansi terkait.</p>
+        </div>
+      </div>
+      <div class="ann-card animate-in">
+        <div class="ann-card-header">
+          <span class="ann-badge update">Update</span>
+          <span class="ann-date">10 Juli 2026</span>
+        </div>
+        <div class="ann-card-body">
+          <h3>Kuota Terbatas – Daftar Segera</h3>
+          <p>Beberapa cabang lomba memiliki kuota terbatas. Daftarkan diri Anda sekarang agar tidak kehabisan tempat.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── JADWAL ───────────────────────────── -->
+<section class="section schedule-section" id="jadwal">
+  <div class="container">
+    <div class="section-header animate-in">
+      <div class="section-eyebrow">📅 Timeline</div>
+      <h2 class="section-title">Jadwal Kegiatan MTQ</h2>
+      <p class="section-subtitle">Rangkaian agenda pelaksanaan MTQ 2026</p>
+    </div>
+    <div class="schedule-list">
+      <div class="schedule-item animate-in">
+        <div class="date-box">
+          <div class="day">01</div>
+          <div class="month">Jul</div>
+        </div>
+        <div class="info">
+          <h4>📋 Pembukaan Pendaftaran Online</h4>
+          <p>Pendaftaran peserta dibuka secara resmi melalui website</p>
+        </div>
+        <span class="time-badge">08.00 WIB</span>
+      </div>
+      <div class="schedule-item animate-in">
+        <div class="date-box">
+          <div class="day">31</div>
+          <div class="month">Jul</div>
+        </div>
+        <div class="info">
+          <h4>🔒 Penutupan Pendaftaran</h4>
+          <p>Batas akhir pengiriman berkas pendaftaran</p>
+        </div>
+        <span class="time-badge">23.59 WIB</span>
+      </div>
+      <div class="schedule-item animate-in">
+        <div class="date-box">
+          <div class="day">05</div>
+          <div class="month">Agu</div>
+        </div>
+        <div class="info">
+          <h4>📢 Pengumuman Peserta Lolos Seleksi</h4>
+          <p>Pengumuman peserta yang dinyatakan lolos administrasi</p>
+        </div>
+        <span class="time-badge">10.00 WIB</span>
+      </div>
+      <div class="schedule-item animate-in">
+        <div class="date-box">
+          <div class="day">14</div>
+          <div class="month">Agu</div>
+        </div>
+        <div class="info">
+          <h4>📝 Technical Meeting</h4>
+          <p>Pertemuan teknis peserta dan panitia sebelum pelaksanaan</p>
+        </div>
+        <span class="time-badge">09.00 WIB</span>
+      </div>
+      <div class="schedule-item animate-in">
+        <div class="date-box" style="background:var(--gold)">
+          <div class="day">15</div>
+          <div class="month">Agu</div>
+        </div>
+        <div class="info">
+          <h4>🏆 Pelaksanaan MTQ 2026</h4>
+          <p>Hari pelaksanaan Musabaqah Tilawatil Qur'an 2026</p>
+        </div>
+        <span class="time-badge" style="background:var(--gold-pale);color:var(--gold)">08.00 WIB</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CABANG LOMBA ──────────────────────── -->
+<section class="section" style="background:var(--cream)" id="cabang">
+  <div class="container">
+    <div class="section-header animate-in">
+      <div class="section-eyebrow">🏆 Kompetisi</div>
+      <h2 class="section-title">Cabang Lomba MTQ 2026</h2>
+      <p class="section-subtitle">Beragam cabang untuk semua kelompok usia</p>
+    </div>
+    <div class="announcement-grid">
+      <div class="ann-card animate-in" style="border-top:3px solid var(--emerald)">
+        <div class="ann-card-body">
+          <div style="font-size:32px;margin-bottom:8px">🎵</div>
+          <h3>Tilawah Al-Qur'an</h3>
+          <p>Lomba membaca Al-Qur'an dengan tartil, tajwid, dan maqamat yang indah untuk kategori Anak, Remaja, dan Dewasa.</p>
+        </div>
+      </div>
+      <div class="ann-card animate-in" style="border-top:3px solid var(--gold)">
+        <div class="ann-card-body">
+          <div style="font-size:32px;margin-bottom:8px">🧠</div>
+          <h3>Tahfidz Al-Qur'an</h3>
+          <p>Lomba menghafal Al-Qur'an dengan pilihan 1 Juz, 5 Juz, dan 10 Juz untuk berbagai kelompok usia.</p>
+        </div>
+      </div>
+      <div class="ann-card animate-in" style="border-top:3px solid #8b5cf6">
+        <div class="ann-card-body">
+          <div style="font-size:32px;margin-bottom:8px">✍️</div>
+          <h3>Khat Al-Qur'an</h3>
+          <p>Lomba kaligrafi Al-Qur'an dengan berbagai jenis khat seperti Naskhi, Riq'ah, dan Tsuluts.</p>
+        </div>
+      </div>
+      <div class="ann-card animate-in" style="border-top:3px solid #3b82f6">
+        <div class="ann-card-body">
+          <div style="font-size:32px;margin-bottom:8px">❓</div>
+          <h3>Fahmil Qur'an</h3>
+          <p>Lomba pemahaman Al-Qur'an dalam bentuk cerdas cermat seputar isi, kandungan, dan ilmu Al-Qur'an.</p>
+        </div>
+      </div>
+      <div class="ann-card animate-in" style="border-top:3px solid #ef4444">
+        <div class="ann-card-body">
+          <div style="font-size:32px;margin-bottom:8px">🎤</div>
+          <h3>Syarhil Qur'an</h3>
+          <p>Lomba penyampaian kandungan Al-Qur'an secara komprehensif, meliputi tilawah, terjemahan, dan uraian.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FAQ ──────────────────────────────── -->
+<section class="faq-section section" id="faq">
+  <div class="container">
+    <div class="section-header animate-in">
+      <div class="section-eyebrow">❓ Pertanyaan Umum</div>
+      <h2 class="section-title">FAQ – Sering Ditanya</h2>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item animate-in">
+        <div class="faq-question">
+          Siapa yang bisa mendaftar MTQ 2026?
+          <span class="icon">+</span>
+        </div>
+        <div class="faq-answer">Seluruh warga yang memenuhi syarat usia sesuai kategori lomba yang dipilih. Setiap peserta hanya boleh mendaftar satu cabang lomba.</div>
+      </div>
+      <div class="faq-item animate-in">
+        <div class="faq-question">
+          Apakah ada biaya pendaftaran?
+          <span class="icon">+</span>
+        </div>
+        <div class="faq-answer">Tidak ada biaya pendaftaran. Pendaftaran MTQ 2026 sepenuhnya gratis untuk semua peserta.</div>
+      </div>
+      <div class="faq-item animate-in">
+        <div class="faq-question">
+          Berkas apa saja yang harus diupload?
+          <span class="icon">+</span>
+        </div>
+        <div class="faq-answer">Tiga berkas wajib: (1) Pas foto terbaru ukuran 3×4 atau 4×6, (2) Fotokopi KTP orang tua atau Kartu Keluarga, (3) Surat rekomendasi dari instansi/lembaga terkait. Format file: JPG, PNG, atau PDF, maksimal 2 MB per file.</div>
+      </div>
+      <div class="faq-item animate-in">
+        <div class="faq-question">
+          Bagaimana cara mengetahui status pendaftaran?
+          <span class="icon">+</span>
+        </div>
+        <div class="faq-answer">Setelah mendaftar, simpan nomor pendaftaran yang diberikan. Panitia akan menghubungi peserta melalui nomor WhatsApp atau email yang didaftarkan jika ada informasi penting.</div>
+      </div>
+      <div class="faq-item animate-in">
+        <div class="faq-question">
+          Apa yang terjadi jika kuota sudah penuh?
+          <span class="icon">+</span>
+        </div>
+        <div class="faq-answer">Sistem akan memberitahu jika kuota cabang lomba yang dipilih sudah penuh. Peserta dapat mencoba mendaftar di cabang lain yang masih tersedia.</div>
+      </div>
+      <div class="faq-item animate-in">
+        <div class="faq-question">
+          Bagaimana cara mendownload bukti pendaftaran?
+          <span class="icon">+</span>
+        </div>
+        <div class="faq-answer">Setelah pendaftaran berhasil, sistem akan menampilkan halaman konfirmasi dengan tombol "Download Bukti PDF". Simpan bukti ini sebagai dokumen resmi pendaftaran Anda.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── KONTAK ────────────────────────────── -->
+<section class="contact-section section" id="kontak">
+  <div class="container">
+    <div class="section-header animate-in">
+      <div class="section-eyebrow">📞 Hubungi Kami</div>
+      <h2 class="section-title">Kontak Panitia MTQ</h2>
+      <p class="section-subtitle">Butuh bantuan? Jangan ragu menghubungi kami</p>
+    </div>
+    <div class="contact-grid">
+      <div class="contact-card animate-in">
+        <div class="icon">📱</div>
+        <h4>WhatsApp Panitia</h4>
+        <a href="https://wa.me/6281234567890" target="_blank">+62 812 3456 7890</a>
+      </div>
+      <div class="contact-card animate-in">
+        <div class="icon">📧</div>
+        <h4>Email Resmi</h4>
+        <a href="mailto:panitia.mtq2026@gmail.com">panitia.mtq2026@gmail.com</a>
+      </div>
+      <div class="contact-card animate-in">
+        <div class="icon">📍</div>
+        <h4>Sekretariat</h4>
+        <p>Kantor Kementerian Agama, Jl. Sudirman No.1</p>
+      </div>
+      <div class="contact-card animate-in">
+        <div class="icon">🕐</div>
+        <h4>Jam Layanan</h4>
+        <p>Senin–Jumat: 08.00–16.00 WIB</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ────────────────────────────── -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="nav-logo" style="margin-bottom:12px">
+          <div class="logo-icon">📖</div>
+          <div>
+            <div class="logo-text">MTQ 2026</div>
+            <div class="logo-sub">Musabaqah Tilawatil Qur'an</div>
+          </div>
+        </div>
+        <p>Musabaqah Tilawatil Qur'an 2026 — ajang pembinaan Al-Qur'an bagi generasi terbaik bangsa.</p>
+      </div>
+      <div class="footer-col">
+        <h5>Navigasi</h5>
+        <a href="#beranda">Beranda</a>
+        <a href="#pengumuman">Pengumuman</a>
+        <a href="#jadwal">Jadwal</a>
+        <a href="daftar.html">Pendaftaran</a>
+        <a href="admin.html">Admin</a>
+      </div>
+      <div class="footer-col">
+        <h5>Informasi</h5>
+        <a href="#cabang">Cabang Lomba</a>
+        <a href="#faq">FAQ</a>
+        <a href="#kontak">Kontak</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 MTQ Panitia Penyelenggara. All rights reserved.</p>
+      <p style="color:rgba(255,255,255,.4)">Sistem Pendaftaran Online MTQ 2026</p>
+    </div>
+  </div>
+</footer>
+
+<!-- ── TOAST CONTAINER ──── -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="js/main.js"></script>
+</body>
+</html>
