@@ -5,9 +5,9 @@
 // ── Config ──────────────────────────────────
 const CONFIG = {
   // GANTI dengan URL Web App Google Apps Script kamu
-  API_URL: 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbxKQ4WvXIXPMxwctlQOljmIB7xsQkSR4F1oStT2g5Xb1s_prnXSCZLwlUGEY3Doc9Be/exec',
   EVENT_DATE: '2026-08-15T08:00:00',  // Tanggal pelaksanaan MTQ
-  EVENT_LOCATION: 'GOR Kota Sukabumi',
+  EVENT_LOCATION: 'GOR Singalodra Kabupaten Indramayu',
   EVENT_THEME: 'Dengan Al-Qur\'an Membangun Generasi Emas',
 };
 

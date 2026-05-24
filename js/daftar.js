@@ -2,7 +2,7 @@
 //  MTQ 2026 - Daftar.html JS
 // ============================================
 
-const API_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxKQ4WvXIXPMxwctlQOljmIB7xsQkSR4F1oStT2g5Xb1s_prnXSCZLwlUGEY3Doc9Be/exec';
 
 // ── State ─────────────────────────────────────
 let state = {

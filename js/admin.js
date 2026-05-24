@@ -1,453 +1,907 @@
-// ============================================
-//  MTQ 2026 - Admin Dashboard JS
-// ============================================
 
-const ADMIN_API = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
-// Password diverifikasi di Apps Script (bukan di sini)
-const ADMIN_PASS_HASH = 'mtq2026admin'; // Ganti di Apps Script
+// ============================================================
+//  MTQ 2026 – daftar.js  (complete rewrite)
+//  Handles individu + team, age validation per member
+// ============================================================
 
-let allData = [];
-let filteredData = [];
-let currentPage = 1;
-const PER_PAGE = 20;
+const API_URL = 'https://script.google.com/macros/s/AKfycbxKQ4WvXIXPMxwctlQOljmIB7xsQkSR4F1oStT2g5Xb1s_prnXSCZLwlUGEY3Doc9Be/exec';
 
-// ── Init ──────────────────────────────────────
+// ── State ─────────────────────────────────────────────────────
+const state = {
+  step       : 1,
+  config     : [],
+  selected   : null,    // { cabang_lomba, golongan, tipe, umur_min, umur_max, kuota }
+  kecamatan  : '',
+  namaTim    : '',
+  members    : [],      // [{ id, data:{}, files:{photo,ktp} }]
+  rekomFile  : null,
+  submitting : false,
+  result     : null,
+};
+
+// ── 31 Kecamatan Indramayu (for filter dropdowns) ─────────────
+const KEC_INDRAMAYU = [
+  'Anjatan','Arahan','Balongan','Bangodua','Bongas','Cantigi','Cikedung',
+  'Gabuswetan','Gantar','Haurgeulis','Indramayu','Jatibarang','Juntinyuat',
+  'Kandanghaur','Karangampel','Kedokan Bunder','Kertasemaya','Krangkeng',
+  'Kroya','Lelea','Lohbener','Losarang','Patrol','Pasekan','Sindang',
+  'Sliyeg','Sukagumiwang','Sukra','Terisi','Tukdana','Widasari'
+];
+
+// ── Init ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  checkLogin();
   initNavbar();
   initDarkMode();
-  initSidebar();
+  loadConfig();
+  bindStep1();
+  setupRekomUpload();
 });
 
-// ── Auth ──────────────────────────────────────
-function checkLogin() {
-  const token = sessionStorage.getItem('mtq-admin-token');
-  if (!token) {
-    document.getElementById('loginModal').style.display = 'flex';
-    document.getElementById('adminApp').style.display = 'none';
-  } else {
-    document.getElementById('loginModal').style.display = 'none';
-    document.getElementById('adminApp').style.display = 'block';
-    loadDashboard();
-  }
-}
-
-async function doLogin() {
-  const passInput = document.getElementById('adminPass');
-  const pass = passInput.value.trim();
-  if (!pass) { showToast('Error', 'Masukkan password.', 'error'); return; }
-
-  const btn = document.getElementById('loginBtn');
-  btn.disabled = true; btn.textContent = 'Memeriksa...';
+// ── Load CONFIG from Apps Script ──────────────────────────────
+async function loadConfig() {
+  const cabangSel = document.getElementById('s1_cabang');
+  cabangSel.innerHTML = '<option value="">Memuat data...</option>';
+  cabangSel.disabled = true;
 
   try {
-    const res = await fetch(`${ADMIN_API}?action=adminLogin&password=${encodeURIComponent(pass)}`);
+    const res  = await fetch(`${API_URL}?action=getConfig`);
     const data = await res.json();
-    if (data.success) {
-      sessionStorage.setItem('mtq-admin-token', data.token);
-      document.getElementById('loginModal').style.display = 'none';
-      document.getElementById('adminApp').style.display = 'block';
-      loadDashboard();
+    if (data.success && data.config) {
+      state.config = data.config;
+    } else throw new Error('config empty');
+  } catch {
+    // Fallback config
+    state.config = [
+      { cabang_lomba:'Tilawah Al-Qur\'an', golongan:'Anak',    tipe:'individu', umur_min:7,  umur_max:12, kuota:30, status_aktif:'Aktif' },
+      { cabang_lomba:'Tilawah Al-Qur\'an', golongan:'Remaja',  tipe:'individu', umur_min:13, umur_max:17, kuota:30, status_aktif:'Aktif' },
+      { cabang_lomba:'Tilawah Al-Qur\'an', golongan:'Dewasa',  tipe:'individu', umur_min:18, umur_max:45, kuota:20, status_aktif:'Aktif' },
+      { cabang_lomba:'Tilawah Al-Qur\'an', golongan:'Cacat',   tipe:'individu', umur_min:7,  umur_max:99, kuota:10, status_aktif:'Aktif' },
+      { cabang_lomba:'Tahfidz Al-Qur\'an', golongan:'1 Juz',   tipe:'individu', umur_min:7,  umur_max:15, kuota:25, status_aktif:'Aktif' },
+      { cabang_lomba:'Tahfidz Al-Qur\'an', golongan:'5 Juz',   tipe:'individu', umur_min:10, umur_max:22, kuota:20, status_aktif:'Aktif' },
+      { cabang_lomba:'Tahfidz Al-Qur\'an', golongan:'10 Juz',  tipe:'individu', umur_min:13, umur_max:35, kuota:15, status_aktif:'Aktif' },
+      { cabang_lomba:'Tahfidz Al-Qur\'an', golongan:'30 Juz',  tipe:'individu', umur_min:15, umur_max:50, kuota:10, status_aktif:'Aktif' },
+      { cabang_lomba:'Khat Al-Qur\'an',    golongan:'Naskhi',  tipe:'individu', umur_min:10, umur_max:25, kuota:20, status_aktif:'Aktif' },
+      { cabang_lomba:'Khat Al-Qur\'an',    golongan:'Hiasan',  tipe:'individu', umur_min:10, umur_max:35, kuota:15, status_aktif:'Aktif' },
+      { cabang_lomba:'Fahmil Qur\'an',     golongan:'Remaja',  tipe:'team',     umur_min:13, umur_max:18, kuota:15, status_aktif:'Aktif' },
+      { cabang_lomba:'Syarhil Qur\'an',    golongan:'Remaja',  tipe:'team',     umur_min:13, umur_max:22, kuota:15, status_aktif:'Aktif' },
+      { cabang_lomba:'MFQ',                golongan:'Remaja',  tipe:'team',     umur_min:13, umur_max:18, kuota:10, status_aktif:'Aktif' },
+    ];
+    showToast('Peringatan','Menggunakan data default (server tidak terjangkau)','warning');
+  }
+
+  populateCabangSelect();
+  cabangSel.disabled = false;
+}
+
+function populateCabangSelect() {
+  const sel    = document.getElementById('s1_cabang');
+  const cabangs = [...new Set(state.config.map(c => c.cabang_lomba))];
+  sel.innerHTML = '<option value="">-- Pilih Cabang Lomba --</option>';
+  cabangs.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c; o.textContent = c;
+    sel.appendChild(o);
+  });
+}
+
+// ── Step 1 Bindings ───────────────────────────────────────────
+function bindStep1() {
+  document.getElementById('s1_cabang')?.addEventListener('change', onCabangChange);
+  document.getElementById('s1_golongan')?.addEventListener('change', onGolonganChange);
+}
+
+function onCabangChange() {
+  const cabang  = document.getElementById('s1_cabang').value;
+  const golSel  = document.getElementById('s1_golongan');
+  golSel.innerHTML = '<option value="">-- Pilih Golongan --</option>';
+  document.getElementById('tipeBox').style.display    = 'none';
+  document.getElementById('namaTimBox').style.display = 'none';
+  document.getElementById('ageRuleBox').style.display = 'none';
+  document.getElementById('quotaBadge').textContent   = '';
+  state.selected = null;
+
+  if (!cabang) return;
+  const filtered = state.config.filter(c => c.cabang_lomba === cabang);
+  filtered.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c.golongan;
+    o.textContent = `${c.golongan} (Usia ${c.umur_min}–${c.umur_max} thn, ${c.tipe})`;
+    golSel.appendChild(o);
+  });
+}
+
+function onGolonganChange() {
+  const cabang  = document.getElementById('s1_cabang').value;
+  const golongan = document.getElementById('s1_golongan').value;
+  if (!cabang || !golongan) return;
+
+  const cfg = state.config.find(c => c.cabang_lomba === cabang && c.golongan === golongan);
+  if (!cfg) return;
+  state.selected = cfg;
+
+  // Show tipe badge
+  const tipeBox   = document.getElementById('tipeBox');
+  const tipeBadge = document.getElementById('tipeBadge');
+  const tipeDesc  = document.getElementById('tipeDesc');
+  tipeBox.style.display = 'flex';
+
+  if (cfg.tipe === 'team') {
+    tipeBadge.className  = 'tipe-badge team';
+    tipeBadge.textContent = '👥 Tim';
+    tipeDesc.textContent  = 'Pendaftaran tim: minimal 2, maksimal 3 anggota. Setiap anggota wajib memenuhi syarat usia.';
+    document.getElementById('namaTimBox').style.display = 'block';
+  } else {
+    tipeBadge.className  = 'tipe-badge individu';
+    tipeBadge.textContent = '👤 Individu';
+    tipeDesc.textContent  = 'Pendaftaran perorangan.';
+    document.getElementById('namaTimBox').style.display = 'none';
+  }
+
+  // Show age rule
+  document.getElementById('ageRuleBox').style.display = 'block';
+  document.getElementById('ageRuleText').textContent  =
+    `Syarat usia untuk ${golongan}: ${cfg.umur_min} – ${cfg.umur_max} tahun`;
+
+  checkQuota(cabang, golongan, cfg.kuota);
+}
+
+async function checkQuota(cabang, golongan, maxKuota) {
+  const badge = document.getElementById('quotaBadge');
+  badge.textContent = '⏳';
+  badge.className   = 'quota-badge';
+  try {
+    const res  = await fetch(`${API_URL}?action=getQuota&cabang=${encodeURIComponent(cabang)}&golongan=${encodeURIComponent(golongan)}`);
+    const data = await res.json();
+    const sisa = maxKuota - (data.count || 0);
+    if (sisa <= 0) {
+      badge.textContent = '🚫 Penuh';  badge.className = 'quota-badge full';
+    } else if (sisa <= 5) {
+      badge.textContent = `⚠️ Sisa ${sisa}`;  badge.className = 'quota-badge warn';
     } else {
-      showToast('Akses Ditolak', 'Password salah.', 'error');
-      passInput.value = '';
+      badge.textContent = `✅ Sisa ${sisa}`;  badge.className = 'quota-badge ok';
     }
   } catch {
-    showToast('Akses Ditolak', 'Password tidak valid.', 'error');
-    passInput.value = '';
-  } finally {
-    btn.disabled = false; btn.textContent = 'Masuk';
+    badge.textContent = '';
   }
 }
 
-function doLogout() {
-  sessionStorage.removeItem('mtq-admin-token');
-  location.reload();
+// ── Step 1 → Step 2 ───────────────────────────────────────────
+function goToStep2() {
+  const kec    = document.getElementById('s1_kecamatan').value;
+  const cabang = document.getElementById('s1_cabang').value;
+  const gol    = document.getElementById('s1_golongan').value;
+
+  if (!kec)    { showFieldErr(document.getElementById('s1_kecamatan'),'Pilih kecamatan'); return; }
+  if (!cabang) { showFieldErr(document.getElementById('s1_cabang'),'Pilih cabang lomba'); return; }
+  if (!gol)    { showFieldErr(document.getElementById('s1_golongan'),'Pilih golongan'); return; }
+  if (!state.selected) return;
+
+  // Quota full check
+  if (document.getElementById('quotaBadge')?.classList.contains('full')) {
+    showToast('Kuota Penuh','Kuota untuk cabang dan golongan ini sudah habis.','error'); return;
+  }
+
+  if (state.selected.tipe === 'team') {
+    const namaTim = document.getElementById('s1_namatim')?.value?.trim();
+    if (!namaTim) { showFieldErr(document.getElementById('s1_namatim'),'Nama tim wajib diisi'); return; }
+    state.namaTim = namaTim;
+  }
+
+  state.kecamatan = kec;
+
+  // Init members
+  if (state.selected.tipe === 'team') {
+    // Minimal 2 anggota untuk team
+    state.members = [createMember(1), createMember(2)];
+  } else {
+    state.members = [createMember(1)];
+  }
+
+  buildStep2UI();
+  renderStep(2);
 }
 
-// ── Load Dashboard ─────────────────────────────
-async function loadDashboard() {
-  showLoading();
-  try {
-    const token = sessionStorage.getItem('mtq-admin-token');
-    const res = await fetch(`${ADMIN_API}?action=getAllPendaftar&token=${token}`);
-    const data = await res.json();
-    if (data.success) {
-      allData = data.data || [];
-      filteredData = [...allData];
-      renderStats();
-      renderTable();
-    } else {
-      throw new Error(data.message);
+function createMember(id) {
+  return { id, data: {}, files: { photo: null, ktp: null } };
+}
+
+// ── Build Step 2 UI ───────────────────────────────────────────
+function buildStep2UI() {
+  const isTeam = state.selected?.tipe === 'team';
+
+  // Title
+  document.getElementById('step2Title').textContent    = isTeam ? 'Data Tim & Anggota' : 'Data Peserta';
+  document.getElementById('step2Subtitle').textContent = isTeam
+    ? `Tim: ${state.namaTim} — Isi data setiap anggota (minimal 2, maksimal 3 orang)`
+    : 'Isi data diri dengan benar sesuai identitas resmi';
+
+  // Summary bar
+  const summaryBar = document.getElementById('teamSummaryBar');
+  summaryBar.classList.toggle('hidden', !isTeam);
+  if (isTeam) updateTeamSummary();
+
+  // Add member button
+  const addBtn = document.getElementById('addMemberBtn');
+  addBtn.classList.toggle('hidden', !isTeam);
+
+  renderMemberForms();
+}
+
+function updateTeamSummary() {
+  const txt  = document.getElementById('teamSummaryText');
+  const n    = state.members.length;
+  const min2 = n >= 2;
+  const max3 = n < 3;
+  txt.textContent = `👥 Anggota tim: ${n} orang (min. 2, maks. 3) • Tim: ${state.namaTim}`;
+  document.getElementById('addMemberBtn').disabled = !max3;
+}
+
+// ── Render all member data forms ──────────────────────────────
+function renderMemberForms() {
+  const container = document.getElementById('memberFormsContainer');
+  container.innerHTML = state.members.map((m, i) => memberFormHTML(m, i)).join('');
+  state.members.forEach(m => bindMemberInputs(m.id));
+}
+
+function memberFormHTML(member, index) {
+  const isTeam  = state.selected?.tipe === 'team';
+  const isFirst = index === 0;
+  const label   = isTeam
+    ? (isFirst ? `Anggota 1 (Ketua)` : `Anggota ${index + 1}`)
+    : 'Data Peserta';
+  const badgeCls = isFirst && isTeam ? 'ketua' : '';
+
+  return `
+  <div class="member-card" id="memberCard${member.id}">
+    <div class="member-card-header">
+      <div class="member-num">
+        <div class="member-num-badge ${badgeCls}">${index + 1}</div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--gray-800)">${label}</div>
+          <div class="member-name-preview" id="namePreview${member.id}">Belum diisi</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="member-age-tag" id="ageTag${member.id}"></span>
+        ${isTeam && !isFirst
+          ? `<button type="button" class="btn-remove-member" onclick="removeMember(${member.id})">✕ Hapus</button>`
+          : ''}
+      </div>
+    </div>
+    <div class="member-card-body">
+      <div class="form-grid">
+        <div class="field-group full">
+          <label class="field-label">Nama Lengkap <span class="req">*</span></label>
+          <input type="text" class="field-input m-input" data-mid="${member.id}" data-field="nama_lengkap"
+            placeholder="Nama sesuai identitas resmi" value="${member.data.nama_lengkap||''}">
+          <div class="field-error"></div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">NIK <span class="req">*</span></label>
+          <input type="text" class="field-input m-input" data-mid="${member.id}" data-field="nik"
+            placeholder="16 digit NIK" maxlength="16" value="${member.data.nik||''}">
+          <div class="field-error"></div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Tanggal Lahir <span class="req">*</span></label>
+          <input type="date" class="field-input m-input" data-mid="${member.id}" data-field="tanggal_lahir"
+            max="2026-01-01" value="${member.data.tanggal_lahir||''}">
+          <div class="field-error" id="ageErr${member.id}"></div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Tempat Lahir <span class="req">*</span></label>
+          <input type="text" class="field-input m-input" data-mid="${member.id}" data-field="tempat_lahir"
+            placeholder="Kota tempat lahir" value="${member.data.tempat_lahir||''}">
+          <div class="field-error"></div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Jenis Kelamin <span class="req">*</span></label>
+          <select class="field-select m-input" data-mid="${member.id}" data-field="jenis_kelamin">
+            <option value="">-- Pilih --</option>
+            <option ${member.data.jenis_kelamin==='Laki-laki'?'selected':''}>Laki-laki</option>
+            <option ${member.data.jenis_kelamin==='Perempuan'?'selected':''}>Perempuan</option>
+          </select>
+          <div class="field-error"></div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">No. WhatsApp <span class="req">*</span></label>
+          <input type="tel" class="field-input m-input" data-mid="${member.id}" data-field="no_hp"
+            placeholder="08xxxxxxxxxx" value="${member.data.no_hp||''}">
+          <div class="field-error"></div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Email <span class="req">*</span></label>
+          <input type="email" class="field-input m-input" data-mid="${member.id}" data-field="email"
+            placeholder="email@domain.com" value="${member.data.email||''}">
+          <div class="field-error"></div>
+        </div>
+        <div class="field-group full">
+          <label class="field-label">Alamat Lengkap <span class="req">*</span></label>
+          <textarea class="field-textarea m-input" data-mid="${member.id}" data-field="alamat"
+            placeholder="RT/RW, Desa, Kecamatan, Kab. Indramayu">${member.data.alamat||''}</textarea>
+          <div class="field-error"></div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Bind member inputs ────────────────────────────────────────
+function bindMemberInputs(memberId) {
+  document.querySelectorAll(`.m-input[data-mid="${memberId}"]`).forEach(input => {
+    const field = input.dataset.field;
+    input.addEventListener('input', () => {
+      const m = getMember(memberId);
+      if (!m) return;
+      m.data[field] = input.value;
+      // Update name preview
+      if (field === 'nama_lengkap') {
+        const el = document.getElementById(`namePreview${memberId}`);
+        if (el) el.textContent = input.value || 'Belum diisi';
+      }
+      // Age validation on dob change
+      if (field === 'tanggal_lahir') validateMemberAge(memberId);
+      // Clear error
+      clearErr(input);
+    });
+    input.addEventListener('change', () => {
+      const m = getMember(memberId);
+      if (m) m.data[field] = input.value;
+      if (field === 'tanggal_lahir') validateMemberAge(memberId);
+    });
+  });
+}
+
+function getMember(id) {
+  return state.members.find(m => m.id === id);
+}
+
+// ── Age Validation per Member ─────────────────────────────────
+function validateMemberAge(memberId) {
+  const m = getMember(memberId);
+  if (!m || !state.selected) return;
+
+  const dob = m.data.tanggal_lahir;
+  if (!dob) return;
+
+  const age    = calcAge(dob);
+  const { umur_min, umur_max } = state.selected;
+  const tag    = document.getElementById(`ageTag${memberId}`);
+  const errEl  = document.getElementById(`ageErr${memberId}`);
+  const card   = document.getElementById(`memberCard${memberId}`);
+
+  m.data.umur = age;
+
+  if (age < umur_min || age > umur_max) {
+    tag.textContent = `⚠️ ${age} thn`;
+    tag.className   = 'member-age-tag err';
+    errEl.textContent = `❌ Usia ${age} tahun tidak sesuai (syarat: ${umur_min}–${umur_max} tahun)`;
+    errEl.classList.add('show');
+    card?.classList.add('error-card');
+  } else {
+    tag.textContent = `✅ ${age} thn`;
+    tag.className   = 'member-age-tag ok';
+    errEl.classList.remove('show');
+    errEl.textContent = '';
+    card?.classList.remove('error-card');
+  }
+}
+
+function calcAge(dobStr) {
+  const dob = new Date(dobStr);
+  const now = new Date();
+  let age   = now.getFullYear() - dob.getFullYear();
+  const m   = now.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age--;
+  return age;
+}
+
+// ── Add / Remove Team Member ──────────────────────────────────
+function addMember() {
+  if (state.members.length >= 3) return;
+  const nextId = Math.max(...state.members.map(m => m.id)) + 1;
+  state.members.push(createMember(nextId));
+  renderMemberForms();
+  updateTeamSummary();
+  buildStep3Uploads(); // rebuild step3 if already rendered
+}
+
+function removeMember(memberId) {
+  if (state.members.length <= 2) {
+    showToast('Minimal 2 Anggota','Tim harus memiliki minimal 2 anggota.','warning'); return;
+  }
+  state.members = state.members.filter(m => m.id !== memberId);
+  renderMemberForms();
+  updateTeamSummary();
+  buildStep3Uploads();
+}
+
+// ── Step 2 → Step 3 ───────────────────────────────────────────
+function goToStep3() {
+  if (!validateStep2()) return;
+  buildStep3Uploads();
+  renderStep(3);
+}
+
+function validateStep2() {
+  let ok = true;
+  const requiredFields = ['nama_lengkap','nik','tanggal_lahir','tempat_lahir','jenis_kelamin','no_hp','email','alamat'];
+
+  for (const m of state.members) {
+    // Validate age first
+    if (m.data.tanggal_lahir) validateMemberAge(m.id);
+
+    for (const field of requiredFields) {
+      const input = document.querySelector(`.m-input[data-mid="${m.id}"][data-field="${field}"]`);
+      if (!input) continue;
+      const val = input.value.trim();
+      if (!val) {
+        showErr(input, 'Wajib diisi');
+        ok = false;
+      }
     }
-  } catch (e) {
-    showToast('Error', 'Gagal memuat data: ' + e.message, 'error');
-  } finally {
-    hideLoading();
+
+    // NIK length
+    const nikInput = document.querySelector(`.m-input[data-mid="${m.id}"][data-field="nik"]`);
+    if (nikInput && nikInput.value && nikInput.value.length !== 16) {
+      showErr(nikInput, 'NIK harus 16 digit');
+      ok = false;
+    }
+
+    // Age validity
+    if (m.data.tanggal_lahir && state.selected) {
+      const age = calcAge(m.data.tanggal_lahir);
+      if (age < state.selected.umur_min || age > state.selected.umur_max) {
+        ok = false;
+      }
+    }
   }
+
+  if (!ok) {
+    showToast('Data Tidak Lengkap','Mohon lengkapi semua kolom dan pastikan usia sesuai syarat.','warning');
+  }
+
+  // Team minimum check
+  if (state.selected?.tipe === 'team' && state.members.length < 2) {
+    showToast('Kurang Anggota','Tim harus memiliki minimal 2 anggota.','error');
+    return false;
+  }
+
+  return ok;
 }
 
-// ── Stats ─────────────────────────────────────
-function renderStats() {
-  const total    = allData.length;
-  const verified = allData.filter(d => d.status_verifikasi === 'Terverifikasi').length;
-  const pending  = allData.filter(d => d.status_verifikasi === 'Menunggu').length;
-  const rejected = allData.filter(d => d.status_verifikasi === 'Ditolak').length;
-  const cabangs  = [...new Set(allData.map(d => d.cabang_lomba))].length;
-
-  document.getElementById('statTotal').textContent    = total;
-  document.getElementById('statVerified').textContent = verified;
-  document.getElementById('statPending').textContent  = pending;
-  document.getElementById('statCabang').textContent   = cabangs;
+// ── Build Step 3 Upload Sections ──────────────────────────────
+function buildStep3Uploads() {
+  const container = document.getElementById('memberUploadsContainer');
+  container.innerHTML = state.members.map((m, i) => memberUploadHTML(m, i)).join('');
+  state.members.forEach(m => setupMemberUploads(m.id));
 }
 
-// ── Table ─────────────────────────────────────
-function renderTable() {
-  const tbody  = document.getElementById('tableBody');
-  const start  = (currentPage - 1) * PER_PAGE;
-  const slice  = filteredData.slice(start, start + PER_PAGE);
+function memberUploadHTML(member, index) {
+  const name  = member.data.nama_lengkap || `Anggota ${index + 1}`;
+  const label = state.selected?.tipe === 'team'
+    ? (index === 0 ? `Anggota 1 – Ketua (${name})` : `Anggota ${index + 1} (${name})`)
+    : `Peserta: ${name}`;
 
-  if (filteredData.length === 0) {
-    tbody.innerHTML = `
-      <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--gray-400)">
-        📭 Tidak ada data ditemukan
-      </td></tr>`;
-    updatePagination(0);
+  return `
+  <div class="upload-member-section">
+    <div class="upload-member-title">
+      <span style="font-size:20px">${index === 0 && state.selected?.tipe === 'team' ? '👑' : '👤'}</span>
+      <div>
+        <div>${label}</div>
+        <div style="font-size:12px;font-weight:400;color:var(--gray-400)">Upload pas foto dan KTP/KK</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+      <!-- Pas Foto -->
+      <div class="field-group">
+        <label class="field-label">Pas Foto <span class="req">*</span></label>
+        <div class="upload-zone" id="photoZone${member.id}">
+          <input type="file" accept="image/jpeg,image/png" id="photoInput${member.id}">
+          <div class="upload-icon">📷</div>
+          <h4 style="font-size:13px">Upload Pas Foto</h4>
+          <p>JPG/PNG — Maks. 2 MB</p>
+        </div>
+        <div class="upload-preview" id="photoPreview${member.id}">
+          <span class="file-icon">🖼️</span>
+          <span class="file-name"></span>
+          <span class="file-size"></span>
+          <button type="button" class="remove-file" onclick="removeMemberFile(${member.id},'photo')">✕</button>
+        </div>
+      </div>
+
+      <!-- KTP/KK -->
+      <div class="field-group">
+        <label class="field-label">KTP / KK <span class="req">*</span></label>
+        <div class="upload-zone" id="ktpZone${member.id}">
+          <input type="file" accept="image/jpeg,image/png,application/pdf" id="ktpInput${member.id}">
+          <div class="upload-icon">🪪</div>
+          <h4 style="font-size:13px">Upload KTP/KK</h4>
+          <p>JPG/PNG/PDF — Maks. 2 MB</p>
+        </div>
+        <div class="upload-preview" id="ktpPreview${member.id}">
+          <span class="file-icon">📄</span>
+          <span class="file-name"></span>
+          <span class="file-size"></span>
+          <button type="button" class="remove-file" onclick="removeMemberFile(${member.id},'ktp')">✕</button>
+        </div>
+      </div>
+
+    </div>
+  </div>`;
+}
+
+function setupMemberUploads(memberId) {
+  setupFileInput(`photoInput${memberId}`, `photoZone${memberId}`, `photoPreview${memberId}`,
+    memberId, 'photo', ['image/jpeg','image/png']);
+  setupFileInput(`ktpInput${memberId}`, `ktpZone${memberId}`, `ktpPreview${memberId}`,
+    memberId, 'ktp', ['image/jpeg','image/png','application/pdf']);
+}
+
+function setupFileInput(inputId, zoneId, previewId, memberId, fileKey, allowedTypes) {
+  const input   = document.getElementById(inputId);
+  const zone    = document.getElementById(zoneId);
+  const preview = document.getElementById(previewId);
+  if (!input || !zone) return;
+
+  input.addEventListener('change', () => {
+    const file = input.files[0];
+    if (file) handleMemberFile(file, memberId, fileKey, zone, preview, allowedTypes);
+  });
+
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) handleMemberFile(file, memberId, fileKey, zone, preview, allowedTypes);
+  });
+}
+
+function handleMemberFile(file, memberId, fileKey, zone, preview, allowedTypes) {
+  if (!allowedTypes.includes(file.type)) {
+    showToast('Format Salah', `Format harus: ${allowedTypes.map(t=>t.split('/')[1].toUpperCase()).join(', ')}`, 'error');
     return;
   }
-
-  tbody.innerHTML = slice.map((d, i) => `
-    <tr>
-      <td>${start + i + 1}</td>
-      <td><strong>${d.nomor_pendaftaran || '-'}</strong></td>
-      <td>${d.nama_lengkap || '-'}</td>
-      <td>${d.cabang_lomba || '-'}</td>
-      <td>${d.golongan || '-'}</td>
-      <td>${d.kecamatan || '-'}</td>
-      <td>
-        <span class="status-badge ${statusClass(d.status_verifikasi)}">
-          ${statusIcon(d.status_verifikasi)} ${d.status_verifikasi || 'Menunggu'}
-        </span>
-      </td>
-      <td>${formatDate(d.timestamp)}</td>
-      <td>
-        <div style="display:flex;gap:4px;flex-wrap:wrap">
-          <button class="action-btn view" onclick="viewDetail('${d.nomor_pendaftaran}')">👁️</button>
-          ${d.status_verifikasi !== 'Terverifikasi' ? `<button class="action-btn verify" onclick="updateStatus('${d.nomor_pendaftaran}','Terverifikasi')">✅</button>` : ''}
-          ${d.status_verifikasi !== 'Ditolak' ? `<button class="action-btn reject" onclick="updateStatus('${d.nomor_pendaftaran}','Ditolak')">❌</button>` : ''}
-          <button class="action-btn view" onclick="printCard('${d.nomor_pendaftaran}')">🖨️</button>
-        </div>
-      </td>
-    </tr>
-  `).join('');
-
-  updatePagination(filteredData.length);
-  document.getElementById('dataCount').textContent = `${filteredData.length} peserta`;
-}
-
-function statusClass(s) {
-  if (s === 'Terverifikasi') return 'verified';
-  if (s === 'Ditolak') return 'rejected';
-  return 'pending';
-}
-function statusIcon(s) {
-  if (s === 'Terverifikasi') return '✅';
-  if (s === 'Ditolak') return '❌';
-  return '⏳';
-}
-function formatDate(ts) {
-  if (!ts) return '-';
-  return new Date(ts).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' });
-}
-
-// ── Pagination ────────────────────────────────
-function updatePagination(total) {
-  const totalPages = Math.ceil(total / PER_PAGE);
-  const el = document.getElementById('pagination');
-  if (!el) return;
-
-  el.innerHTML = '';
-
-  const makeBtn = (label, page, disabled = false, active = false) => {
-    const btn = document.createElement('button');
-    btn.textContent = label;
-    btn.className = `action-btn view ${active ? 'active-page' : ''}`;
-    if (active) btn.style.background = 'var(--emerald)'; btn.style.color = '#fff';
-    btn.disabled = disabled;
-    btn.onclick = () => { currentPage = page; renderTable(); };
-    return btn;
-  };
-
-  el.appendChild(makeBtn('‹', currentPage - 1, currentPage === 1));
-  for (let i = 1; i <= totalPages; i++) {
-    if (totalPages <= 7 || Math.abs(i - currentPage) <= 2 || i === 1 || i === totalPages) {
-      el.appendChild(makeBtn(i, i, false, i === currentPage));
-    }
+  if (file.size > 2 * 1024 * 1024) {
+    showToast('File Terlalu Besar', 'Maksimal 2 MB per file', 'error'); return;
   }
-  el.appendChild(makeBtn('›', currentPage + 1, currentPage === totalPages));
+  const m = getMember(memberId);
+  if (!m) return;
+  m.files[fileKey] = file;
+  zone.classList.add('has-file');
+  preview?.querySelector('.file-name') && (preview.querySelector('.file-name').textContent = file.name);
+  preview?.querySelector('.file-size') && (preview.querySelector('.file-size').textContent = fmtSize(file.size));
+  preview?.querySelector('.file-icon') && (preview.querySelector('.file-icon').textContent = file.type === 'application/pdf' ? '📄' : '🖼️');
+  preview?.classList.add('show');
 }
 
-// ── Search & Filter ───────────────────────────
-function applyFilters() {
-  const q       = (document.getElementById('searchInput')?.value || '').toLowerCase();
-  const cabang  = document.getElementById('filterCabang')?.value  || '';
-  const kec     = document.getElementById('filterKec')?.value     || '';
-  const status  = document.getElementById('filterStatus')?.value  || '';
-
-  filteredData = allData.filter(d => {
-    const matchQ      = !q      || Object.values(d).join(' ').toLowerCase().includes(q);
-    const matchCabang = !cabang || d.cabang_lomba === cabang;
-    const matchKec    = !kec    || d.kecamatan === kec;
-    const matchStatus = !status || d.status_verifikasi === status;
-    return matchQ && matchCabang && matchKec && matchStatus;
-  });
-
-  currentPage = 1;
-  renderTable();
+function removeMemberFile(memberId, fileKey) {
+  const m = getMember(memberId);
+  if (m) m.files[fileKey] = null;
+  const zone    = document.getElementById(`${fileKey === 'photo' ? 'photo' : 'ktp'}Zone${memberId}`);
+  const preview = document.getElementById(`${fileKey === 'photo' ? 'photo' : 'ktp'}Preview${memberId}`);
+  zone?.classList.remove('has-file');
+  preview?.classList.remove('show');
 }
 
-function initFilters() {
-  document.getElementById('searchInput')?.addEventListener('input', applyFilters);
-  document.getElementById('filterCabang')?.addEventListener('change', applyFilters);
-  document.getElementById('filterKec')?.addEventListener('change', applyFilters);
-  document.getElementById('filterStatus')?.addEventListener('change', applyFilters);
+// ── Rekom Upload ──────────────────────────────────────────────
+function setupRekomUpload() {
+  const zone    = document.getElementById('rekomZone');
+  const input   = document.getElementById('rekomInput');
+  const preview = document.getElementById('rekomPreview');
+  if (!zone || !input) return;
 
-  // Populate filter dropdowns
-  const cabangs  = [...new Set(allData.map(d => d.cabang_lomba).filter(Boolean))];
-  const kecs     = [...new Set(allData.map(d => d.kecamatan).filter(Boolean))];
-
-  const cabSelect = document.getElementById('filterCabang');
-  cabangs.forEach(c => {
-    const o = document.createElement('option'); o.value = c; o.textContent = c;
-    cabSelect?.appendChild(o);
+  input.addEventListener('change', () => {
+    const file = input.files[0];
+    if (file) handleRekomFile(file, zone, preview);
   });
-  const kecSelect = document.getElementById('filterKec');
-  kecs.forEach(k => {
-    const o = document.createElement('option'); o.value = k; o.textContent = k;
-    kecSelect?.appendChild(o);
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) handleRekomFile(file, zone, preview);
   });
 }
 
-// ── Update Status ─────────────────────────────
-async function updateStatus(nomorPendaftaran, newStatus) {
-  const confirm = window.confirm(`Yakin ${newStatus === 'Terverifikasi' ? 'verifikasi' : 'tolak'} peserta ini?`);
-  if (!confirm) return;
+function handleRekomFile(file, zone, preview) {
+  const allowed = ['image/jpeg','image/png','application/pdf'];
+  if (!allowed.includes(file.type)) { showToast('Format Salah','JPG/PNG/PDF saja','error'); return; }
+  if (file.size > 2 * 1024 * 1024)  { showToast('File Terlalu Besar','Maks 2 MB','error'); return; }
+  state.rekomFile = file;
+  zone.classList.add('has-file');
+  preview?.querySelector('.file-name') && (preview.querySelector('.file-name').textContent = file.name);
+  preview?.querySelector('.file-size') && (preview.querySelector('.file-size').textContent = fmtSize(file.size));
+  preview?.classList.add('show');
+}
 
-  const token = sessionStorage.getItem('mtq-admin-token');
+function removeFile(key) {
+  if (key === 'rekom') {
+    state.rekomFile = null;
+    document.getElementById('rekomZone')?.classList.remove('has-file');
+    document.getElementById('rekomPreview')?.classList.remove('show');
+  }
+}
+
+// ── Submit ────────────────────────────────────────────────────
+async function submitForm() {
+  if (state.submitting) return;
+
+  // Validate agreement
+  if (!document.getElementById('agreement')?.checked) {
+    showToast('Persetujuan Diperlukan','Centang persetujuan sebelum mengirim.','warning'); return;
+  }
+
+  // Validate files per member
+  for (const m of state.members) {
+    const name = m.data.nama_lengkap || `Anggota ${m.id}`;
+    if (!m.files.photo) { showToast('Upload Diperlukan',`Pas foto ${name} belum diupload.`,'error'); return; }
+    if (!m.files.ktp)   { showToast('Upload Diperlukan',`KTP/KK ${name} belum diupload.`,'error'); return; }
+  }
+
+  state.submitting = true;
+  document.getElementById('submitBtn').disabled = true;
   showLoading();
 
   try {
-    const res = await fetch(ADMIN_API, {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'updateStatus',
-        token,
-        nomor_pendaftaran: nomorPendaftaran,
-        status: newStatus,
-      }),
+    // Convert all files to base64
+    const processedMembers = await Promise.all(state.members.map(async m => ({
+      ...m.data,
+      photo: await toBase64Obj(m.files.photo),
+      ktp  : await toBase64Obj(m.files.ktp),
+    })));
+
+    const payload = {
+      action       : 'register',
+      kecamatan    : state.kecamatan,
+      cabang_lomba : state.selected.cabang_lomba,
+      golongan     : state.selected.golongan,
+      tipe_lomba   : state.selected.tipe,
+      nama_tim     : state.namaTim,
+      members      : processedMembers,
+      rekom        : state.rekomFile ? await toBase64Obj(state.rekomFile) : null,
+    };
+
+    const res    = await fetch(API_URL, {
+      method  : 'POST',
+      redirect: 'follow',
+      body    : JSON.stringify(payload),
     });
-    const data = await res.json();
-    if (data.success) {
-      const idx = allData.findIndex(d => d.nomor_pendaftaran === nomorPendaftaran);
-      if (idx !== -1) allData[idx].status_verifikasi = newStatus;
-      applyFilters();
-      renderStats();
-      showToast('Berhasil', `Status diubah ke "${newStatus}"`, 'success');
+    const result = await res.json();
+
+    if (result.success) {
+      state.result = result;
+      hideLoading();
+      showSuccessPage(result);
     } else {
-      throw new Error(data.message);
+      throw new Error(result.message || 'Pendaftaran gagal');
     }
-  } catch (e) {
-    showToast('Error', 'Gagal mengubah status: ' + e.message, 'error');
-  } finally {
+  } catch (err) {
     hideLoading();
+    showToast('Gagal Mendaftar', err.message || 'Terjadi kesalahan. Silakan coba lagi.', 'error');
+    state.submitting = false;
+    document.getElementById('submitBtn').disabled = false;
   }
 }
 
-// ── View Detail ───────────────────────────────
-function viewDetail(nomorPendaftaran) {
-  const d = allData.find(x => x.nomor_pendaftaran === nomorPendaftaran);
-  if (!d) return;
-
-  const content = document.getElementById('modalContent');
-  content.innerHTML = `
-    <div class="participant-detail">
-      ${[
-        ['Nomor Pendaftaran', d.nomor_pendaftaran],
-        ['Nama Lengkap', d.nama_lengkap],
-        ['NIK', d.nik],
-        ['Tempat Lahir', d.tempat_lahir],
-        ['Tanggal Lahir', d.tanggal_lahir],
-        ['Umur', d.umur + ' tahun'],
-        ['Jenis Kelamin', d.jenis_kelamin],
-        ['Alamat', d.alamat],
-        ['No. HP', d.no_hp],
-        ['Email', d.email],
-        ['Kecamatan', d.kecamatan],
-        ['Cabang Lomba', d.cabang_lomba],
-        ['Golongan', d.golongan],
-        ['Status', d.status_verifikasi || 'Menunggu'],
-        ['Tanggal Daftar', formatDate(d.timestamp)],
-      ].map(([k,v]) => `
-        <div class="row">
-          <span class="key">${k}</span>
-          <span class="val">${v || '-'}</span>
-        </div>
-      `).join('')}
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">
-      ${d.link_pas_foto ? `<a href="${d.link_pas_foto}" target="_blank" class="btn btn-sm btn-outline">📷 Pas Foto</a>` : ''}
-      ${d.link_ktp_kk   ? `<a href="${d.link_ktp_kk}"   target="_blank" class="btn btn-sm btn-outline">🪪 KTP/KK</a>` : ''}
-      ${d.link_rekomendasi ? `<a href="${d.link_rekomendasi}" target="_blank" class="btn btn-sm btn-outline">📄 Rekomendasi</a>` : ''}
-    </div>
-  `;
-
-  document.getElementById('detailModal').classList.add('show');
-}
-
-function closeModal() {
-  document.getElementById('detailModal').classList.remove('show');
-}
-
-// ── Print Card ────────────────────────────────
-function printCard(nomorPendaftaran) {
-  const d = allData.find(x => x.nomor_pendaftaran === nomorPendaftaran);
-  if (!d) return;
-
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit:'mm', format:[86,54], orientation:'landscape' });
-
-  // Card Background
-  doc.setFillColor(6, 95, 70);
-  doc.rect(0, 0, 86, 54, 'F');
-  doc.setFillColor(255, 255, 255);
-  doc.roundedRect(3, 3, 80, 48, 3, 3, 'F');
-
-  // Header strip
-  doc.setFillColor(6, 95, 70);
-  doc.rect(3, 3, 80, 14, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'bold');
-  doc.text('MTQ 2026 - KARTU PESERTA', 43, 10, { align: 'center' });
-  doc.setFontSize(5);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Musabaqah Tilawatil Qur\'an', 43, 14, { align: 'center' });
-
-  // Nomor
-  doc.setTextColor(6, 95, 70);
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.text(d.nomor_pendaftaran, 43, 22, { align: 'center' });
-
-  // Data
-  doc.setFontSize(6);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(55, 65, 81);
-  const lines = [
-    ['Nama', d.nama_lengkap],
-    ['Cabang', d.cabang_lomba],
-    ['Golongan', d.golongan],
-    ['Kecamatan', d.kecamatan],
-  ];
-  lines.forEach(([k, v], i) => {
-    doc.setFont('helvetica', 'bold');
-    doc.text(k + ':', 6, 28 + i*5);
-    doc.setFont('helvetica', 'normal');
-    doc.text(v || '-', 30, 28 + i*5);
+async function toBase64Obj(file) {
+  if (!file) return null;
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve({ name: file.name, type: file.type, data: reader.result.split(',')[1] });
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
   });
-
-  // Gold bottom accent
-  doc.setFillColor(245, 158, 11);
-  doc.rect(3, 49, 80, 2, 'F');
-
-  doc.save(`Kartu_${d.nomor_pendaftaran}.pdf`);
 }
 
-// ── Export Excel ──────────────────────────────
-function exportExcel() {
-  if (!window.XLSX) { showToast('Error', 'Library XLSX tidak tersedia.', 'error'); return; }
-  
-  const exportData = filteredData.map(d => ({
-    'Nomor Pendaftaran': d.nomor_pendaftaran,
-    'Nama Lengkap': d.nama_lengkap,
-    'NIK': d.nik,
-    'Tempat Lahir': d.tempat_lahir,
-    'Tanggal Lahir': d.tanggal_lahir,
-    'Umur': d.umur,
-    'Jenis Kelamin': d.jenis_kelamin,
-    'Alamat': d.alamat,
-    'No HP': d.no_hp,
-    'Email': d.email,
-    'Kecamatan': d.kecamatan,
-    'Cabang Lomba': d.cabang_lomba,
-    'Golongan': d.golongan,
-    'Status': d.status_verifikasi,
-    'Tanggal Daftar': d.timestamp,
-  }));
+// ── Success Page ──────────────────────────────────────────────
+function showSuccessPage(result) {
+  document.getElementById('formContainer').classList.add('hidden');
+  document.getElementById('successContainer').classList.remove('hidden');
 
-  const ws   = XLSX.utils.json_to_sheet(exportData);
-  const wb   = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Pendaftar MTQ 2026');
-  XLSX.writeFile(wb, `Data_Pendaftar_MTQ2026_${new Date().toISOString().slice(0,10)}.xlsx`);
-  showToast('Berhasil', `${filteredData.length} data berhasil diexport.`, 'success');
-}
+  document.getElementById('successRegNum').textContent = result.nomor_pendaftaran;
 
-// ── Sidebar ───────────────────────────────────
-function initSidebar() {
-  document.querySelectorAll('.sidebar-item').forEach(item => {
-    item.addEventListener('click', () => {
-      document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
-      item.classList.add('active');
-      const section = item.dataset.section;
-      document.querySelectorAll('.admin-section').forEach(s => s.classList.add('hidden'));
-      document.getElementById('section-' + section)?.classList.remove('hidden');
+  const isTeam = result.tipe_lomba === 'team';
+  const lead   = state.members[0].data;
+  let detailHTML = `
+    <div class="row"><span class="key">No. Pendaftaran</span><span class="val">${result.nomor_pendaftaran}</span></div>
+    <div class="row"><span class="key">Kecamatan</span><span class="val">${state.kecamatan}</span></div>
+    <div class="row"><span class="key">Cabang Lomba</span><span class="val">${result.cabang_lomba} – ${result.golongan}</span></div>
+    <div class="row"><span class="key">Tipe</span><span class="val">${isTeam ? '👥 Tim' : '👤 Individu'}</span></div>`;
+
+  if (isTeam) {
+    detailHTML += `<div class="row"><span class="key">Nama Tim</span><span class="val">${result.nama_tim}</span></div>`;
+    detailHTML += `<div class="row"><span class="key">Jumlah Anggota</span><span class="val">${result.jumlah_anggota} orang</span></div>`;
+    state.members.forEach((m, i) => {
+      detailHTML += `<div class="row"><span class="key">Anggota ${i+1}</span><span class="val">${m.data.nama_lengkap} (${m.data.umur||calcAge(m.data.tanggal_lahir)} thn)</span></div>`;
     });
-  });
+  } else {
+    detailHTML += `<div class="row"><span class="key">Nama</span><span class="val">${lead.nama_lengkap}</span></div>`;
+    detailHTML += `<div class="row"><span class="key">No. HP</span><span class="val">${lead.no_hp}</span></div>`;
+    detailHTML += `<div class="row"><span class="key">Email</span><span class="val">${lead.email}</span></div>`;
+  }
 
-  // Mobile sidebar toggle
-  document.getElementById('sidebarToggle')?.addEventListener('click', () => {
-    document.querySelector('.admin-sidebar')?.classList.toggle('open');
-  });
+  detailHTML += `<div class="row"><span class="key">Status</span><span class="val"><span class="status-badge pending">⏳ Menunggu Verifikasi</span></span></div>`;
+  document.getElementById('successDetail').innerHTML = detailHTML;
+
+  generateQR(result.nomor_pendaftaran);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  showToast('Berhasil 🎉','Pendaftaran Anda berhasil diterima!','success',8000);
 }
 
-// ── Loading ───────────────────────────────────
+function generateQR(text) {
+  const el = document.getElementById('qrcode');
+  if (!el || typeof QRCode === 'undefined') return;
+  el.innerHTML = '';
+  new QRCode(el, { text, width:180, height:180, colorDark:'#065f46', colorLight:'#fff', correctLevel: QRCode.CorrectLevel.H });
+}
+
+// ── PDF Download ──────────────────────────────────────────────
+function downloadPDF() {
+  if (typeof window.jspdf === 'undefined') { showToast('Error','Library PDF tidak tersedia','error'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc  = new jsPDF({ unit:'mm', format:'a4' });
+  const r    = state.result;
+  const lead = state.members[0].data;
+
+  // Header
+  doc.setFillColor(6,95,70); doc.rect(0,0,210,48,'F');
+  doc.setFillColor(245,158,11); doc.rect(0,48,210,2,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(18); doc.setFont('helvetica','bold');
+  doc.text('BUKTI PENDAFTARAN MTQ 2026', 105, 20, {align:'center'});
+  doc.setFontSize(10); doc.setFont('helvetica','normal');
+  doc.text('Musabaqah Tilawatil Qur\'an – Kabupaten Indramayu', 105, 30, {align:'center'});
+  doc.text('www.mtq-indramayu.go.id', 105, 39, {align:'center'});
+
+  // Reg number box
+  doc.setFillColor(240,253,245); doc.roundedRect(20,56,170,20,4,4,'F');
+  doc.setTextColor(6,95,70); doc.setFontSize(13); doc.setFont('helvetica','bold');
+  doc.text('NOMOR PENDAFTARAN: ' + r.nomor_pendaftaran, 105, 69, {align:'center'});
+
+  // Type badge
+  const tipeLabel = r.tipe_lomba === 'team' ? '👥 PENDAFTARAN TIM' : '👤 PENDAFTARAN INDIVIDU';
+  doc.setFillColor(r.tipe_lomba === 'team' ? 254 : 240, r.tipe_lomba === 'team' ? 243 : 253, r.tipe_lomba === 'team' ? 199 : 245);
+  doc.roundedRect(70,80,70,10,2,2,'F');
+  doc.setFontSize(9); doc.setTextColor(r.tipe_lomba === 'team' ? 180 : 6, r.tipe_lomba === 'team' ? 83 : 95, r.tipe_lomba === 'team' ? 9 : 70);
+  doc.text(tipeLabel, 105, 87, {align:'center'});
+
+  // Info rows
+  const rows = [
+    ['Kecamatan/Kafilah', state.kecamatan],
+    ['Cabang Lomba', r.cabang_lomba],
+    ['Golongan', r.golongan],
+  ];
+  if (r.tipe_lomba === 'team') rows.push(['Nama Tim', r.nama_tim]);
+  rows.push(['Status', 'Menunggu Verifikasi Panitia']);
+
+  let y = 96;
+  rows.forEach(([k,v], i) => {
+    doc.setFillColor(i%2===0 ? 249:255, i%2===0 ? 250:255, i%2===0 ? 247:255);
+    doc.rect(20,y,170,8,'F');
+    doc.setTextColor(107,114,128); doc.setFontSize(9); doc.setFont('helvetica','normal');
+    doc.text(k,24,y+5.5);
+    doc.setTextColor(30,41,59); doc.setFont('helvetica','bold');
+    doc.text(String(v),90,y+5.5);
+    y+=8;
+  });
+
+  // Member list
+  y += 4;
+  doc.setFillColor(6,95,70); doc.rect(20,y,170,7,'F');
+  doc.setTextColor(255,255,255); doc.setFontSize(9); doc.setFont('helvetica','bold');
+  doc.text(r.tipe_lomba === 'team' ? 'DATA ANGGOTA TIM' : 'DATA PESERTA', 24, y+5);
+  y += 7;
+
+  state.members.forEach((m, i) => {
+    const memberRows = [
+      [`Anggota ${i+1}`, m.data.nama_lengkap],
+      ['NIK', m.data.nik],
+      ['Tgl. Lahir', `${m.data.tempat_lahir}, ${m.data.tanggal_lahir} (${m.data.umur||calcAge(m.data.tanggal_lahir)} tahun)`],
+      ['Jenis Kelamin', m.data.jenis_kelamin],
+      ['No. HP', m.data.no_hp],
+    ];
+    memberRows.forEach(([k,v], j) => {
+      doc.setFillColor(j%2===0 ? 245:255, j%2===0 ? 250:255, j%2===0 ? 245:255);
+      doc.rect(20,y,170,7,'F');
+      doc.setTextColor(107,114,128); doc.setFontSize(8); doc.setFont('helvetica','normal');
+      doc.text(k,24,y+5);
+      doc.setTextColor(30,41,59); doc.setFont('helvetica','bold');
+      doc.text(String(v||'-'),90,y+5);
+      y+=7;
+    });
+    if (i < state.members.length - 1) { doc.setDrawColor(200,220,200); doc.line(24, y+1, 186, y+1); y+=4; }
+  });
+
+  // QR
+  const qrCanvas = document.querySelector('#qrcode canvas');
+  if (qrCanvas) {
+    const qrImg = qrCanvas.toDataURL('image/png');
+    doc.addImage(qrImg,'PNG',78,y+6,54,54);
+    doc.setFontSize(8); doc.setTextColor(107,114,128); doc.setFont('helvetica','normal');
+    doc.text('Scan QR untuk verifikasi', 105, y+64, {align:'center'});
+    y += 68;
+  }
+
+  // Footer
+  doc.setFillColor(6,95,70); doc.rect(0,280,210,17,'F');
+  doc.setTextColor(255,255,255); doc.setFontSize(8); doc.setFont('helvetica','normal');
+  doc.text(`Dicetak: ${new Date().toLocaleString('id-ID')}  |  Panitia MTQ Kab. Indramayu 2026`, 105, 290, {align:'center'});
+
+  doc.save(`BuktiPendaftaran_MTQ2026_${r.nomor_pendaftaran}.pdf`);
+}
+
+// ── Step Rendering ────────────────────────────────────────────
+function renderStep(n) {
+  document.querySelectorAll('.form-step').forEach(s => s.classList.remove('active'));
+  document.getElementById(`step${n}`)?.classList.add('active');
+  ['si1','si2','si3'].forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('active','done');
+    if (i+1 === n)  el.classList.add('active');
+    if (i+1 < n)    el.classList.add('done');
+  });
+  state.step = n;
+  window.scrollTo({ top: document.querySelector('.steps-bar')?.offsetTop - 68 || 0, behavior:'smooth' });
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+function fmtSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/1048576).toFixed(1) + ' MB';
+}
+function showErr(el, msg) {
+  el.classList.add('error');
+  const e = el.parentElement?.querySelector('.field-error');
+  if (e) { e.textContent = msg; e.classList.add('show'); }
+}
+function clearErr(el) {
+  el.classList.remove('error');
+  const e = el.parentElement?.querySelector('.field-error');
+  if (e) e.classList.remove('show');
+}
+function showFieldErr(el, msg) {
+  el.classList.add('error');
+  const e = el.parentElement?.querySelector('.field-error');
+  if (e) { e.textContent = msg; e.classList.add('show'); }
+  el.focus();
+}
 function showLoading() { document.getElementById('loadingOverlay')?.classList.add('show'); }
 function hideLoading()  { document.getElementById('loadingOverlay')?.classList.remove('show'); }
 
-// ── Toast ─────────────────────────────────────
-function showToast(title, msg, type = 'info', duration = 4000) {
-  const icons = { success:'✅', error:'❌', warning:'⚠️', info:'ℹ️' };
-  const container = document.getElementById('toastContainer');
-  if (!container) return;
-  const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
-  toast.innerHTML = `
-    <span class="toast-icon">${icons[type]}</span>
-    <div class="toast-content">
-      <div class="toast-title">${title}</div>
-      <div class="toast-msg">${msg}</div>
-    </div>
-    <button class="toast-close" onclick="this.parentElement.remove()">✕</button>
-  `;
-  container.appendChild(toast);
-  setTimeout(() => { toast.classList.add('removing'); setTimeout(() => toast.remove(), 250); }, duration);
+function showToast(title, msg, type='info', dur=4000) {
+  const icons = {success:'✅',error:'❌',warning:'⚠️',info:'ℹ️'};
+  const cont  = document.getElementById('toastContainer');
+  if (!cont) return;
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span class="toast-icon">${icons[type]}</span>
+    <div class="toast-content"><div class="toast-title">${title}</div><div class="toast-msg">${msg}</div></div>
+    <button class="toast-close" onclick="this.parentElement.remove()">✕</button>`;
+  cont.appendChild(t);
+  setTimeout(() => { t.classList.add('removing'); setTimeout(() => t.remove(), 250); }, dur);
 }
 
 function initNavbar() {
-  const navbar = document.getElementById('navbar');
-  window.addEventListener('scroll', () => navbar?.classList.toggle('scrolled', window.scrollY > 40));
+  const nb = document.getElementById('navbar');
+  window.addEventListener('scroll', () => nb?.classList.toggle('scrolled', window.scrollY>40));
+  document.getElementById('hamburger')?.addEventListener('click', () =>
+    document.getElementById('mobileNav')?.classList.toggle('open'));
 }
-
 function initDarkMode() {
   const toggle = document.getElementById('darkToggle');
-  const saved = localStorage.getItem('mtq-theme') || 'light';
+  const saved  = localStorage.getItem('mtq-theme') || 'light';
   document.documentElement.setAttribute('data-theme', saved);
-  if (toggle) toggle.textContent = saved === 'dark' ? '☀️' : '🌙';
+  if (toggle) toggle.textContent = saved==='dark' ? '☀️' : '🌙';
   toggle?.addEventListener('click', () => {
-    const cur = document.documentElement.getAttribute('data-theme') || 'light';
-    const next = cur === 'dark' ? 'light' : 'dark';
+    const cur  = document.documentElement.getAttribute('data-theme') || 'light';
+    const next = cur==='dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('mtq-theme', next);
-    toggle.textContent = next === 'dark' ? '☀️' : '🌙';
+    toggle.textContent = next==='dark' ? '☀️' : '🌙';
   });
 }
