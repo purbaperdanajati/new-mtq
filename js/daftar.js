@@ -63,28 +63,49 @@ document.addEventListener('DOMContentLoaded', () => {
   renderStep(1);
 });
 
+// ── JSONP helper (sama seperti main.js, bypass CORS) ─────────
+function jsonp(url, cbPrefix, fn, timeout = 10000) {
+  const cbName = cbPrefix + '_' + Date.now();
+  const script = document.createElement('script');
+  let timer;
+  window[cbName] = (data) => {
+    clearTimeout(timer);
+    try { fn(data); } catch(e) {}
+    delete window[cbName];
+    script.remove();
+  };
+  script.src   = `${url}&callback=${cbName}`;
+  script.onerror = () => {
+    clearTimeout(timer);
+    delete window[cbName];
+    script.remove();
+    fn(null);
+  };
+  timer = setTimeout(() => {
+    delete window[cbName];
+    script.remove();
+    fn(null);
+  }, timeout);
+  document.head.appendChild(script);
+}
+
 // ── Load Config ───────────────────────────────────────────────
-async function loadConfig() {
+function loadConfig() {
   const sel = document.getElementById('cabang_lomba');
   if (!sel) return;
   sel.innerHTML = '<option value="">Memuat data...</option>';
   sel.disabled = true;
 
-  try {
-    const res = await fetch(`${API_URL}?action=getConfig`, { redirect: 'follow' });
-    const data = await res.json();
-    if (data.success && Array.isArray(data.config) && data.config.length) {
+  jsonp(`${API_URL}?action=getConfig`, 'mtqConfig', (data) => {
+    if (data && data.success && Array.isArray(data.config) && data.config.length) {
       state.config = data.config;
     } else {
-      throw new Error('Config kosong dari server');
+      state.config = FALLBACK_CONFIG;
+      showToast('Info', 'Menggunakan data cabang lomba default.', 'warning');
     }
-  } catch {
-    state.config = FALLBACK_CONFIG;
-    showToast('Info', 'Menggunakan data cabang lomba default.', 'warning');
-  }
-
-  populateCabang(sel);
-  sel.disabled = false;
+    populateCabang(sel);
+    sel.disabled = false;
+  });
 }
 
 // ── Populate Cabang Lomba (optgroup by prefix) ────────────────
@@ -182,13 +203,12 @@ function onCabangChange() {
   checkQuota(opt.value, badge);
 }
 
-async function checkQuota(cabang, badge) {
+function checkQuota(cabang, badge) {
   badge.textContent = '⏳ Cek kuota...';
   badge.className   = 'quota-badge';
-  try {
-    const res  = await fetch(`${API_URL}?action=getQuota&cabang=${encodeURIComponent(cabang)}`, { redirect: 'follow' });
-    const data = await res.json();
-    if (data.success) {
+
+  jsonp(`${API_URL}?action=getQuota&cabang=${encodeURIComponent(cabang)}`, 'mtqQuota', (data) => {
+    if (data && data.success) {
       const cfg  = state.config.find(c => c.cabang_lomba === cabang);
       const sisa = (cfg?.kuota || 0) - (data.count || 0);
       if (sisa <= 0) {
@@ -201,8 +221,10 @@ async function checkQuota(cabang, badge) {
         badge.textContent = `✅ Sisa ${sisa} kursi`;
         badge.className   = 'quota-badge ok';
       }
-    } else { badge.textContent = ''; }
-  } catch { badge.textContent = ''; }
+    } else {
+      badge.textContent = '';
+    }
+  });
 }
 
 // ══ STEP NAVIGATION ══════════════════════════════════════════

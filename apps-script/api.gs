@@ -22,6 +22,12 @@ function doGet(e) {
     logError('api', 'doGet error: ' + err.message);
     result = { success: false, message: err.message };
   }
+  // JSONP support: jika ada parameter callback, bungkus response agar bypass CORS
+  if (e && e.parameter && e.parameter.callback) {
+    return ContentService
+      .createTextOutput(e.parameter.callback + '(' + JSON.stringify(result) + ')')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
   return jsonResp_(result);
 }
 

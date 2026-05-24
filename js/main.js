@@ -107,29 +107,16 @@ function initCountdown() {
 }
 
 // ── Load Stats ───────────────────────────────
-// NOTE: Google Apps Script memerlukan CORS headers yang benar di sisi server.
-// Pastikan skrip di-deploy sebagai "Execute as: Me" dan "Who has access: Anyone".
-// Error CORS di console adalah normal jika konfigurasi GAS belum benar — UI tetap berfungsi.
-async function loadStats() {
+// Menggunakan JSONP agar tidak ada CORS error di console.
+// Fetch biasa ke GAS selalu CORS-blocked dari GitHub Pages.
+function loadStats() {
   const statEls = document.querySelectorAll('[data-stat]');
   if (!statEls.length) return;
 
-  // Set placeholder dulu agar UI tidak kosong
   statEls.forEach(el => { el.textContent = '–'; });
 
-  try {
-    const controller = new AbortController();
-    const timeout    = setTimeout(() => controller.abort(), 8000); // 8 detik timeout
-
-    const res = await fetch(`${CONFIG.API_URL}?action=getStats`, {
-      method: 'GET',
-      redirect: 'follow',
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-
-    const data = await res.json();
-    if (data.success) {
+  jsonp(`${CONFIG.API_URL}?action=getStats`, 'mtqStats', (data) => {
+    if (data && data.success) {
       statEls.forEach(el => {
         const key = el.dataset.stat;
         if (data[key] !== undefined) animateCounter(el, Number(data[key]) || 0);
@@ -138,10 +125,44 @@ async function loadStats() {
     } else {
       statEls.forEach(el => { el.textContent = '0'; });
     }
-  } catch (e) {
-    // CORS atau network error — sembunyikan stat section daripada tampilkan angka salah
-    statEls.forEach(el => { el.textContent = '0'; });
-  }
+  });
+}
+
+/**
+ * JSONP helper — bypass CORS tanpa console error
+ * @param {string} url       - URL endpoint
+ * @param {string} cbPrefix  - prefix nama callback global
+ * @param {Function} fn      - callback(data)
+ * @param {number} timeout   - ms sebelum dianggap gagal (default 8000)
+ */
+function jsonp(url, cbPrefix, fn, timeout = 8000) {
+  const cbName = cbPrefix + '_' + Date.now();
+  const script = document.createElement('script');
+  let timer;
+
+  window[cbName] = (data) => {
+    clearTimeout(timer);
+    try { fn(data); } catch(e) {}
+    delete window[cbName];
+    script.remove();
+  };
+
+  script.src = `${url}&callback=${cbName}`;
+  script.onerror = () => {
+    clearTimeout(timer);
+    delete window[cbName];
+    script.remove();
+    // Gagal silently — tampilkan 0
+    document.querySelectorAll('[data-stat]').forEach(el => { el.textContent = '0'; });
+  };
+
+  timer = setTimeout(() => {
+    delete window[cbName];
+    script.remove();
+    document.querySelectorAll('[data-stat]').forEach(el => { el.textContent = '0'; });
+  }, timeout);
+
+  document.head.appendChild(script);
 }
 
 function animateCounter(el, target) {
