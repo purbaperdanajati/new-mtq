@@ -107,21 +107,39 @@ function initCountdown() {
 }
 
 // ── Load Stats ───────────────────────────────
+// NOTE: Google Apps Script memerlukan CORS headers yang benar di sisi server.
+// Pastikan skrip di-deploy sebagai "Execute as: Me" dan "Who has access: Anyone".
+// Error CORS di console adalah normal jika konfigurasi GAS belum benar — UI tetap berfungsi.
 async function loadStats() {
   const statEls = document.querySelectorAll('[data-stat]');
   if (!statEls.length) return;
 
+  // Set placeholder dulu agar UI tidak kosong
+  statEls.forEach(el => { el.textContent = '–'; });
+
   try {
-    const res = await fetch(`${CONFIG.API_URL}?action=getStats`);
+    const controller = new AbortController();
+    const timeout    = setTimeout(() => controller.abort(), 8000); // 8 detik timeout
+
+    const res = await fetch(`${CONFIG.API_URL}?action=getStats`, {
+      method: 'GET',
+      redirect: 'follow',
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
     const data = await res.json();
     if (data.success) {
       statEls.forEach(el => {
         const key = el.dataset.stat;
-        if (data[key] !== undefined) animateCounter(el, data[key]);
+        if (data[key] !== undefined) animateCounter(el, Number(data[key]) || 0);
+        else el.textContent = '0';
       });
+    } else {
+      statEls.forEach(el => { el.textContent = '0'; });
     }
   } catch (e) {
-    // Fallback: tampilkan 0
+    // CORS atau network error — sembunyikan stat section daripada tampilkan angka salah
     statEls.forEach(el => { el.textContent = '0'; });
   }
 }

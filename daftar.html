@@ -96,8 +96,8 @@
 
         <!-- Kecamatan -->
         <div class="field-group full">
-          <label class="field-label" for="s1_kecamatan">Kecamatan / Kafilah <span class="req">*</span></label>
-          <select id="s1_kecamatan" class="field-select" required>
+          <label class="field-label" for="kecamatan">Kecamatan / Kafilah <span class="req">*</span></label>
+          <select id="kecamatan" class="field-select" required>
             <option value="">-- Pilih Kecamatan --</option>
             <option>Anjatan</option><option>Arahan</option><option>Balongan</option>
             <option>Bangodua</option><option>Bongas</option><option>Cantigi</option>
@@ -115,48 +115,25 @@
         </div>
 
         <!-- Cabang Lomba -->
-        <div class="field-group">
-          <label class="field-label" for="s1_cabang">Cabang Lomba <span class="req">*</span></label>
-          <select id="s1_cabang" class="field-select" required>
+        <div class="field-group full">
+          <label class="field-label" for="cabang_lomba">
+            Cabang Lomba <span class="req">*</span>
+            <span id="quotaBadge" class="quota-badge"></span>
+          </label>
+          <select id="cabang_lomba" class="field-select" required>
             <option value="">Memuat data...</option>
           </select>
           <div class="field-error"></div>
-        </div>
-
-        <!-- Golongan -->
-        <div class="field-group">
-          <label class="field-label" for="s1_golongan">
-            Golongan <span class="req">*</span>
-            <span id="quotaBadge" class="quota-badge"></span>
-          </label>
-          <select id="s1_golongan" class="field-select" required>
-            <option value="">-- Pilih cabang dulu --</option>
-          </select>
-          <div class="field-error"></div>
-        </div>
-
-        <!-- Tipe Lomba (readonly, auto-detect) -->
-        <div class="field-group full" id="tipeBox" style="display:none">
-          <label class="field-label">Tipe Pendaftaran</label>
-          <div style="display:flex;align-items:center;gap:12px;padding:10px 0">
+          <!-- Tipe badge (auto-detect, shown after selection) -->
+          <div id="tipeInfoBox" style="display:none;margin-top:10px">
             <span id="tipeBadge" class="tipe-badge individu">👤 Individu</span>
-            <span id="tipeDesc" style="font-size:13px;color:var(--gray-500)"></span>
+            <span id="tipeDesc" style="font-size:13px;color:var(--gray-500);margin-left:8px"></span>
           </div>
-        </div>
-
-        <!-- Nama Tim (hanya untuk team) -->
-        <div class="field-group full" id="namaTimBox" style="display:none">
-          <label class="field-label" for="s1_namatim">Nama Tim <span class="req">*</span></label>
-          <input type="text" id="s1_namatim" class="field-input" placeholder="Contoh: Tim Al-Fatah Indramayu">
-          <div class="field-hint">Nama tim yang akan ditampilkan di sertifikat/kartu peserta</div>
-          <div class="field-error"></div>
-        </div>
-
-        <!-- Info Syarat Usia -->
-        <div class="field-group full" id="ageRuleBox" style="display:none">
-          <div style="background:var(--gold-pale);border:1px solid var(--gold-bright);border-radius:var(--radius-sm);padding:12px 16px;font-size:13px;color:var(--gold);display:flex;align-items:center;gap:8px">
-            <span>⚠️</span>
-            <span id="ageRuleText"></span>
+          <!-- Syarat usia (auto-detect) -->
+          <div id="ageRuleBox" style="display:none;margin-top:10px">
+            <div style="background:var(--gold-pale);border:1px solid var(--gold-bright);border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;color:var(--gold);display:flex;align-items:center;gap:8px">
+              <span>⚠️</span><span id="ageRuleText"></span>
+            </div>
           </div>
         </div>
 
