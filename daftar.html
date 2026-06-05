@@ -193,20 +193,21 @@
       <!-- Per-member uploads container -->
       <div id="memberUploadsContainer"></div>
 
-      <!-- Surat Rekomendasi (shared, optional) -->
+      <!-- Surat Rekomendasi — FIX #11: MANDATORY -->
       <div class="upload-member-section">
         <div class="upload-member-title">
           <span style="font-size:20px">📋</span>
           <div>
-            <div>Surat Rekomendasi</div>
-            <div style="font-size:12px;font-weight:400;color:var(--gray-400)">(Opsional) Dari sekolah/pesantren/instansi</div>
+            <div>Surat Rekomendasi <span class="req">*</span></div>
+            <div style="font-size:12px;font-weight:400;color:var(--emerald)">Wajib — Dari sekolah/pesantren/instansi</div>
           </div>
         </div>
         <div class="upload-zone" id="rekomZone">
           <input type="file" accept="image/jpeg,image/png,application/pdf" id="rekomInput">
-          <div class="upload-icon">📋</div>
+          <div class="upload-icon" id="rekomIcon">📋</div>
           <h4>Upload Surat Rekomendasi</h4>
-          <p>JPG/PNG/PDF — Maks. 2 MB</p>
+          <p>JPG/PNG/PDF — Maks. 2 MB <span class="req">*</span></p>
+          <img id="rekomThumb" class="upload-thumb" style="display:none">
         </div>
         <div class="upload-preview" id="rekomPreview">
           <span class="file-icon">📄</span>

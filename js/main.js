@@ -5,7 +5,7 @@
 // ── Config ──────────────────────────────────
 const CONFIG = {
   // GANTI dengan URL Web App Google Apps Script kamu
-  API_URL: 'https://script.google.com/macros/s/AKfycbxKQ4WvXIXPMxwctlQOljmIB7xsQkSR4F1oStT2g5Xb1s_prnXSCZLwlUGEY3Doc9Be/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycby6hfQkbiGEEYvSxZQ2-za0eg8CwmQ_N_X60cIe_Ilx1_7ApIk2EZPlDZMaOxPK6UW8/exec',
   EVENT_DATE: '2026-08-15T08:00:00',  // Tanggal pelaksanaan MTQ
   EVENT_LOCATION: 'GOR Singalodra Kabupaten Indramayu',
   EVENT_THEME: 'Dengan Al-Qur\'an Membangun Generasi Emas',
@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initFAQ();
   initAnimations();
   loadStats();
+  loadRegStatus();   // FIX #12 — status pendaftaran di beranda
   setEventInfo();
 });
 
@@ -108,7 +109,6 @@ function initCountdown() {
 
 // ── Load Stats ───────────────────────────────
 // Menggunakan JSONP agar tidak ada CORS error di console.
-// Fetch biasa ke GAS selalu CORS-blocked dari GitHub Pages.
 function loadStats() {
   const statEls = document.querySelectorAll('[data-stat]');
   if (!statEls.length) return;
@@ -124,6 +124,84 @@ function loadStats() {
       });
     } else {
       statEls.forEach(el => { el.textContent = '0'; });
+    }
+  });
+}
+
+// ── FIX #12: Load Registration Status ────────
+// Mengisi semua elemen [data-reg-status] di index.html
+function loadRegStatus() {
+  const statusEls  = document.querySelectorAll('[data-reg-status]');
+  const btnDaftar  = document.querySelectorAll('.btn-daftar, [data-daftar-btn]');
+  const statusText = document.getElementById('regStatusText');
+  const statusBox  = document.getElementById('regStatusBox');
+
+  // Fallback: baca dari MTQ_CONFIG jika ada
+  const localBuka  = (typeof MTQ_CONFIG !== 'undefined' && MTQ_CONFIG.PENDAFTARAN_BUKA)  ? MTQ_CONFIG.PENDAFTARAN_BUKA  : null;
+  const localTutup = (typeof MTQ_CONFIG !== 'undefined' && MTQ_CONFIG.PENDAFTARAN_TUTUP) ? MTQ_CONFIG.PENDAFTARAN_TUTUP : null;
+
+  function applyStatus(isOpen, status, buka, tutup) {
+    const bukaDate  = buka  ? new Date(buka).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})  : '—';
+    const tutupDate = tutup ? new Date(tutup).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'}) : '—';
+
+    let badge = '', boxClass = '', msg = '';
+    if (status === 'belum_buka') {
+      badge    = `⏳ Pendaftaran Dibuka ${bukaDate}`;
+      boxClass = 'status-belum-buka';
+      msg      = `Pendaftaran akan dibuka pada <strong>${bukaDate}</strong>. Silakan pantau halaman ini.`;
+    } else if (isOpen) {
+      badge    = `✅ Pendaftaran Sedang Buka`;
+      boxClass = 'status-buka';
+      msg      = `Pendaftaran dibuka hingga <strong>${tutupDate}</strong>. Segera daftarkan peserta Anda!`;
+    } else {
+      badge    = `🔒 Pendaftaran Ditutup`;
+      boxClass = 'status-tutup';
+      msg      = `Pendaftaran telah ditutup pada ${tutupDate}. Hubungi panitia untuk informasi lebih lanjut.`;
+    }
+
+    // Update semua elemen [data-reg-status]
+    statusEls.forEach(el => {
+      el.innerHTML = badge;
+      el.className = el.className.replace(/status-\S+/g, '') + ' ' + boxClass;
+    });
+
+    // Tombol daftar
+    btnDaftar.forEach(btn => {
+      if (!isOpen) { btn.classList.add('disabled'); btn.setAttribute('aria-disabled','true'); }
+      else { btn.classList.remove('disabled'); btn.removeAttribute('aria-disabled'); }
+    });
+
+    // Box status (elemen dengan id regStatusBox)
+    if (statusBox) {
+      statusBox.innerHTML = msg;
+      statusBox.className = `reg-status-box ${boxClass}`;
+      statusBox.style.display = 'block';
+    }
+
+    // Text span (elemen dengan id regStatusText)
+    if (statusText) statusText.innerHTML = badge;
+  }
+
+  // Set placeholder sementara
+  statusEls.forEach(el => { el.textContent = ''; });
+  if (statusBox) statusBox.style.display = 'none';
+
+  // Coba ambil dari API via JSONP
+  jsonp(`${CONFIG.API_URL}?action=getStats`, 'mtqRegStatus', (data) => {
+    if (data && data.success) {
+      applyStatus(data.isOpen, data.status, data.buka, data.tutup);
+    } else {
+      // Fallback ke perhitungan lokal dari config.js
+      if (localBuka && localTutup) {
+        const now   = new Date();
+        const buka  = new Date(localBuka);
+        const tutup = new Date(localTutup);
+        const isOpen = now >= buka && now < tutup;
+        const status = now < buka ? 'belum_buka' : isOpen ? 'buka' : 'tutup';
+        applyStatus(isOpen, status, localBuka, localTutup);
+      } else {
+        statusEls.forEach(el => { el.textContent = 'ℹ️ Status tidak tersedia'; });
+      }
     }
   });
 }
