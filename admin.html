@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin — MTQ 2026</title>
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="js/document-previewer.css">
+  <!-- PDF.js (required by DocumentPreviewer) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
   <style>
     /* ── Extra admin styles ── */
@@ -188,6 +191,51 @@
       border-top-color:var(--emerald); border-radius:50%; animation:spin .6s linear infinite; margin-right:6px; vertical-align:middle; }
     @keyframes spin { to { transform:rotate(360deg); } }
 
+    /* Sidebar hide/show */
+    .admin-sidebar.hidden-sidebar { transform: translateX(-100%); }
+    .admin-content.sidebar-hidden { margin-left: 0; }
+    .admin-sidebar { transition: transform .25s ease; }
+    .admin-content { transition: margin-left .25s ease; }
+    /* Float toggle button when sidebar is hidden */
+    #sidebarRevealBtn {
+      display: none;
+      position: fixed; top: 80px; left: 12px; z-index: 200;
+      background: var(--emerald); color: #fff; border: none; border-radius: 50%;
+      width: 38px; height: 38px; font-size: 18px; cursor: pointer; box-shadow: var(--shadow-lg);
+    }
+    #sidebarRevealBtn.visible { display: flex; align-items:center; justify-content:center; }
+
+    /* ── Document Previewer split layout ─────────────────────── */
+    /* When previewer is open: detail modal shifts to left half   */
+    body.dp-open #detailModal {
+      right: var(--dp-width, 58%);
+      width: calc(100% - var(--dp-width, 58%));
+      align-items: stretch;
+      padding: 0;
+      background: rgba(0,0,0,.35);
+      transition: right .25s ease, width .25s ease;
+    }
+    body.dp-open #detailModal .modal-box {
+      max-width: 100%;
+      width: 100%;
+      height: 100vh;
+      max-height: 100vh;
+      border-radius: 0;
+      overflow-y: auto;
+    }
+    #detailModal { transition: right .25s ease, width .25s ease; }
+    .doc-link { cursor: pointer; }
+    .doc-link:focus { outline: 2px solid var(--emerald); }
+
+    /* Mobile: stack previewer on top, detail modal full width */
+    @media (max-width: 768px) {
+      body.dp-open #detailModal {
+        right: 0;
+        width: 100%;
+        display: none;  /* hide detail modal on mobile when previewer open */
+      }
+    }
+
     /* responsive */
     @media (max-width:768px) {
       .admin-sidebar { transform:translateX(-100%); }
@@ -250,16 +298,24 @@
   <ul class="nav-links"></ul>
   <div class="nav-actions" style="display:flex;align-items:center;gap:10px">
     <span id="adminGreet" style="font-size:12px;color:var(--gray-500)"></span>
+    <button title="Hide/Show Sidebar" onclick="toggleSidebar()"
+      style="background:none;border:none;font-size:18px;cursor:pointer;padding:4px 6px;border-radius:6px;color:var(--gray-500)" id="navSidebarBtn">☰</button>
     <button class="dark-toggle" id="darkToggle">🌙</button>
     <button class="btn btn-outline" style="padding:6px 12px;font-size:12px" onclick="doLogout()">Keluar</button>
     <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
   </div>
 </nav>
 
+<button id="sidebarRevealBtn" onclick="toggleSidebar()" title="Tampilkan Sidebar">☰</button>
 <div class="admin-layout">
 
   <!-- SIDEBAR -->
   <aside class="admin-sidebar" id="adminSidebar">
+    <div style="padding:10px 14px 4px">
+      <button onclick="toggleSidebar()" title="Sembunyikan/Tampilkan Sidebar"
+        style="width:100%;padding:7px 10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:8px;color:rgba(255,255,255,.5);font-size:12px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:6px"
+        id="sidebarToggleBtn">⬅ Sembunyikan</button>
+    </div>
     <div class="sidebar-label">Manajemen</div>
     <div class="sidebar-item active" id="nav-peserta" onclick="showPage('peserta')">
       <span class="icon">👥</span> Daftar Peserta
@@ -405,13 +461,18 @@
 <!-- TOAST -->
 <div class="toast-container" id="toastContainer"></div>
 
+<!-- Document Previewer Modal (injected by DocumentPreviewer.mount()) -->
+<div id="dp-modal-root"></div>
+
 <script>
 // ============================================================
 //  MTQ 2026 — admin.js (inline)  rev 8
 //  All API calls via JSONP GET — zero CORS issues
 //  Password sent as btoa(pass) to avoid URL-encoding problems
 // ============================================================
-const API_URL = 'https://script.google.com/macros/s/AKfycby6hfQkbiGEEYvSxZQ2-za0eg8CwmQ_N_X60cIe_Ilx1_7ApIk2EZPlDZMaOxPK6UW8/exec';
+// API_URL — ubah di sini ATAU di js/config.js (untuk daftar.html & index.html)
+// Admin.html tidak load config.js agar tidak konflik deklarasi 'log'
+const API_URL = (window.MTQ_API_URL || 'https://script.google.com/macros/s/AKfycbzAP1q9Ol0ZYTEx3tlW3dcQGtwvzcaCBgmayYwAKeZaDmzLUDutW-Fwo55h_Jz3vFpG/exec');
 
 // ── Logger ────────────────────────────────────────────────────
 const log = {
@@ -443,6 +504,7 @@ document.addEventListener('DOMContentLoaded', () => {
   log.info('DOMContentLoaded');
   initDarkMode();
   initCaptcha();
+  initDocumentPreviewer();
   window.addEventListener('scroll', () =>
     document.getElementById('navbar')?.classList.toggle('scrolled', window.scrollY > 40));
   document.getElementById('hamburger')?.addEventListener('click', () =>
@@ -618,6 +680,13 @@ function loadAll() {
     }
     adm.allData = data.data || [];
     log.info('Loaded', adm.allData.length, 'records');
+
+    // Store Drive API key from authenticated response
+    if (data.driveApiKey && window._dp) {
+      window._dp.config.googleDriveApiKey = data.driveApiKey;
+      log.info('Drive API key received, length:', data.driveApiKey.length);
+    }
+
     populateFilterDropdowns();
     applyFilters();
     updateSidebarBadge();
@@ -712,57 +781,94 @@ function updateSidebarBadge() {
 
 // ── Detail Modal ──────────────────────────────────────────────
 function openDetail(nomor) {
-  const r = adm.allData.find(x=>x.nomor_pendaftaran===nomor);
+  const r = adm.allData.find(x => x.nomor_pendaftaran === nomor);
   if (!r) return;
   adm.editing = r;
-  document.getElementById('modalTitle').textContent = 'Detail Peserta';
-  document.getElementById('modalRegNum').textContent = nomor;
-  const st    = String(r.status_verifikasi||'Menunggu').toLowerCase();
-  const stCls = st==='terverifikasi'?'terverifikasi':st==='ditolak'?'ditolak':st==='nonaktif'?'nonaktif':'menunggu';
-  const isNA  = st==='nonaktif';
+  log.info('openDetail', nomor, 'tipe:', r.tipe_lomba);
 
+  document.getElementById('modalTitle').textContent  = 'Detail Peserta';
+  document.getElementById('modalRegNum').textContent = nomor;
+
+  const st    = String(r.status_verifikasi || 'Menunggu').toLowerCase();
+  const stCls = { terverifikasi:'terverifikasi', ditolak:'ditolak', nonaktif:'nonaktif' }[st] || 'menunggu';
+  const isNA  = st === 'nonaktif';
+
+  // ── Parse anggota (always array, even for individu) ──────────
+  let anggota = [];
+  if (r.anggota_json) {
+    try { anggota = JSON.parse(r.anggota_json); } catch(e) { anggota = []; }
+  }
+  if (!Array.isArray(anggota)) anggota = [];
+
+  // Resolve file links: for individu from anggota[0]; for team each member has theirs
+  const lead      = anggota[0] || {};
+  const linkFoto  = lead.link_foto       || '';
+  const linkKtp   = lead.link_ktp        || '';
+  const linkSert  = lead.link_sertifikat || '';
+  const linkRekom = r.link_rekom         || '';
+  const linkFolder= r.link_folder        || '';
+
+  // ── SECTION: Anggota Tim (all members, shown for both team & individu) ──
+  const isTeam = r.tipe_lomba === 'team';
   let anggotaHTML = '';
-  if (r.tipe_lomba==='team' && r.anggota_json) {
-    try {
-      const angs = JSON.parse(r.anggota_json);
-      anggotaHTML = `<div class="modal-section">
-        <div class="modal-section-title">👥 Anggota Tim (${angs.length} orang)</div>
-        ${angs.map((a,i)=>`<div class="member-mini">
-          <div class="member-mini-head">
+  if (anggota.length > 0) {
+    const sectionTitle = isTeam ? `👥 Anggota Tim (${anggota.length} orang)` : '📋 Dokumen Peserta';
+    anggotaHTML = `<div class="modal-section">
+      <div class="modal-section-title">${sectionTitle}</div>
+      ${anggota.map((a, i) => {
+        const role = isTeam ? (i === 0 ? '👑 Ketua Tim' : `Anggota ${i + 1}`) : '';
+        const nameEsc = esc(a.nama_lengkap || '-');
+        const fotoUrl = esc(a.link_foto       || '');
+        const ktpUrl  = esc(a.link_ktp        || '');
+        const sertUrl = esc(a.link_sertifikat || '');
+        return `<div class="member-mini">
+          ${isTeam ? `<div class="member-mini-head">
             <div class="member-mini-num" style="${i===0?'background:var(--gold)':''}">${i+1}</div>
-            <strong>${esc(a.nama_lengkap)}</strong>
-            ${i===0?'<span style="font-size:10px;color:var(--gold);margin-left:4px">👑 Ketua</span>':''}
+            <strong>${nameEsc}</strong>
+            ${role ? `<span style="font-size:10px;color:var(--gold);margin-left:4px">${role}</span>` : ''}
           </div>
-          <div style="font-size:12px;color:var(--gray-500);display:grid;grid-template-columns:1fr 1fr;gap:4px 12px">
+          <div style="font-size:12px;color:var(--gray-500);display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin-bottom:8px">
             <span>NIK: ${esc(a.nik||'—')}</span><span>HP: ${esc(a.no_hp||'—')}</span>
-            <span>Lahir: ${esc(a.tempat_lahir||'')}, ${esc(a.tanggal_lahir||'')}</span>
+            <span>Lahir: ${esc((a.tempat_lahir||'') + ', ' + (a.tanggal_lahir||''))}</span>
             <span>Usia: ${esc(a.umur_display||'—')}</span>
+          </div>` : ''}
+          <div style="display:flex;flex-wrap:wrap;gap:4px">
+            ${fotoUrl ? `<button class="doc-link" onclick="openDocPreview('${fotoUrl}','Foto - ${nameEsc}')">📸 Foto</button>` : '<span class="no-doc">Belum ada foto&nbsp;</span>'}
+            ${ktpUrl  ? `<button class="doc-link" onclick="openDocPreview('${ktpUrl}','KTP/KK - ${nameEsc}')">🪪 KTP/KK</button>` : '<span class="no-doc">Belum ada KTP&nbsp;</span>'}
+            ${sertUrl ? `<button class="doc-link" onclick="openDocPreview('${sertUrl}','Sertifikat - ${nameEsc}')">🏅 Sertifikat</button>` : ''}
           </div>
-          <div style="margin-top:8px">
-            ${a.link_foto?`<a class="doc-link" href="${esc(a.link_foto)}" target="_blank">📸 Foto</a>`:'<span class="no-doc">Tidak ada foto</span>'}
-            ${a.link_ktp?`<a class="doc-link" href="${esc(a.link_ktp)}" target="_blank">🪪 KTP/KK</a>`:'<span class="no-doc">Tidak ada KTP</span>'}
-            ${a.link_sertifikat?`<a class="doc-link" href="${esc(a.link_sertifikat)}" target="_blank">🏅 Sertifikat</a>`:''}
-          </div></div>`).join('')}
-      </div>`;
-    } catch(e) {}
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  // ── SECTION: Surat Rekomendasi ────────────────────────────────
+  let rekomHTML = '';
+  if (linkRekom) {
+    rekomHTML = `<button class="doc-link" style="background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.3);color:#fbbf24"
+      onclick="openDocPreview('${esc(linkRekom)}','Surat Rekomendasi')">📋 Surat Rekomendasi</button>`;
+  } else {
+    // No rekom — folder drive shown separately below, don't duplicate
+    rekomHTML = '<span class="no-doc" style="color:#f87171">⚠️ Surat Rekomendasi belum ada</span>';
   }
 
   document.getElementById('modalBody').innerHTML = `
     <div class="modal-section">
       <div class="modal-section-title">🏆 Info Lomba</div>
       <div class="detail-grid">
-        ${ef('Nomor Daftar', r.nomor_pendaftaran, null, nomor)}
-        ${ef('Kecamatan',    r.kecamatan,         'kecamatan', nomor)}
-        ${ef('Cabang Lomba', r.cabang_lomba,       null, nomor)}
-        ${ef('Tipe',         r.tipe_lomba==='team'?'👥 Tim':'👤 Individu', null, nomor)}
-        ${ef('Gender',       r.gender_cabang==='L'?'👦 Putra':r.gender_cabang==='P'?'👧 Putri':'—', null, nomor)}
-        ${ef('Status',       `<span class="status-badge ${stCls}">${r.status_verifikasi||'Menunggu'}</span>`, null, nomor)}
-        ${ef('Timestamp',    r.timestamp, null, nomor)}
-        ${ef('Catatan',      r.catatan||'—', 'catatan', nomor, true)}
+        ${ef('Nomor Daftar',   r.nomor_pendaftaran, null,         nomor)}
+        ${ef('Kecamatan',      r.kecamatan,         'kecamatan',  nomor)}
+        ${ef('Cabang Lomba',   r.cabang_lomba,       null,         nomor)}
+        ${ef('Tipe',           isTeam ? '👥 Tim' : '👤 Individu', null, nomor)}
+        ${ef('Gender Cabang',  r.gender_cabang==='L'?'👦 Putra':r.gender_cabang==='P'?'👧 Putri':'—', null, nomor)}
+        ${ef('Status',         '<span class="status-badge '+stCls+'">'+(r.status_verifikasi||'Menunggu')+'</span>', null, nomor, false, true)}
+        ${ef('Timestamp',      r.timestamp, null, nomor)}
+        ${ef('Catatan',        r.catatan||'—', 'catatan', nomor, true)}
       </div>
     </div>
+
     <div class="modal-section">
-      <div class="modal-section-title">👤 Data Peserta${r.tipe_lomba==='team'?' (Ketua)':''}</div>
+      <div class="modal-section-title">👤 Data Peserta${isTeam?' (Ketua)':''}</div>
       <div class="detail-grid">
         ${ef('Nama Lengkap',  r.nama_lengkap,   'nama_lengkap',   nomor)}
         ${ef('NIK',           r.nik,            'nik',            nomor)}
@@ -778,45 +884,59 @@ function openDetail(nomor) {
         ${ef('Alamat',        r.alamat,         'alamat',         nomor, true)}
       </div>
     </div>
+
     ${anggotaHTML}
+
     <div class="modal-section">
-      <div class="modal-section-title">📄 Dokumen</div>
-      <div>
-        ${r.link_foto  ?`<a class="doc-link" href="${esc(r.link_foto)}"   target="_blank">📸 Pas Foto</a>`  :'<span class="no-doc">Belum upload foto&nbsp;</span>'}
-        ${r.link_ktp   ?`<a class="doc-link" href="${esc(r.link_ktp)}"    target="_blank">🪪 KTP/KK</a>`    :'<span class="no-doc">Belum upload KTP&nbsp;</span>'}
-        ${r.link_folder?`<a class="doc-link" href="${esc(r.link_folder)}" target="_blank">📁 Folder Drive</a>`:''}
+      <div class="modal-section-title">📄 Berkas & Dokumen</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+        ${rekomHTML}
+        ${linkFolder ? `<a class="doc-link" href="${esc(linkFolder)}" target="_blank"
+            style="background:rgba(99,102,241,.1);border-color:rgba(99,102,241,.25);color:#818cf8">📁 Folder Drive</a>` : ''}
       </div>
+      ${!linkRekom && !anggota.length && linkFolder ? `<p style="font-size:12px;color:var(--gray-400);margin-top:8px">
+        💡 File foto/KTP tersedia di Folder Drive di atas. Data lama mungkin belum menyimpan link individual.</p>` : ''}
     </div>`;
 
   document.getElementById('modalActions').innerHTML = `
-    ${!isNA&&st!=='terverifikasi'?`<button class="btn btn-emerald" style="font-size:13px" onclick="doVerify('${nomor}','Terverifikasi')">✅ Verifikasi</button>`:''}
-    ${!isNA&&st!=='ditolak'?`<button class="btn" style="background:#fef2f2;color:#dc2626;font-size:13px" onclick="doVerify('${nomor}','Ditolak')">❌ Tolak</button>`:''}
-    ${!isNA?`<button class="btn" style="background:#fff7ed;color:#ea580c;font-size:13px" onclick="doDeactivate('${nomor}')">🚫 Nonaktifkan</button>`:'<span style="font-size:13px;color:var(--gray-400)">🚫 Peserta nonaktif</span>'}
+    ${!isNA && st!=='terverifikasi' ? `<button class="btn btn-emerald" style="font-size:13px" onclick="doVerify('${nomor}','Terverifikasi')">✅ Verifikasi</button>` : ''}
+    ${!isNA && st!=='ditolak'       ? `<button class="btn" style="background:#fef2f2;color:#dc2626;font-size:13px" onclick="doVerify('${nomor}','Ditolak')">❌ Tolak</button>` : ''}
+    ${!isNA ? `<button class="btn" style="background:#fff7ed;color:#ea580c;font-size:13px" onclick="doDeactivate('${nomor}')">🚫 Nonaktifkan</button>` : '<span style="font-size:13px;color:var(--gray-400)">🚫 Peserta nonaktif</span>'}
     <button class="btn btn-outline" style="margin-left:auto;font-size:13px" onclick="closeModal('detailModal')">Tutup</button>`;
 
   openModal('detailModal');
 }
 
 // ── Editable field ────────────────────────────────────────────
-function ef(label, value, fieldKey, nomor, full=false) {
-  const id     = fieldKey ? `ef_${fieldKey}` : '';
-  const canEdit= !!fieldKey;
-  const safeVal= typeof value==='string' ? esc(value) : (value||'—');
+// ef(label, value, fieldKey, nomor, full, rawHtml)
+// rawHtml=true  → value is trusted HTML, render as-is (no escaping)
+// rawHtml=false → escape value before rendering (default, safe)
+function ef(label, value, fieldKey, nomor, full=false, rawHtml=false) {
+  const id      = fieldKey ? `ef_${fieldKey}` : `ef_ro_${label.replace(/\s/g,'_')}`;
+  const canEdit = !!fieldKey;
+  // For display: raw HTML passes through; plain text is escaped
+  const displayVal = rawHtml
+    ? (value || '—')
+    : (typeof value === 'string' ? esc(value) : (value || '—'));
+  // For input default value: always plain text (strip tags if any)
+  const inputVal = typeof value === 'string'
+    ? esc(value.replace(/<[^>]*>/g, ''))
+    : '';
+
   return `<div class="detail-field${full?' full':''}">
     <div class="lbl">${label}</div>
     <div class="editable-field">
-      <div class="val" id="${id}_val">${safeVal}</div>
-      ${canEdit?`<span class="edit-pen" onclick="toggleEdit('${fieldKey}')" title="Edit">✏️</span>`:''}
+      <div class="val" id="${id}_val">${displayVal}</div>
+      ${canEdit ? `<span class="edit-pen" onclick="toggleEdit('${fieldKey}')" title="Edit">✏️</span>` : ''}
     </div>
-    ${canEdit?`<div class="inline-edit-row" id="${id}_edit">
-      <input type="text" class="field-input" id="${id}_input" value="${typeof value==='string'?esc(value):''}">
+    ${canEdit ? `<div class="inline-edit-row" id="${id}_edit">
+      <input type="text" class="field-input" id="${id}_input" value="${inputVal}">
       <button class="btn btn-emerald btn-save" onclick="saveEdit('${fieldKey}','${nomor}')">💾</button>
       <button class="btn-cancel" onclick="toggleEdit('${fieldKey}')">✕</button>
-    </div>`:''}
+    </div>` : ''}
   </div>`;
 }
-// alias for backward compat
-function editableField(l,v,k,n,f){ return ef(l,v,k,n,f||false); }
+function editableField(l,v,k,n,f){ return ef(l,v,k,n,f||false,false); }
 
 function toggleEdit(fk) {
   document.getElementById(`ef_${fk}_edit`)?.classList.toggle('show');
@@ -858,7 +978,7 @@ function quickVerify(nomor, status) {
     () => execVerify(nomor, status)
   );
 }
-function doVerify(nomor, status){ closeModal('detailModal'); quickVerify(nomor, status); }
+function doVerify(nomor, status){ quickVerify(nomor, status); }
 
 function execVerify(nomor, status) {
   const catatan = document.getElementById('catatanInput').value.trim();
@@ -873,6 +993,7 @@ function execVerify(nomor, status) {
       if (row){ row.status_verifikasi=status; if(catatan) row.catatan=catatan; }
       toast('Berhasil', `${nomor} → ${status}`, 'success');
       applyFilters(); updateSidebarBadge();
+      openDetail(nomor); // refresh modal in-place with new status
     } else {
       toast('Gagal', data?.message||'Gagal update status', 'error');
     }
@@ -884,7 +1005,7 @@ function quickDeactivate(nomor) {
     `Peserta <strong>${nomor}</strong> akan dinonaktifkan dan slot kuota-nya akan dibebaskan.<br><br>Tindakan ini dapat diubah kembali oleh admin.`,
     true, ()=>execDeactivate(nomor));
 }
-function doDeactivate(nomor){ closeModal('detailModal'); quickDeactivate(nomor); }
+function doDeactivate(nomor){ quickDeactivate(nomor); }
 
 function execDeactivate(nomor) {
   const catatan = document.getElementById('catatanInput').value.trim();
@@ -899,6 +1020,7 @@ function execDeactivate(nomor) {
       if (row){ row.status_verifikasi='Nonaktif'; if(catatan) row.catatan=catatan; }
       toast('Nonaktif', `Peserta ${nomor} dinonaktifkan`, 'warning');
       applyFilters(); updateSidebarBadge();
+      openDetail(nomor); // refresh modal in-place
     } else {
       toast('Gagal', data?.message||'Gagal nonaktifkan', 'error');
     }
@@ -973,10 +1095,36 @@ function showConfirm(icon, title, msg, showCatatan, fn) {
 function confirmAction(){ if(adm.pending){ adm.pending(); adm.pending=null; } }
 
 // ── Modal helpers ─────────────────────────────────────────────
-function openModal(id)  { document.getElementById(id)?.classList.add('show'); }
-function closeModal(id) { document.getElementById(id)?.classList.remove('show'); }
-document.querySelectorAll('.modal-overlay').forEach(o=>
-  o.addEventListener('click', e=>{ if(e.target===o) o.classList.remove('show'); }));
+// openModal/closeModal defined above with lock logic
+// FIX 3: Click backdrop to close — detail stays open while confirm visible
+// Strategy: mark detailModal as 'locked' while confirmModal is open
+function openModal(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('show');
+  if (id === 'confirmModal') {
+    // Lock detailModal so backdrop-click won't close it
+    document.getElementById('detailModal')?.setAttribute('data-locked', '1');
+  }
+}
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('show');
+  if (id === 'confirmModal') {
+    // Unlock detailModal after confirm is closed
+    document.getElementById('detailModal')?.removeAttribute('data-locked');
+  }
+}
+
+// Backdrop click handler — only fires when clicking the overlay itself (not children)
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target !== overlay) return;                          // ignore child clicks
+    if (overlay.getAttribute('data-locked') === '1') return;  // locked — keep open
+    overlay.classList.remove('show');
+  });
+});
 
 // ── JSONP helper ──────────────────────────────────────────────
 // On script.onerror: GAS returned non-JS Content-Type (e.g. application/json)
@@ -1037,6 +1185,115 @@ function initDarkMode() {
   });
 }
 
+// ── Sidebar toggle (Issue 5) ─────────────────────────────────────
+function toggleSidebar() {
+  const sidebar  = document.getElementById('adminSidebar');
+  const mainArea = document.querySelector('.admin-content');
+  const btnInner = document.getElementById('sidebarToggleBtn');
+  const reveal   = document.getElementById('sidebarRevealBtn');
+  const navBtn   = document.getElementById('navSidebarBtn');
+
+  const isHidden = sidebar.classList.toggle('hidden-sidebar');
+  mainArea?.classList.toggle('sidebar-hidden', isHidden);
+  if (btnInner) btnInner.innerHTML = isHidden ? '➡ Tampilkan' : '⬅ Sembunyikan';
+  if (reveal)   reveal.classList.toggle('visible', isHidden);
+  if (navBtn)   navBtn.style.color = isHidden ? 'var(--emerald)' : 'var(--gray-500)';
+  localStorage.setItem('mtq-sidebar-hidden', isHidden ? '1' : '0');
+}
+
+// Restore sidebar state on load
+window.addEventListener('DOMContentLoaded', () => {
+  if (localStorage.getItem('mtq-sidebar-hidden') === '1') toggleSidebar();
+}, { once: true, capture: true });
+
+// ── Document Previewer setup (FIX #4) ─────────────────────────
+function initDocumentPreviewer() {
+  if (typeof DocumentPreviewer === 'undefined') {
+    log.warn('DocumentPreviewer not loaded — doc preview will open in new tab');
+    return;
+  }
+  window._dp = new DocumentPreviewer({
+    modalId      : 'dp-modal',
+    zoomStep     : 0.25,
+    zoomMin      : 0.25,
+    zoomMax      : 5.0,
+    wheelZoomStep: 0.1,
+    pdfScale     : 1.5,
+    pdfWorkerUrl : 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
+    pdfCmapUrl   : 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+    googleDriveApiKey: '',    // filled in after loadAll() returns driveApiKey
+    debug        : false,
+    onOpen: (url, name) => {
+      log.info('DocPreviewer opened:', name, url);
+      // dp-open already added in openDocPreview() for instant layout shift
+      document.body.classList.add('dp-open'); // idempotent
+      _updateDpWidth();
+    },
+    onClose: () => {
+      log.info('DocPreviewer closed');
+      document.body.classList.remove('dp-open');
+    },
+    onError: (err) => {
+      log.error('DocPreviewer error:', err.message);
+      toast('Preview Gagal', err.message, 'error');
+    },
+  });
+  // Mount the previewer into the DOM
+  window._dp.mount('#dp-modal-root');
+  log.info('DocumentPreviewer initialized');
+}
+
+// Adjust dp-width CSS variable for responsive layout
+function _updateDpWidth() {
+  const w = window.innerWidth;
+  let dpW;
+  if (w <= 768)        dpW = '100%';
+  else if (w <= 1200)  dpW = '65%';
+  else                 dpW = '58%';
+  document.documentElement.style.setProperty('--dp-width', dpW);
+}
+
+/**
+ * Open document in the side previewer.
+ * On mobile: opens in new tab instead of split layout.
+ * @param {string} url   Google Drive file URL
+ * @param {string} name  Display name
+ */
+function openDocPreview(url, name) {
+  if (!url) { toast('Dokumen', 'URL dokumen tidak tersedia', 'warning'); return; }
+  log.info('openDocPreview:', name, url);
+
+  // Mobile: open in new tab
+  if (window.innerWidth <= 768) { window.open(url, '_blank'); return; }
+
+  if (!window._dp) { window.open(url, '_blank'); return; }
+
+  // FIX Issue 6: shift layout IMMEDIATELY before async load
+  _updateDpWidth();
+  document.body.classList.add('dp-open');   // instant layout shift
+  log.info('dp-open applied — starting async load');
+
+  window._dp.open(url, name).catch(err => {
+    log.error('DocPreview open error:', err.message);
+    document.body.classList.remove('dp-open'); // revert on error
+    window.open(url, '_blank');
+  });
+}
+
+// Reinit previewer on window resize for responsive behavior
+let _dpResizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(_dpResizeTimer);
+  _dpResizeTimer = setTimeout(() => {
+    _updateDpWidth();
+    // On mobile, close previewer if open and show doc in new tab
+    if (window.innerWidth <= 768 && document.body.classList.contains('dp-open')) {
+      window._dp?.close();
+    }
+  }, 200);
+});
+
 </script>
+  <script src="js/document-previewer.js"></script>
 </body>
 </html>

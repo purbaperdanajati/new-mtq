@@ -5,13 +5,19 @@
 // ============================================================
 
 // ── 1. Spreadsheet & Drive ───────────────────────────────────
-var SPREADSHEET_ID       = 'GANTI_SPREADSHEET_ID';
-var DRIVE_ROOT_FOLDER_ID = 'GANTI_ROOT_FOLDER_ID';
+var SPREADSHEET_ID       = '10CS7gBHmS4nx9XKBvPttJ3qUVegsNy0Xy3J7T63J3Lk';
+var DRIVE_ROOT_FOLDER_ID = '1e784li0m9IcBXy9gNsX6Yin5KAtxottg';
 
 // ── 2. Admin Password ─────────────────────────────────────────
 // FIX #4: Ganti nilai ini sebelum deploy produksi!
 // Contoh yang kuat: 'MTQ2026@Indramayu#Adm!'
-var ADMIN_PASSWORD = 'MTQ2026@Admin!';
+var ADMIN_PASSWORD   = 'MTQ2026@Admin!';
+
+// ── Google Drive API Key (untuk DocumentPreviewer di admin) ───
+// Buat di console.cloud.google.com → APIs & Services → Credentials
+// Batasi: Application restrictions = HTTP referrers (your domain)
+// Batasi: API restrictions = Google Drive API only
+var DRIVE_API_KEY    = 'GANTI_DRIVE_API_KEY';
 
 // ── 3. Nama Sheet ─────────────────────────────────────────────
 var SHEET_CONFIG    = 'CONFIG';
@@ -60,7 +66,8 @@ var COL = {
   LINK_FOLDER      : 19,
   ANGGOTA_JSON     : 20,
   STATUS_VERIFIKASI: 21,
-  CATATAN          : 22
+  CATATAN          : 22,
+  LINK_REKOM       : 23
 };
 
 // ── 7. Header PENDAFTAR ───────────────────────────────────────
@@ -69,7 +76,7 @@ var PENDAFTAR_HEADERS = [
   'cabang_lomba','gender_cabang','nama_lengkap','nik','tempat_lahir',
   'tanggal_lahir','umur_display','jenis_kelamin','alamat','no_hp','email',
   'nama_bank','nomor_rekening','nama_rekening',
-  'link_folder','anggota_json','status_verifikasi','catatan'
+  'link_folder','anggota_json','status_verifikasi','catatan','link_rekom'
 ];
 
 // ── 8. Header CONFIG ──────────────────────────────────────────

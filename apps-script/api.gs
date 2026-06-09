@@ -283,7 +283,11 @@ function apiGetAll_(params) {
   if (sheet.getLastRow()<=1) return { success:true, data:[] };
   var rows = sheet.getRange(2,1,sheet.getLastRow()-1,PENDAFTAR_HEADERS.length).getValues();
   logInfo('api','apiGetAll_ — rows: '+rows.length);
-  return { success:true, data:rows.map(function(r){ return rowToObj_(r); }) };
+  return {
+    success    : true,
+    data       : rows.map(function(r){ return rowToObj_(r); }),
+    driveApiKey: DRIVE_API_KEY || ''   // returned only to authenticated admin
+  };
 }
 
 
@@ -396,8 +400,9 @@ function apiRegister_(body) {
       link_foto:links.foto, link_ktp:links.ktp, link_sertifikat:linkSert,
     });
   }
-  // FIX #11: Rekomendasi mandatory — upload saja, validasi di frontend
-  uploadFile_(body.rekom, pesertaFolder, 'REKOMENDASI');
+  // FIX #11: Rekomendasi mandatory — upload & simpan URL
+  var rekomUrl = uploadFile_(body.rekom, pesertaFolder, 'REKOMENDASI');
+  logInfo('api','rekom URL: ' + rekomUrl);
 
   // 9. Simpan ke sheet
   var lead=processedMembers[0];
@@ -422,8 +427,9 @@ function apiRegister_(body) {
   row[COL.NOMOR_REKENING]    = body.nomor_rekening||'';
   row[COL.NAMA_REKENING]     = body.nama_rekening||'';
   row[COL.LINK_FOLDER]       = folderUrl;
-  row[COL.ANGGOTA_JSON]      = cabangCfg.tipe==='team' ? JSON.stringify(processedMembers) : '';
+  row[COL.ANGGOTA_JSON]      = JSON.stringify(processedMembers); // always store
   row[COL.STATUS_VERIFIKASI] = 'Menunggu';
+  row[COL.LINK_REKOM]        = rekomUrl || '';
   pendSheet.appendRow(row);
   writeLog_(ss,'REGISTER',nomor+' | '+targetCabang+' | '+(body.kecamatan||''),'ok');
 
@@ -481,4 +487,26 @@ function generateRegNumberOddEven_(sheet, cabangLomba, gender) {
   }
   var max=Object.keys(used).length ? Math.max.apply(null,Object.keys(used).map(Number)) : 0;
   return prefix+'-'+String(max+1).padStart(3,'0');
+}
+
+// ── FIX: updateRowField_ was missing — required by all admin GET handlers ──
+function updateRowField_(nomor, colIndex, value, catatan) {
+  logInfo('api','updateRowField_', {nomor:nomor, col:colIndex, value:String(value).substring(0,40)});
+  var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(SHEET_PENDAFTAR);
+  if (!sheet) return {success:false, message:'Sheet PENDAFTAR tidak ditemukan'};
+
+  var lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return {success:false, message:'Sheet kosong'};
+
+  var nums = sheet.getRange(2, COL.NOMOR_PENDAFTARAN+1, lastRow-1, 1).getValues();
+  for (var i=0; i<nums.length; i++) {
+    if (String(nums[i][0]).trim() === String(nomor).trim()) {
+      sheet.getRange(i+2, colIndex+1).setValue(value);
+      if (catatan) sheet.getRange(i+2, COL.CATATAN+1).setValue(catatan);
+      writeLog_(ss, 'UPDATE', nomor+' col='+colIndex+' → '+String(value).substring(0,50), 'ok');
+      return {success:true, nomor_pendaftaran:nomor};
+    }
+  }
+  return {success:false, message:'Nomor pendaftaran tidak ditemukan: '+nomor};
 }

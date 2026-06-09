@@ -4,7 +4,7 @@
 //  Handles individu + team, age validation per member
 // ============================================================
 
-const API_URL = 'https://script.google.com/macros/s/AKfycby6hfQkbiGEEYvSxZQ2-za0eg8CwmQ_N_X60cIe_Ilx1_7ApIk2EZPlDZMaOxPK6UW8/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzAP1q9Ol0ZYTEx3tlW3dcQGtwvzcaCBgmayYwAKeZaDmzLUDutW-Fwo55h_Jz3vFpG/exec';
 
 // ── State ─────────────────────────────────────────────────────
 const state = {

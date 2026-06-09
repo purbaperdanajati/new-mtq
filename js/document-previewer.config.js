@@ -10,9 +10,6 @@
  */
 
 const MY_DP_CONFIG = {
-
-    // googleDriveApiKey: // ← DIKOSONGKAN — diisi dari Sheet Config (aman)
-
     modalId      : 'dp-modal',
     zoomStep     : 0.25,
     zoomMin      : 0.25,

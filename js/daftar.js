@@ -4,7 +4,8 @@
 //       file name overflow, submit logging, CORS POST workaround
 // ============================================================
 
-const API_URL = 'https://script.google.com/macros/s/AKfycby6hfQkbiGEEYvSxZQ2-za0eg8CwmQ_N_X60cIe_Ilx1_7ApIk2EZPlDZMaOxPK6UW8/exec';
+// API_URL: satu sumber dari config.js — jangan ganti di sini
+const API_URL = (typeof MTQ_CONFIG !== 'undefined' ? MTQ_CONFIG.API_URL : 'https://script.google.com/macros/s/AKfycbzAP1q9Ol0ZYTEx3tlW3dcQGtwvzcaCBgmayYwAKeZaDmzLUDutW-Fwo55h_Jz3vFpG/exec');
 const AGE_CUTOFF = '2026-07-01';   // tanggal hitungan umur (mutlak)
 
 // ── Logger terpusat ──────────────────────────────────────────
@@ -872,6 +873,19 @@ function setupUpload(zoneId, fileKey, previewId, allowedTypes, maxMB, thumbId, i
   const preview = document.getElementById(previewId);
   if (!zone) return;
 
+  const input = zone.querySelector('input[type="file"]');
+
+  // ── FIX Issue 1: explicit zone click → input click ─────────────────────
+  // The input is already position:absolute covering the zone (opacity:0 in CSS).
+  // This belt-and-suspenders click handler ensures it works across all browsers.
+  zone.addEventListener('click', e => {
+    // Don't re-trigger if the click already came from the input itself
+    if (e.target === input) return;
+    // Don't trigger if clicking the remove-file button or preview links
+    if (e.target.classList.contains('remove-file') || e.target.tagName === 'BUTTON') return;
+    input?.click();
+  });
+
   zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag-over'); });
   zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
   zone.addEventListener('drop', e => {
@@ -880,7 +894,6 @@ function setupUpload(zoneId, fileKey, previewId, allowedTypes, maxMB, thumbId, i
     if (file) handleFile(file, fileKey, zone, preview, allowedTypes, maxMB, thumbId, iconId);
   });
 
-  const input = zone.querySelector('input[type="file"]');
   if (input) {
     input.addEventListener('change', e => {
       const file = e.target.files[0];

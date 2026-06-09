@@ -8,7 +8,7 @@ const MTQ_CONFIG = {
 
   // ── Google Apps Script Web App URL ──────────────────────────
   // Setelah deploy di Apps Script, paste URL-nya di sini
-  API_URL: 'https://script.google.com/macros/s/AKfycby6hfQkbiGEEYvSxZQ2-za0eg8CwmQ_N_X60cIe_Ilx1_7ApIk2EZPlDZMaOxPK6UW8/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbzAP1q9Ol0ZYTEx3tlW3dcQGtwvzcaCBgmayYwAKeZaDmzLUDutW-Fwo55h_Jz3vFpG/exec',
 
   // ── Fallback (akan ditimpa nilai dari API saat getConfig) ───
   PENDAFTARAN_BUKA : '2026-06-01T00:00:00',
@@ -106,3 +106,7 @@ function getRegStatus() {
   if (now < tutup) return 'buka';
   return 'tutup';
 }
+
+// ── Satu-satunya sumber API_URL untuk semua file ──────────────
+// main.js, daftar.js, admin.html semuanya baca dari sini
+window.MTQ_API_URL = MTQ_CONFIG.API_URL;
