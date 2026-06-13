@@ -5,7 +5,7 @@
 // ── Config ──────────────────────────────────
 const CONFIG = {
   // API_URL baca dari config.js (window.MTQ_API_URL) — jangan ganti di sini
-  API_URL: (typeof MTQ_CONFIG !== 'undefined' ? MTQ_CONFIG.API_URL : 'https://script.google.com/macros/s/AKfycbzAP1q9Ol0ZYTEx3tlW3dcQGtwvzcaCBgmayYwAKeZaDmzLUDutW-Fwo55h_Jz3vFpG/exec'),
+  API_URL: (typeof MTQ_CONFIG !== 'undefined' ? MTQ_CONFIG.API_URL : 'https://script.google.com/macros/s/AKfycbwl5y16V9Fcxub3AIScpE86ZwYiPBnRVuXWgQqonhTDat8dJoMnspEw1ifaCouDDixz/exec'),
   EVENT_DATE: '2026-08-15T08:00:00',  // Tanggal pelaksanaan MTQ
   EVENT_LOCATION: 'GOR Singalodra Kabupaten Indramayu',
   EVENT_THEME: 'Dengan Al-Qur\'an Membangun Generasi Emas',

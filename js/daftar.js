@@ -5,7 +5,7 @@
 // ============================================================
 
 // API_URL: satu sumber dari config.js — jangan ganti di sini
-const API_URL = (typeof MTQ_CONFIG !== 'undefined' ? MTQ_CONFIG.API_URL : 'https://script.google.com/macros/s/AKfycbzAP1q9Ol0ZYTEx3tlW3dcQGtwvzcaCBgmayYwAKeZaDmzLUDutW-Fwo55h_Jz3vFpG/exec');
+const API_URL = (typeof MTQ_CONFIG !== 'undefined' ? MTQ_CONFIG.API_URL : 'https://script.google.com/macros/s/AKfycbwl5y16V9Fcxub3AIScpE86ZwYiPBnRVuXWgQqonhTDat8dJoMnspEw1ifaCouDDixz/exec');
 const AGE_CUTOFF = '2026-07-01';   // tanggal hitungan umur (mutlak)
 
 // ── Logger terpusat ──────────────────────────────────────────
@@ -36,37 +36,65 @@ let state = {
 
 // ── Fallback config ───────────────────────────────────────────
 const FALLBACK_CONFIG = [
-  // FIX #2: kuota=31, FIX #10: umur_min=0
-  { cabang_lomba:'Tilawah Anak Putra',       tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:9,  umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Tilawah Anak Putri',       tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:9,  umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Tilawah Remaja Putra',     tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:13, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Tilawah Remaja Putri',     tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:13, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Tilawah Dewasa Putra',     tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:40, umur_max_bulan:0,  umur_max_hari:0,  kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Tilawah Dewasa Putri',     tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:40, umur_max_bulan:0,  umur_max_hari:0,  kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Tilawah Cacat Putra',      tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:99, umur_max_bulan:0,  umur_max_hari:0,  kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Tilawah Cacat Putri',      tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:99, umur_max_bulan:0,  umur_max_hari:0,  kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Tahfidz 1 Juz Putra',     tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:12, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Tahfidz 1 Juz Putri',     tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:12, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Tahfidz 5 Juz Putra',     tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:18, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Tahfidz 5 Juz Putri',     tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:18, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Tahfidz 10 Juz Putra',    tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:30, umur_max_bulan:0,  umur_max_hari:0,  kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Tahfidz 10 Juz Putri',    tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:30, umur_max_bulan:0,  umur_max_hari:0,  kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Tahfidz 20 Juz Putra',    tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:40, umur_max_bulan:0,  umur_max_hari:0,  kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Tahfidz 20 Juz Putri',    tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:40, umur_max_bulan:0,  umur_max_hari:0,  kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Tahfidz 30 Juz Putra',    tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:50, umur_max_bulan:0,  umur_max_hari:0,  kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Tahfidz 30 Juz Putri',    tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:50, umur_max_bulan:0,  umur_max_hari:0,  kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Khat Naskhi Putra',       tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:25, umur_max_bulan:0,  umur_max_hari:0,  kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Khat Naskhi Putri',       tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:25, umur_max_bulan:0,  umur_max_hari:0,  kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Khat Hiasan Mushaf Putra', tipe:'individu',gender:'L', umur_min:0, umur_max_tahun:35, umur_max_bulan:0,  umur_max_hari:0,  kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Khat Hiasan Mushaf Putri', tipe:'individu',gender:'P', umur_min:0, umur_max_tahun:35, umur_max_bulan:0,  umur_max_hari:0,  kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:"Fahmil Qur'an Putra",     tipe:'team',     gender:'L', umur_min:0, umur_max_tahun:18, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:"Fahmil Qur'an Putri",     tipe:'team',     gender:'P', umur_min:0, umur_max_tahun:18, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:"Syarhil Qur'an Putra",    tipe:'team',     gender:'L', umur_min:0, umur_max_tahun:22, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:"Syarhil Qur'an Putri",    tipe:'team',     gender:'P', umur_min:0, umur_max_tahun:22, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'MFQ Putra',               tipe:'team',     gender:'L', umur_min:0, umur_max_tahun:18, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'MFQ Putri',               tipe:'team',     gender:'P', umur_min:0, umur_max_tahun:18, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Tartil Putra',            tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:8,  umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Tartil Putri',            tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:8,  umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+  { cabang_lomba:"Tartil Al Qur'an Putra", tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:12, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+  { cabang_lomba:"Tartil Al Qur'an Putri", tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:12, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+  { cabang_lomba:'Tilawah Anak-anak Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:14, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+  { cabang_lomba:'Tilawah Anak-anak Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:14, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+  { cabang_lomba:'Tilawah Remaja Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:24, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+  { cabang_lomba:'Tilawah Remaja Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:24, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+  { cabang_lomba:'Tilawah Dewasa Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:40, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+  { cabang_lomba:'Tilawah Dewasa Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:40, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+  { cabang_lomba:"Qira'at Mujawwad Putra", tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:40, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+  { cabang_lomba:"Qira'at Mujawwad Putri", tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:40, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+  { cabang_lomba:'Hafalan 1 Juz Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:15, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+  { cabang_lomba:'Hafalan 1 Juz Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:15, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+  { cabang_lomba:'Hafalan 5 Juz Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:20, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+  { cabang_lomba:'Hafalan 5 Juz Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:20, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+  { cabang_lomba:'Hafalan 10 Juz Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:20, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+  { cabang_lomba:'Hafalan 10 Juz Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:20, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+  { cabang_lomba:'Hafalan 20 Juz Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:22, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+  { cabang_lomba:'Hafalan 20 Juz Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:22, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+  { cabang_lomba:'Hafalan 30 Juz Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:22, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+  { cabang_lomba:'Hafalan 30 Juz Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:22, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+  { cabang_lomba:'Tafsir Arab Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:22, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+  { cabang_lomba:'Tafsir Arab Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:22, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+  { cabang_lomba:'Tafsir Indonesia Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+  { cabang_lomba:'Tafsir Indonesia Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+  { cabang_lomba:'Tafsir Inggris Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+  { cabang_lomba:'Tafsir Inggris Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+  { cabang_lomba:'Kaligrafi Naskah Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+  { cabang_lomba:'Kaligrafi Naskah Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+  { cabang_lomba:'Kaligrafi Hiasan Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+  { cabang_lomba:'Kaligrafi Hiasan Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+  { cabang_lomba:'Kaligrafi Dekorasi Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+  { cabang_lomba:'Kaligrafi Dekorasi Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+  { cabang_lomba:'Kaligrafi Kontemporer Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+  { cabang_lomba:'Kaligrafi Kontemporer Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+  { cabang_lomba:'KTIQ Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:24, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+  { cabang_lomba:'KTIQ Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:24, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+  { cabang_lomba:"Fahm Al Qur'an Putra", tipe:'team', gender:'L', umur_min:0, umur_max_tahun:18, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+  { cabang_lomba:"Fahm Al Qur'an Putri", tipe:'team', gender:'P', umur_min:0, umur_max_tahun:18, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+  { cabang_lomba:"Syarh Al Qur'an Putra", tipe:'team', gender:'L', umur_min:0, umur_max_tahun:18, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+  { cabang_lomba:"Syarh Al Qur'an Putri", tipe:'team', gender:'P', umur_min:0, umur_max_tahun:18, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' }
 ];
 
 // ══════════════════════════════════════════════════════════════
@@ -303,15 +331,16 @@ function onCabangChange() {
 }
 
 function checkQuota(cabang, badge) {
-  badge.textContent = '⏳'; badge.className = 'quota-badge';
+  // Kuota sisa tidak ditampilkan (bersifat rahasia) — hanya cek apakah penuh
+  badge.textContent = ''; badge.className = 'quota-badge';
   jsonp(`${API_URL}?action=getQuota&cabang=${encodeURIComponent(cabang)}`, 'mtqQuota', (data) => {
     if (data && data.success) {
       const cfg  = state.config.find(c => c.cabang_lomba === cabang);
       const sisa = (cfg?.kuota || 0) - (data.count || 0);
-      log.info(`Kuota ${cabang}: sisa ${sisa} dari ${cfg?.kuota}`);
-      if (sisa <= 0)       { badge.textContent = '🚫 Kuota Penuh'; badge.className = 'quota-badge full'; }
-      else if (sisa <= 5)  { badge.textContent = `⚠️ Sisa ${sisa}`; badge.className = 'quota-badge warn'; }
-      else                 { badge.textContent = `✅ Sisa ${sisa}`; badge.className = 'quota-badge ok'; }
+      log.info(`Kuota ${cabang}: tersedia=${sisa>0}, penuh=${sisa<=0}`);
+      // Hanya tampilkan jika benar-benar penuh (blokir pendaftaran)
+      if (sisa <= 0) { badge.textContent = '🚫 Kuota Penuh'; badge.className = 'quota-badge full'; }
+      // Jika masih ada slot: badge kosong (jumlah tidak ditampilkan)
     } else { badge.textContent = ''; }
   });
 }
@@ -417,6 +446,25 @@ function goToStep3() {
 //  MEMBER FORMS (Step 2)
 // ══════════════════════════════════════════════════════════════
 
+// ── FIX 3: Preserve member field values across add/remove ────────────────
+// Reads current DOM values into state.members before any re-render
+function collectMemberValues() {
+  const FIELDS = ['nama','nik','tempat_lahir','tanggal_lahir','jenis_kelamin','no_hp','alamat'];
+  state.members.forEach((m, i) => {
+    FIELDS.forEach(f => {
+      const el = document.getElementById(`m${i}_${f}`);
+      if (el) m[f] = el.value;
+    });
+    // Bank fields (only on member 0)
+    if (i === 0) {
+      ['nama_bank','nomor_rekening','nama_rekening'].forEach(f => {
+        const el = document.getElementById(f);
+        if (el) m[f] = el.value;
+      });
+    }
+  });
+}
+
 function renderMemberForms() {
   const container = document.getElementById('memberFormsContainer');
   if (!container) return;
@@ -452,7 +500,11 @@ function createMemberCard(idx) {
     : '';
 
   // Date min/max for native date picker
-  const maxDate = cfg && cfg.umur_min > 0 ? subtractYears(AGE_CUTOFF, cfg.umur_min) : new Date().toISOString().slice(0, 10);
+  // FIX 4: maxDate = min(today, cutoff minus umur_min) — year never exceeds current year
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const maxDate  = cfg && cfg.umur_min > 0
+    ? subtractYears(AGE_CUTOFF, cfg.umur_min)
+    : todayStr;
   // Date min: cutoff minus max age (earliest valid birthdate, add 1 day for exclusive)
   const minDate = (cfg && cfg.umur_max_tahun < 99)
     ? addDays(subtractYearsMonthsDays(AGE_CUTOFF, cfg.umur_max_tahun, cfg.umur_max_bulan || 0, cfg.umur_max_hari || 0), 1)
@@ -478,6 +530,7 @@ function createMemberCard(idx) {
           <label class="field-label">Nama Lengkap <span class="req">*</span></label>
           <input type="text" class="field-input" id="m${idx}_nama"
             placeholder="Nama sesuai KTP/KK/Akta"
+            value="${state.members[idx]?.nama || ''}"
             oninput="updatePreviewName(${idx},this.value)">
           <div class="field-error"></div>
         </div>
@@ -486,6 +539,7 @@ function createMemberCard(idx) {
           <label class="field-label">NIK <span class="req">*</span></label>
           <input type="text" class="field-input" id="m${idx}_nik"
             placeholder="16 digit NIK" maxlength="16" inputmode="numeric"
+            value="${state.members[idx]?.nik || ''}"
             oninput="this.value=this.value.replace(/\\D/g,'').slice(0,16)"
             onblur="checkNIKDuplicate(${idx}, this.value)">
           <div class="field-error" id="m${idx}_nik_error"></div>
@@ -494,7 +548,8 @@ function createMemberCard(idx) {
         <div class="field-group">
           <label class="field-label">Tempat Lahir <span class="req">*</span></label>
           <input type="text" class="field-input" id="m${idx}_tempat_lahir"
-            placeholder="Kota/Kabupaten kelahiran">
+            placeholder="Kota/Kabupaten kelahiran"
+            value="${state.members[idx]?.tempat_lahir || ''}">
           <div class="field-error"></div>
         </div>
 
@@ -505,6 +560,7 @@ function createMemberCard(idx) {
           </label>
           <input type="date" class="field-input" id="m${idx}_tanggal_lahir"
             min="${minDate}" max="${maxDate}"
+            value="${state.members[idx]?.tanggal_lahir || ''}"
             oninput="clampDateYear(this)"
             onkeydown="if(event.key==='Escape'){this.value='';validateMemberAge(${idx});updateStep2NextBtn();event.preventDefault();}"
             onblur="validateMemberAge(${idx}); updateStep2NextBtn()"
@@ -518,7 +574,11 @@ function createMemberCard(idx) {
           <select class="field-select" id="m${idx}_jenis_kelamin"
             ${genderLocked ? 'disabled style="background:var(--gray-50);color:var(--gray-400)"' : ''}
             onchange="validateMemberGender(${idx}); updateStep2NextBtn()">
-            ${genderOptions}
+            ${genderLocked
+              ? genderOptions
+              : `<option value="">-- Pilih --</option>
+                 <option value="Laki-laki" ${state.members[idx]?.jenis_kelamin==='Laki-laki'?'selected':''}>Laki-laki</option>
+                 <option value="Perempuan" ${state.members[idx]?.jenis_kelamin==='Perempuan'?'selected':''}>Perempuan</option>`}
           </select>
           ${genderHint}
           <div class="field-error" id="m${idx}_gender_error"></div>
@@ -527,21 +587,15 @@ function createMemberCard(idx) {
         <div class="field-group">
           <label class="field-label">No. WhatsApp <span class="req">*</span></label>
           <input type="tel" class="field-input" id="m${idx}_no_hp"
-            placeholder="08xxxxxxxxxx">
+            placeholder="08xxxxxxxxxx"
+            value="${state.members[idx]?.no_hp || ''}">
           <div class="field-error"></div>
         </div>
 
         <div class="field-group full">
           <label class="field-label">Alamat Lengkap <span class="req">*</span></label>
           <textarea class="field-textarea" id="m${idx}_alamat" rows="2"
-            placeholder="Jalan, RT/RW, Desa/Kel, Kecamatan"></textarea>
-          <div class="field-error"></div>
-        </div>
-
-        <div class="field-group full">
-          <label class="field-label">Alamat Lengkap <span class="req">*</span></label>
-          <textarea class="field-textarea" id="m${idx}_alamat" rows="2"
-            placeholder="Jalan, RT/RW, Desa/Kel, Kecamatan"></textarea>
+            placeholder="Jalan, RT/RW, Desa/Kel, Kecamatan">${state.members[idx]?.alamat || ''}</textarea>
           <div class="field-error"></div>
         </div>
 
@@ -554,15 +608,15 @@ function createMemberCard(idx) {
         <div class="form-grid">
           <div class="field-group">
             <label class="field-label">Nama Bank</label>
-            <input type="text" class="field-input" id="nama_bank" placeholder="BRI / BCA / Mandiri / dll">
+            <input type="text" class="field-input" id="nama_bank" placeholder="BRI / BCA / Mandiri / dll" value="${state.members[idx]?.nama_bank || ''}">
           </div>
           <div class="field-group">
             <label class="field-label">Nomor Rekening</label>
-            <input type="text" class="field-input" id="nomor_rekening" placeholder="Nomor rekening" inputmode="numeric" oninput="this.value=this.value.replace(/\\D/g,'')">
+            <input type="text" class="field-input" id="nomor_rekening" placeholder="Nomor rekening" inputmode="numeric" value="${state.members[0]?.nomor_rekening || ''}" oninput="this.value=this.value.replace(/\\D/g,'')">
           </div>
           <div class="field-group full">
             <label class="field-label">Nama Pemilik Rekening</label>
-            <input type="text" class="field-input" id="nama_rekening" placeholder="Nama sesuai buku tabungan">
+            <input type="text" class="field-input" id="nama_rekening" placeholder="Nama sesuai buku tabungan" value="${state.members[idx]?.nama_rekening || ''}">
           </div>
         </div>
       </div>` : ''}
@@ -576,7 +630,14 @@ function createMemberCard(idx) {
 function clampDateYear(input) {
   if (!input.value) return;
   const parts = input.value.split('-');
-  if (parts[0] && parts[0].length > 4) {
+  if (!parts[0] || parts[0].length < 4) return;
+  let year = parseInt(parts[0], 10);
+  if (isNaN(year)) return;
+  const currentYear = new Date().getFullYear();
+  if (year > currentYear) {
+    parts[0] = String(currentYear);
+    input.value = parts.join('-');
+  } else if (parts[0].length > 4) {
     parts[0] = parts[0].slice(0, 4);
     input.value = parts.join('-');
   }
@@ -710,6 +771,7 @@ function updatePreviewName(idx, val) {
 
 function addMember() {
   if (state.members.length >= state.maxMembers) return;
+  collectMemberValues();          // save current inputs before re-render
   state.members.push({});
   renderMemberForms();
 }
@@ -719,6 +781,7 @@ function removeMember(idx) {
     showToast('Tidak Bisa Dihapus', `Minimal ${state.minMembers} anggota diperlukan.`, 'warning');
     return;
   }
+  collectMemberValues();          // save before remove
   state.members.splice(idx, 1);
   renderMemberForms();
 }
@@ -1038,7 +1101,7 @@ async function submitForm() {
   state.isSubmitting = true;
   log.step(3, 'submitForm START');
   log.time('submitForm');
-  showLoading('Mengirim pendaftaran...', 'Mohon tunggu, jangan tutup halaman ini.');
+  showProgress(0, 'Mempersiapkan data...', 'Mohon tunggu, jangan tutup halaman ini.');
 
   try {
     const kec    = document.getElementById('kecamatan').value;
@@ -1046,8 +1109,13 @@ async function submitForm() {
     log.info(`Submit — kecamatan: ${kec}, cabang: ${cabang}`);
 
     // Build members data
+    showProgress(10, 'Mengkonversi file ke base64...', `Memproses ${state.members.length} peserta`);
     log.info('submitForm — mengkonversi file ke base64...');
+    const totalMembers = state.members.length;
     const membersData = await Promise.all(state.members.map(async (_, i) => {
+      const pct = 10 + Math.round(((i+1)/totalMembers) * 40);
+      showProgress(pct, `Konversi dokumen peserta ${i+1}/${totalMembers}...`,
+        `Foto, KTP, Sertifikat — ${String(document.getElementById('m'+i+'_nama')?.value||'Anggota '+(i+1)).replace(/[<>&"]/g,'')}`);
       log.info(`  → anggota ${i+1}: konversi foto, ktp, sertifikat`);
       const photoB64 = state.files[`photo_${i}`] ? await toBase64(state.files[`photo_${i}`]) : null;
       const ktpB64   = state.files[`ktp_${i}`]   ? await toBase64(state.files[`ktp_${i}`])   : null;
@@ -1066,7 +1134,7 @@ async function submitForm() {
       };
     }));
     log.info(`submitForm — ${membersData.length} anggota dikemas`);
-
+    showProgress(52, 'Mengkonversi surat rekomendasi...', 'Hampir selesai menyiapkan berkas');
     const rekomB64 = state.files.rekom ? await toBase64(state.files.rekom) : null;
 
     const payload = {
@@ -1081,7 +1149,10 @@ async function submitForm() {
       members         : membersData,
       rekom           : rekomB64 ? { name: state.files.rekom.name, type: state.files.rekom.type, data: rekomB64 } : null,
     };
-    log.info('submitForm — payload siap, payload size ≈', JSON.stringify(payload).length, 'bytes');
+    const payloadSize = JSON.stringify(payload).length;
+    const payloadKB   = (payloadSize / 1024).toFixed(1);
+    log.info('submitForm — payload siap, size ≈', payloadSize, 'bytes');
+    showProgress(60, 'Mengunggah data ke server...', `Ukuran data: ${payloadKB} KB — mohon tunggu`);
     log.info('submitForm — mengirim POST ke GAS...');
 
     // ── FIX #7: Content-Type: text/plain → simple request, no CORS preflight ──
@@ -1093,18 +1164,25 @@ async function submitForm() {
     });
     log.info(`submitForm — response status: ${res.status} ${res.statusText}`);
 
+    showProgress(90, 'Memproses respons server...', 'Server sedang menyimpan data');
     const result = await res.json();
     log.info('submitForm — response body:', result);
 
     if (result.success) {
+      showProgress(100, 'Pendaftaran berhasil! 🎉', 'Data tersimpan — menyiapkan bukti pendaftaran...');
       state.regNumber = result.nomor_pendaftaran;
       state.formData  = { kecamatan: kec, cabang_lomba: cabang, members: membersData };
       log.info('submitForm ✓ — nomor:', result.nomor_pendaftaran);
       log.timeEnd('submitForm');
+      await new Promise(r => setTimeout(r, 800)); // brief pause to show 100%
       hideLoading();
       showSuccessPage(result);
     } else {
-      throw new Error(result.message || 'Pendaftaran gagal dari server');
+      const rawErr = result.message || 'Pendaftaran gagal';
+      const isStale = rawErr.includes('is not defined') || rawErr.includes('not found');
+      throw new Error(isStale
+        ? 'Server GAS perlu di-deploy ulang. Buka Apps Script → Deploy → New version → Deploy.'
+        : rawErr);
     }
   } catch (err) {
     log.error('submitForm ✗ —', err.message, err);
@@ -1233,8 +1311,28 @@ function showLoading(msg = 'Memproses...', sub = '') {
   if (!ov) return;
   ov.querySelector('.loading-msg').textContent = msg;
   ov.querySelector('.loading-sub').textContent = sub;
+  const bar = ov.querySelector('.progress-bar-inner');
+  if (bar) bar.style.width = '0%';
+  const pct = ov.querySelector('.progress-pct');
+  if (pct) pct.textContent = '';
   ov.classList.add('show');
 }
+
+function showProgress(percent, msg, sub = '') {
+  const ov = document.getElementById('loadingOverlay');
+  if (!ov) { return; }
+  ov.classList.add('show');
+  const msgEl = ov.querySelector('.loading-msg');
+  const subEl = ov.querySelector('.loading-sub');
+  const bar   = ov.querySelector('.progress-bar-inner');
+  const pct   = ov.querySelector('.progress-pct');
+  if (msgEl) msgEl.textContent = msg;
+  if (subEl) subEl.textContent = sub;
+  if (bar)   bar.style.width   = Math.min(100, percent) + '%';
+  if (pct)   pct.textContent   = Math.min(100, percent) + '%';
+  log.info(`[Progress ${percent}%] ${msg}`);
+}
+
 function hideLoading() { document.getElementById('loadingOverlay')?.classList.remove('show'); }
 
 function showToast(title, msg, type = 'info', dur = 4000) {

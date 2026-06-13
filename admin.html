@@ -255,16 +255,35 @@
     <p>Masukkan password untuk mengakses panel admin</p>
     <div class="field-group" style="text-align:left">
       <label class="field-label">Password</label>
-      <input type="password" class="field-input" id="loginPass" placeholder="Password admin"
-        onkeydown="if(event.key==='Enter')doLogin()">
+      <div style="position:relative">
+        <input type="password" class="field-input" id="loginPass" placeholder="Password admin"
+          style="padding-right:44px"
+          onkeydown="if(event.key==='Enter')doLogin()">
+        <button type="button" id="passToggle"
+          onclick="togglePassVis()"
+          title="Tampilkan / sembunyikan password"
+          style="position:absolute;right:0;top:0;bottom:0;width:40px;background:none;border:none;
+                 cursor:pointer;font-size:16px;color:var(--gray-400);display:flex;align-items:center;
+                 justify-content:center;border-radius:0 var(--radius-sm) var(--radius-sm) 0">
+          👁️
+        </button>
+      </div>
     </div>
-    <!-- FIX #1: Math Captcha -->
+    <!-- FIX: Image Captcha -->
     <div class="field-group" style="text-align:left;margin-top:12px">
-      <label class="field-label">
-        Verifikasi: berapa hasil dari
-        <strong id="captchaQ" style="color:var(--emerald);font-size:16px;margin:0 4px">…</strong>?
-      </label>
-      <input type="number" class="field-input" id="captchaAns" placeholder="Jawaban" inputmode="numeric"
+      <label class="field-label">Verifikasi — ketik 6 karakter berikut:</label>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <canvas id="captchaCanvas" width="240" height="64"
+          style="border:1.5px solid var(--gray-200);border-radius:8px;cursor:pointer;display:block;background:#f8fafc"
+          onclick="initCaptcha()" title="Klik untuk ganti captcha"></canvas>
+        <button type="button" onclick="initCaptcha()"
+          style="background:none;border:1.5px solid var(--gray-200);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:16px;color:var(--gray-500)"
+          title="Refresh captcha">🔄</button>
+      </div>
+      <input type="text" class="field-input" id="captchaAns"
+        placeholder="Ketik 6 karakter" maxlength="6" autocomplete="off" spellcheck="false"
+        style="text-transform:uppercase;letter-spacing:4px;font-size:18px;font-weight:700;text-align:center;font-family:monospace"
+        oninput="this.value=this.value.toUpperCase()"
         onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <button class="btn btn-emerald" style="width:100%;margin-top:12px" onclick="doLogin()">Masuk →</button>
@@ -313,7 +332,7 @@
   <aside class="admin-sidebar" id="adminSidebar">
     <div style="padding:10px 14px 4px">
       <button onclick="toggleSidebar()" title="Sembunyikan/Tampilkan Sidebar"
-        style="width:100%;padding:7px 10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:8px;color:rgba(255,255,255,.5);font-size:12px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:6px"
+        style="width:100%;padding:7px 10px;background:var(--emerald-xs);border:1px solid var(--emerald-light);border-radius:8px;color:var(--emerald);font-size:12px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:6px"
         id="sidebarToggleBtn">⬅ Sembunyikan</button>
     </div>
     <div class="sidebar-label">Manajemen</div>
@@ -376,18 +395,16 @@
             <thead>
               <tr>
                 <th>No. Daftar</th>
-                <th>Nama / Tim</th>
+                <th>Nama</th>
+                <th>NIK</th>
                 <th>Kecamatan</th>
                 <th>Cabang Lomba</th>
-                <th>Gender</th>
-                <th>Usia</th>
-                <th>HP</th>
                 <th>Status</th>
                 <th>Aksi</th>
               </tr>
             </thead>
             <tbody id="pesertaTbody">
-              <tr><td colspan="9" class="empty-state"><div class="ei">⏳</div><div>Memuat data...</div></td></tr>
+              <tr><td colspan="7" class="empty-state"><div class="ei">⏳</div><div>Memuat data...</div></td></tr>
             </tbody>
           </table>
         </div>
@@ -472,7 +489,7 @@
 // ============================================================
 // API_URL — ubah di sini ATAU di js/config.js (untuk daftar.html & index.html)
 // Admin.html tidak load config.js agar tidak konflik deklarasi 'log'
-const API_URL = (window.MTQ_API_URL || 'https://script.google.com/macros/s/AKfycbzAP1q9Ol0ZYTEx3tlW3dcQGtwvzcaCBgmayYwAKeZaDmzLUDutW-Fwo55h_Jz3vFpG/exec');
+const API_URL = (window.MTQ_API_URL || 'https://script.google.com/macros/s/AKfycbwl5y16V9Fcxub3AIScpE86ZwYiPBnRVuXWgQqonhTDat8dJoMnspEw1ifaCouDDixz/exec');
 
 // ── Logger ────────────────────────────────────────────────────
 const log = {
@@ -490,13 +507,14 @@ const log = {
 
 // ── State ─────────────────────────────────────────────────────
 const adm = {
-  token   : null,
-  allData : [],
-  filtered: [],
-  page    : 1,
-  perPage : 20,
-  pending : null,
-  editing : null,
+  token       : null,
+  allData     : [],
+  filtered    : [],
+  page        : 1,
+  perPage     : 20,
+  pending     : null,
+  editing     : null,
+  cabangConfig: [],   // from getConfig — used for age requirement display
 };
 
 // ── Init ──────────────────────────────────────────────────────
@@ -518,20 +536,73 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// ── Captcha ───────────────────────────────────────────────────
-let _captchaAnswer = 0;
+// ── Image Captcha ─────────────────────────────────────────────
+let _captchaText = '';
 function initCaptcha() {
-  const a = Math.floor(Math.random() * 20) + 1;
-  const b = Math.floor(Math.random() * 20) + 1;
-  const ops = ['+', '-', '×'];
-  const op  = ops[Math.floor(Math.random() * ops.length)];
-  const ans = op === '+' ? a+b : op === '-' ? a-b : a*b;
-  _captchaAnswer = ans;
-  const qEl = document.getElementById('captchaQ');
-  if (qEl) qEl.textContent = `${a} ${op} ${b}`;
+  const canvas = document.getElementById('captchaCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+
+  // Generate 6 unambiguous chars (no 0/O, 1/l/I)
+  const pool = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  _captchaText = Array.from({length:6}, () => pool[Math.floor(Math.random()*pool.length)]).join('');
+
+  // Background
+  ctx.fillStyle = '#f1f5f9';
+  ctx.fillRect(0, 0, w, h);
+
+  // Noise dots
+  for (let i=0; i<120; i++) {
+    ctx.beginPath();
+    ctx.arc(Math.random()*w, Math.random()*h, Math.random()*1.5+0.5, 0, Math.PI*2);
+    ctx.fillStyle = `hsla(${Math.random()*360},55%,65%,0.7)`;
+    ctx.fill();
+  }
+
+  // Noise wavy lines
+  for (let i=0; i<3; i++) {
+    ctx.beginPath();
+    const y0 = Math.random()*h;
+    ctx.moveTo(0, y0);
+    for (let x=0; x<w; x+=8) {
+      ctx.lineTo(x, y0 + Math.sin(x*0.08 + i)*7*(Math.random()+0.5));
+    }
+    ctx.strokeStyle = `hsla(${Math.random()*360},55%,55%,0.5)`;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // Draw each character with slight rotation & color variation
+  const charW = (w-20) / 6;
+  _captchaText.split('').forEach((char, i) => {
+    ctx.save();
+    const cx = 14 + i * charW + charW/2;
+    const cy = h/2 + 5;
+    ctx.translate(cx, cy);
+    ctx.rotate((Math.random()-0.5) * 0.55);
+    ctx.font = `bold ${24+Math.random()*6}px 'Courier New', monospace`;
+    ctx.fillStyle = `hsl(${Math.random()*360},70%,25%)`;
+    // Slight shadow for depth
+    ctx.shadowColor = 'rgba(0,0,0,0.15)';
+    ctx.shadowBlur  = 2;
+    ctx.fillText(char, 0, 0);
+    ctx.restore();
+  });
+
   const ansEl = document.getElementById('captchaAns');
   if (ansEl) ansEl.value = '';
-  log.debug('Captcha:', a, op, b, '=', ans);
+  log.debug('Captcha generated:', _captchaText.length, 'chars');
+}
+
+// ── Password visibility toggle ───────────────────────────────────────────
+function togglePassVis() {
+  const inp = document.getElementById('loginPass');
+  const btn = document.getElementById('passToggle');
+  if (!inp) return;
+  const isPass = inp.type === 'password';
+  inp.type     = isPass ? 'text' : 'password';
+  if (btn) btn.textContent = isPass ? '🙈' : '👁️';
 }
 
 // ── Login — JSONP GET + base64 password ───────────────────────
@@ -552,10 +623,10 @@ function doLogin() {
 
   if (!pass) { showErr('Password tidak boleh kosong'); log.end(); return; }
 
-  const userAns = parseInt(ansEl?.value || '', 10);
-  log.debug('Captcha — user:', userAns, 'expected:', _captchaAnswer);
-  if (isNaN(userAns) || userAns !== _captchaAnswer) {
-    showErr('Jawaban captcha salah. Coba lagi.'); initCaptcha(); log.end(); return;
+  const userAns = (ansEl?.value || '').trim().toUpperCase();
+  log.debug('Captcha — user:', userAns, 'expected:', _captchaText);
+  if (!userAns || userAns !== _captchaText) {
+    showErr('Captcha salah. Ketik ulang atau klik gambar untuk ganti.'); initCaptcha(); log.end(); return;
   }
 
   const btn = document.querySelector('.login-overlay .btn-emerald');
@@ -596,11 +667,23 @@ function doLogin() {
       log.info('Login ✓ token.length:', data.token?.length);
       errEl.style.display = 'none';
       document.getElementById('deployGuide').style.display = 'none';
-      hideLoginOverlay(); loadAll();
+      hideLoginOverlay();
+      loadCabangConfig();  // load cabang config for age display in modal
+      loadAll();
     } else {
-      showErr(data?.message || 'Password salah. Coba lagi.');
-      document.getElementById('loginPass').value = '';
-      initCaptcha();
+      const rawMsg = data?.message || '';
+      // Detect stale GAS deployment (function not found error)
+      const isStale = rawMsg.includes('is not defined') || rawMsg.includes('not found') || rawMsg.includes('Script');
+      const displayMsg = isStale
+        ? '🔧 Server perlu di-deploy ulang. Buka Apps Script → Deploy → Manage Deployments → Edit → New version → Deploy.'
+        : (rawMsg || 'Password salah. Coba lagi.');
+      showErr(displayMsg);
+      if (!isStale) {
+        document.getElementById('loginPass').value = '';
+        initCaptcha();
+      } else {
+        document.getElementById('deployGuide').style.display = 'block';
+      }
     }
     log.end();
   });
@@ -668,7 +751,7 @@ function loadAll() {
   log.info('loadAll');
   document.getElementById('tableSubtitle').textContent = 'Memuat data...';
   document.getElementById('pesertaTbody').innerHTML =
-    '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--gray-400)"><span class="spin"></span> Memuat...</td></tr>';
+    '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gray-400)"><span class="spin"></span> Memuat...</td></tr>';
 
   jsonp(`${API_URL}?action=getAllPendaftar&token=${encodeURIComponent(adm.token)}`, 'getAllPendaftar', (data) => {
     if (!data || !data.success) {
@@ -714,8 +797,10 @@ function applyFilters() {
   const kec    = document.getElementById('filterKec').value;
   const cabang = document.getElementById('filterCabang').value;
   adm.filtered = adm.allData.filter(r => {
-    const mQ = !q || [r.nomor_pendaftaran,r.nama_lengkap,r.nik,r.no_hp,r.kecamatan]
-                      .some(f=>String(f||'').toLowerCase().includes(q));
+    // Search main fields + all team member data from anggota array
+    const baseFields = [r.nomor_pendaftaran, r.nama_lengkap, r.nik, r.no_hp, r.kecamatan, r.cabang_lomba];
+    const anggotaFields = (r.anggota || []).flatMap(a => [a.nama_lengkap, a.nik, a.no_hp, a.email]);
+    const mQ = !q || [...baseFields, ...anggotaFields].some(f => String(f||'').toLowerCase().includes(q));
     const mS = !status || String(r.status_verifikasi||'').toLowerCase()===status;
     const mK = !kec    || r.kecamatan===kec;
     const mC = !cabang || r.cabang_lomba===cabang;
@@ -742,13 +827,13 @@ function renderTable(rows) {
     const n     = esc(r.nomor_pendaftaran);
     return `<tr style="${isNA?'opacity:.5':''}">
       <td class="col-num">${n}</td>
-      <td class="col-name"><div style="font-weight:600;color:var(--gray-900)">${esc(r.nama_lengkap||'—')}</div>
-        ${r.tipe_lomba==='team'?'<div style="font-size:11px;color:var(--gold)">👥 Tim</div>':''}</td>
+      <td class="col-name">
+        <div style="font-weight:600;color:var(--gray-900)">${esc(r.nama_lengkap||'—')}</div>
+        ${r.tipe_lomba==='team'?'<div style="font-size:11px;color:var(--gold)">👥 Tim</div>':''}
+      </td>
+      <td style="font-size:11px;font-family:monospace;color:var(--gray-500)">${esc(r.nik||'—')}</td>
       <td class="col-kec">${esc(r.kecamatan||'—')}</td>
       <td class="col-cabang" style="font-size:12px">${esc(r.cabang_lomba||'—')}</td>
-      <td style="font-size:12px">${r.gender_cabang==='L'?'👦 Putra':r.gender_cabang==='P'?'👧 Putri':'—'}</td>
-      <td style="font-size:12px">${esc(r.umur_display||'—')}</td>
-      <td style="font-size:12px">${esc(r.no_hp||'—')}</td>
       <td><span class="status-badge ${stCls}">${stIcon} ${r.status_verifikasi||'Menunggu'}</span></td>
       <td class="col-act">
         <button class="action-btn view" onclick="openDetail('${n}')">🔍 Detail</button>
@@ -808,39 +893,9 @@ function openDetail(nomor) {
   const linkRekom = r.link_rekom         || '';
   const linkFolder= r.link_folder        || '';
 
-  // ── SECTION: Anggota Tim (all members, shown for both team & individu) ──
+  // ── isTeam flag (used in buildPesertaSection & doc section) ─────────────
   const isTeam = r.tipe_lomba === 'team';
-  let anggotaHTML = '';
-  if (anggota.length > 0) {
-    const sectionTitle = isTeam ? `👥 Anggota Tim (${anggota.length} orang)` : '📋 Dokumen Peserta';
-    anggotaHTML = `<div class="modal-section">
-      <div class="modal-section-title">${sectionTitle}</div>
-      ${anggota.map((a, i) => {
-        const role = isTeam ? (i === 0 ? '👑 Ketua Tim' : `Anggota ${i + 1}`) : '';
-        const nameEsc = esc(a.nama_lengkap || '-');
-        const fotoUrl = esc(a.link_foto       || '');
-        const ktpUrl  = esc(a.link_ktp        || '');
-        const sertUrl = esc(a.link_sertifikat || '');
-        return `<div class="member-mini">
-          ${isTeam ? `<div class="member-mini-head">
-            <div class="member-mini-num" style="${i===0?'background:var(--gold)':''}">${i+1}</div>
-            <strong>${nameEsc}</strong>
-            ${role ? `<span style="font-size:10px;color:var(--gold);margin-left:4px">${role}</span>` : ''}
-          </div>
-          <div style="font-size:12px;color:var(--gray-500);display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin-bottom:8px">
-            <span>NIK: ${esc(a.nik||'—')}</span><span>HP: ${esc(a.no_hp||'—')}</span>
-            <span>Lahir: ${esc((a.tempat_lahir||'') + ', ' + (a.tanggal_lahir||''))}</span>
-            <span>Usia: ${esc(a.umur_display||'—')}</span>
-          </div>` : ''}
-          <div style="display:flex;flex-wrap:wrap;gap:4px">
-            ${fotoUrl ? `<button class="doc-link" onclick="openDocPreview('${fotoUrl}','Foto - ${nameEsc}')">📸 Foto</button>` : '<span class="no-doc">Belum ada foto&nbsp;</span>'}
-            ${ktpUrl  ? `<button class="doc-link" onclick="openDocPreview('${ktpUrl}','KTP/KK - ${nameEsc}')">🪪 KTP/KK</button>` : '<span class="no-doc">Belum ada KTP&nbsp;</span>'}
-            ${sertUrl ? `<button class="doc-link" onclick="openDocPreview('${sertUrl}','Sertifikat - ${nameEsc}')">🏅 Sertifikat</button>` : ''}
-          </div>
-        </div>`;
-      }).join('')}
-    </div>`;
-  }
+  // anggotaHTML removed — all member display is handled by buildPesertaSection()
 
   // ── SECTION: Surat Rekomendasi ────────────────────────────────
   let rekomHTML = '';
@@ -867,25 +922,8 @@ function openDetail(nomor) {
       </div>
     </div>
 
-    <div class="modal-section">
-      <div class="modal-section-title">👤 Data Peserta${isTeam?' (Ketua)':''}</div>
-      <div class="detail-grid">
-        ${ef('Nama Lengkap',  r.nama_lengkap,   'nama_lengkap',   nomor)}
-        ${ef('NIK',           r.nik,            'nik',            nomor)}
-        ${ef('Tempat Lahir',  r.tempat_lahir,   'tempat_lahir',   nomor)}
-        ${ef('Tgl Lahir',     r.tanggal_lahir,  'tanggal_lahir',  nomor)}
-        ${ef('Usia',          r.umur_display,   null,             nomor)}
-        ${ef('Jenis Kelamin', r.jenis_kelamin,  'jenis_kelamin',  nomor)}
-        ${ef('No. HP',        r.no_hp,          'no_hp',          nomor)}
-        ${ef('Email',         r.email,          'email',          nomor)}
-        ${ef('Nama Bank',     r.nama_bank,      'nama_bank',      nomor)}
-        ${ef('No. Rekening',  r.nomor_rekening, 'nomor_rekening', nomor)}
-        ${ef('Nama Rekening', r.nama_rekening,  'nama_rekening',  nomor)}
-        ${ef('Alamat',        r.alamat,         'alamat',         nomor, true)}
-      </div>
-    </div>
+    ${buildPesertaSection(r, nomor, anggota, isTeam, adm.cabangConfig)}
 
-    ${anggotaHTML}
 
     <div class="modal-section">
       <div class="modal-section-title">📄 Berkas & Dokumen</div>
@@ -1171,6 +1209,99 @@ function toast(title, msg, type='info', dur=4000) {
 function esc(str) {
   return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+// ── Load cabang config for age requirement display in modal ──────────────
+function loadCabangConfig() {
+  jsonp(`${API_URL}?action=getConfig`, 'adminCfg', (data) => {
+    if (data && data.success && data.config) {
+      adm.cabangConfig = data.config;
+      log.info('cabangConfig loaded:', data.config.length, 'cabang');
+    }
+  });
+}
+
+// ── Build peserta section for detailModal (Fixes 2 & 3) ──────────────────
+// For individu: shows 1 member. For team: shows ALL members with full data.
+// Also shows age requirement from cabang config.
+function buildPesertaSection(r, nomor, anggota, isTeam, cabangConfig) {
+  // Find age requirement from cabang config
+  const cfg    = (cabangConfig||[]).find(c => c.cabang_lomba === r.cabang_lomba) || null;
+  const maxStr = cfg && cfg.umur_max_tahun < 99
+    ? `${cfg.umur_max_tahun} thn${cfg.umur_max_bulan?' '+cfg.umur_max_bulan+' bln':''}${cfg.umur_max_hari?' '+cfg.umur_max_hari+' hr':''}`
+    : '∞';
+  const reqStr = cfg
+    ? `<div style="font-size:11px;color:var(--gray-400);margin-top:4px">⚙️ Syarat cabang: maks. <strong style="color:var(--emerald)">${maxStr}</strong> per 1 Jul 2026${cfg.umur_min>0?' | min. '+cfg.umur_min+' thn':''}</div>`
+    : '';
+
+  if (!isTeam) {
+    // ── Individu: single member, use main row data + anggota[0] for files ─
+    const a = anggota[0] || {};
+    return `<div class="modal-section">
+      <div class="modal-section-title">👤 Data Peserta</div>
+      <div class="detail-grid">
+        ${ef('Nama Lengkap',  r.nama_lengkap,   'nama_lengkap',  nomor)}
+        ${ef('NIK',           r.nik,            'nik',           nomor)}
+        ${ef('Tempat Lahir',  r.tempat_lahir,   'tempat_lahir',  nomor)}
+        ${ef('Tgl Lahir',     r.tanggal_lahir,  'tanggal_lahir', nomor)}
+        <div class="detail-field">
+          <div class="lbl">Usia</div>
+          <div class="val">${esc(r.umur_display||'—')}</div>
+          ${reqStr}
+        </div>
+        ${ef('Jenis Kelamin', r.jenis_kelamin,  'jenis_kelamin', nomor)}
+        ${ef('No. HP',        r.no_hp,          'no_hp',         nomor)}
+        ${ef('Email',         r.email,          'email',         nomor)}
+        ${ef('Nama Bank',     r.nama_bank,      'nama_bank',     nomor)}
+        ${ef('No. Rekening',  r.nomor_rekening, 'nomor_rekening',nomor)}
+        ${ef('Nama Rekening', r.nama_rekening,  'nama_rekening', nomor)}
+        ${ef('Alamat',        r.alamat,         'alamat',        nomor, true)}
+      </div>
+    </div>`;
+  }
+
+  // ── Team: show ALL anggota with full data ──────────────────────────────
+  const cards = anggota.map((a, i) => {
+    const isKetua = i === 0;
+    const role    = isKetua ? '👑 Ketua Tim' : `Anggota ${i+1}`;
+    const fotoUrl = esc(a.link_foto       ||'');
+    const ktpUrl  = esc(a.link_ktp        ||'');
+    const sertUrl = esc(a.link_sertifikat ||'');
+    const nameEsc = esc(a.nama_lengkap    ||'-');
+    return `<div class="member-mini" style="margin-bottom:12px">
+      <div class="member-mini-head">
+        <div class="member-mini-num" style="${isKetua?'background:var(--gold)':''}">${i+1}</div>
+        <strong>${nameEsc}</strong>
+        <span style="font-size:10px;color:${isKetua?'var(--gold)':'var(--gray-400)'};margin-left:6px">${role}</span>
+      </div>
+      <div class="detail-grid" style="margin-top:10px">
+        <div class="detail-field"><div class="lbl">NIK</div><div class="val" style="font-family:monospace;font-size:12px">${esc(a.nik||'—')}</div></div>
+        <div class="detail-field"><div class="lbl">Jenis Kelamin</div><div class="val">${esc(a.jenis_kelamin||'—')}</div></div>
+        <div class="detail-field"><div class="lbl">Tempat Lahir</div><div class="val">${esc(a.tempat_lahir||'—')}</div></div>
+        <div class="detail-field">
+          <div class="lbl">Tanggal Lahir & Usia</div>
+          <div class="val">${esc(a.tanggal_lahir||'—')} <span style="color:var(--emerald);font-weight:600">(${esc(a.umur_display||'—')})</span></div>
+          ${reqStr}
+        </div>
+        <div class="detail-field"><div class="lbl">No. HP</div><div class="val">${esc(a.no_hp||'—')}</div></div>
+        <div class="detail-field"><div class="lbl">Email</div><div class="val">${esc(a.email||'—')}</div></div>
+        <div class="detail-field full"><div class="lbl">Alamat</div><div class="val">${esc(a.alamat||'—')}</div></div>
+        <div class="detail-field full">
+          <div class="lbl">Dokumen</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
+            ${fotoUrl?`<button class="doc-link" onclick="openDocPreview('${fotoUrl}','Foto - ${nameEsc}')">📸 Foto</button>`:'<span class="no-doc">Belum ada foto</span>'}
+            ${ktpUrl ?`<button class="doc-link" onclick="openDocPreview('${ktpUrl}', 'KTP - ${nameEsc}')">🪪 KTP/KK</button>`:'<span class="no-doc">Belum ada KTP</span>'}
+            ${sertUrl?`<button class="doc-link" onclick="openDocPreview('${sertUrl}','Sertifikat - ${nameEsc}')">🏅 Sertifikat</button>`:''}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `<div class="modal-section">
+    <div class="modal-section-title">👥 Data Semua Anggota Tim (${anggota.length} orang)</div>
+    ${cards}
+  </div>`;
+}
+
 function initDarkMode() {
   const toggle = document.getElementById('darkToggle');
   const saved  = localStorage.getItem('mtq-theme') || 'light';

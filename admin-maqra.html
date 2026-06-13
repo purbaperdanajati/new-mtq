@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Maqra – MTQ 2026</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
+  <style>
+    :root{
+      --em:#059669;--em-d:#047857;--em-light:#a7f3d0;--em-xs:#ecfdf5;--em-pale:#d1fae5;
+      --gold:#b45309;--gold-b:#fbbf24;--gold-p:#fffbeb;
+      --red:#dc2626;--red-p:#fef2f2;--red-light:#fca5a5;
+      --blue:#2563eb;
+      --g50:#f9fafb;--g100:#f3f4f6;--g200:#e5e7eb;--g300:#d1d5db;
+      --g400:#9ca3af;--g500:#6b7280;--g600:#4b5563;--g700:#374151;--g800:#1f2937;
+      --white:#ffffff;--r-sm:8px;--r-md:12px;--r-lg:16px;--r-xl:24px;
+      --shadow:0 4px 24px rgba(0,0,0,.08);
+    }
+    [data-theme="dark"]{
+      --white:#1a1f2e;--g50:#1e2435;--g100:#252b3b;--g200:#2d3448;
+      --g300:#374151;--g500:#9ca3af;--g600:#d1d5db;--g700:#e5e7eb;--g800:#f3f4f6;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--g50);color:var(--g800);min-height:100vh}
+
+    /* Navbar */
+    .navbar{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border-bottom:1px solid var(--g200);padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between}
+    [data-theme="dark"] .navbar{background:rgba(26,31,46,.96)}
+    .nav-logo{display:flex;align-items:center;gap:10px}.logo-text{font-weight:800;font-size:16px;color:var(--em)}.logo-sub{font-size:11px;color:var(--g400)}
+    .nav-links{list-style:none;display:flex;gap:4px}.nav-links a{padding:8px 14px;border-radius:var(--r-sm);text-decoration:none;color:var(--g600);font-size:14px;font-weight:500;transition:all .2s}.nav-links a:hover{background:var(--g100);color:var(--em)}
+    .dark-toggle{background:var(--g100);border:none;border-radius:var(--r-sm);width:36px;height:36px;cursor:pointer;font-size:16px}
+
+    /* Login gate */
+    .login-gate{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+    .login-card{background:var(--white);border-radius:var(--r-xl);box-shadow:var(--shadow);padding:40px;width:100%;max-width:400px;text-align:center}
+    .login-icon{font-size:48px;margin-bottom:12px}
+    .login-title{font-size:22px;font-weight:700;margin-bottom:6px}
+    .login-sub{font-size:14px;color:var(--g500);margin-bottom:28px}
+
+    /* Tabs */
+    .tab-bar{display:flex;gap:2px;background:var(--g100);border-radius:var(--r-md);padding:4px;margin-bottom:24px;flex-wrap:wrap}
+    .tab-btn{padding:10px 16px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;background:transparent;color:var(--g500);transition:all .2s;flex:1;text-align:center}
+    .tab-btn.active{background:var(--white);color:var(--em);box-shadow:0 2px 8px rgba(0,0,0,.08)}
+    .tab-pane{display:none}.tab-pane.active{display:block}
+
+    /* Layout */
+    .admin-layout{max-width:1200px;margin:0 auto;padding:88px 16px 80px}
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
+    @media(max-width:860px){.two-col{grid-template-columns:1fr}}
+
+    /* Card */
+    .card{background:var(--white);border-radius:var(--r-xl);box-shadow:var(--shadow);overflow:hidden;margin-bottom:24px}
+    .card-header{padding:18px 24px;border-bottom:1px solid var(--g100);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+    .card-title{font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+    .card-body{padding:20px}
+
+    /* Form */
+    .field-group{margin-bottom:14px}
+    .field-label{display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--g500);margin-bottom:5px}
+    .req{color:var(--red)}
+    .field-input,.field-select{width:100%;padding:10px 14px;border:1.5px solid var(--g200);border-radius:var(--r-sm);font-size:14px;color:var(--g800);background:var(--white);transition:all .2s;outline:none}
+    .field-input:focus,.field-select:focus{border-color:var(--em);box-shadow:0 0 0 3px rgba(5,150,105,.1)}
+    .field-textarea{width:100%;padding:10px 14px;border:1.5px solid var(--g200);border-radius:var(--r-sm);font-size:13px;font-family:monospace;line-height:1.7;min-height:240px;color:var(--g800);background:var(--white);transition:all .2s;outline:none;resize:vertical}
+    .field-textarea:focus{border-color:var(--em);box-shadow:0 0 0 3px rgba(5,150,105,.1)}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media(max-width:540px){.form-row{grid-template-columns:1fr}}
+
+    /* Buttons */
+    .btn{padding:10px 18px;border-radius:var(--r-sm);font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+    .btn-emerald{background:var(--em);color:#fff}.btn-emerald:hover{background:var(--em-d)}
+    .btn-outline{background:transparent;color:var(--g600);border:1.5px solid var(--g200)}.btn-outline:hover{border-color:var(--em);color:var(--em);background:var(--em-xs)}
+    .btn-red{background:var(--red);color:#fff}.btn-red:hover{background:#b91c1c}
+    .btn-gold{background:var(--gold-b);color:#fff}
+    .btn:disabled{opacity:.55;cursor:not-allowed}
+    .btn-sm{padding:7px 12px;font-size:12px}
+    .btn-xs{padding:4px 8px;font-size:11px}
+    .btn-w100{width:100%;justify-content:center}
+
+    /* Stats */
+    .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+    .stat-box{background:var(--g50);border-radius:var(--r-md);padding:14px;text-align:center;border:1px solid var(--g200)}
+    .stat-val{font-size:28px;font-weight:800;color:var(--em);margin-bottom:2px}
+    .stat-label{font-size:12px;color:var(--g400)}
+
+    /* Table */
+    .table-wrap{overflow-x:auto;border-radius:var(--r-md);border:1px solid var(--g200)}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    thead tr{background:var(--g50)}
+    th{padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--g400);border-bottom:1px solid var(--g200)}
+    td{padding:10px 14px;border-bottom:1px solid var(--g100);color:var(--g700)}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:var(--g50)}
+    .taken-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
+    .taken-yes{background:#d1fae5;color:#065f46}.taken-no{background:var(--g100);color:var(--g500)}
+
+    /* Global config status box */
+    .global-status-wrap{background:var(--g50);border:1.5px solid var(--g200);border-radius:var(--r-md);padding:16px;margin-bottom:20px}
+    .cfg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;display:inline-block}
+    .cfg-status{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
+
+    /* Override switch visual */
+    .override-tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:4px}
+    .override-tab{padding:8px;border:1.5px solid var(--g200);border-radius:var(--r-sm);font-size:13px;font-weight:600;cursor:pointer;text-align:center;transition:all .2s;background:var(--white);color:var(--g600)}
+    .override-tab.selected-auto{border-color:var(--em);background:var(--em-xs);color:var(--em)}
+    .override-tab.selected-open{border-color:#22c55e;background:#f0fdf4;color:#166534}
+    .override-tab.selected-close{border-color:var(--red);background:var(--red-p);color:var(--red)}
+
+    /* Hint text */
+    .bulk-hint{font-size:12px;color:var(--g400);margin-top:6px;line-height:1.6}
+
+    /* Loading */
+    .spinner{width:36px;height:36px;border:3px solid var(--g200);border-top-color:var(--em);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .loading-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:500;opacity:0;pointer-events:none;transition:opacity .3s}
+    .loading-overlay.show{opacity:1;pointer-events:all}
+    .loading-box{background:var(--white);border-radius:var(--r-lg);padding:28px;text-align:center;width:260px}
+
+    /* Toast */
+    .toast-container{position:fixed;bottom:24px;right:24px;z-index:600;display:flex;flex-direction:column;gap:8px}
+    .toast{display:flex;align-items:flex-start;gap:10px;background:var(--white);border-radius:var(--r-md);padding:14px 16px;box-shadow:0 8px 32px rgba(0,0,0,.15);max-width:320px;animation:toastIn .3s ease;border-left:4px solid var(--g300)}
+    .toast.success{border-left-color:var(--em)}.toast.error{border-left-color:var(--red)}.toast.warning{border-left-color:var(--gold-b)}
+    .toast-icon{font-size:18px;flex-shrink:0}
+    .toast-title{font-size:14px;font-weight:700;color:var(--g800)}.toast-msg{font-size:13px;color:var(--g500);margin-top:2px}
+    .toast-close{background:none;border:none;cursor:pointer;color:var(--g400);font-size:16px;margin-left:auto;flex-shrink:0}
+    .toast.removing{animation:toastOut .25s ease forwards}
+    @keyframes toastIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
+    @keyframes toastOut{to{opacity:0;transform:translateX(16px)}}
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="nav-logo">
+    <span style="font-size:24px">📖</span>
+    <div><div class="logo-text">MTQ 2026 Admin</div><div class="logo-sub">Manajemen Maqra</div></div>
+  </div>
+  <ul class="nav-links">
+    <li><a href="admin.html">← Panel Admin</a></li>
+    <li><a href="index.html">🏠 Beranda</a></li>
+  </ul>
+  <button class="dark-toggle" id="darkToggle">🌙</button>
+</nav>
+
+<!-- LOGIN GATE -->
+<div id="loginGate" class="login-gate">
+  <div class="login-card">
+    <div class="login-icon">🔐</div>
+    <div class="login-title">Login Admin Maqra</div>
+    <div class="login-sub">Masukkan password admin untuk mengakses manajemen maqra</div>
+    <div class="field-group" style="text-align:left">
+      <input type="password" class="field-input" id="loginPw"
+             placeholder="Password Admin" style="margin-bottom:12px">
+      <button class="btn btn-emerald btn-w100" onclick="doLogin()">🔑 Masuk</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN ADMIN AREA -->
+<div id="adminArea" style="display:none">
+<div class="admin-layout">
+
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('tabMaqra')">📖 Daftar Maqra</button>
+    <button class="tab-btn"        onclick="switchTab('tabConfig')">⚙️ Konfigurasi Waktu</button>
+    <button class="tab-btn"        onclick="switchTab('tabHasil')">📊 Hasil Pengambilan</button>
+  </div>
+
+  <!-- ══ TAB 1: Daftar Maqra ══════════════════════════════════ -->
+  <div class="tab-pane active" id="tabMaqra">
+    <div class="two-col">
+
+      <!-- Input maqra -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">➕ Tambah / Ganti Maqra</div>
+        </div>
+        <div class="card-body">
+          <div class="field-group">
+            <label class="field-label">Cabang Lomba <span class="req">*</span></label>
+            <select class="field-select" id="maqraCabang">
+              <option value="">-- Pilih Cabang --</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Daftar Maqra <span class="req">*</span></label>
+            <textarea class="field-textarea" id="maqraBulk"
+              placeholder="Satu baris = satu maqra. Contoh:&#10;Al-Baqarah: 1-5&#10;Al-Baqarah: 6-10&#10;Ali Imran: 1-8&#10;An-Nisa: 1-5"></textarea>
+            <div class="bulk-hint">
+              📌 Format bebas — satu baris = satu maqra<br>
+              ⚠️ Centang "Ganti semua" untuk menghapus maqra lama yang belum diambil
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Keterangan Tambahan (opsional)</label>
+            <input class="field-input" id="maqraDetailPrefix" placeholder="mis: Juz 1, tartil, hafalannya, dll">
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+            <input type="checkbox" id="maqraReplace" style="width:16px;height:16px;accent-color:var(--em)">
+            <label for="maqraReplace" style="font-size:13px;cursor:pointer;color:var(--g600)">
+              Ganti semua maqra yang belum diambil untuk cabang ini
+            </label>
+          </div>
+          <button class="btn btn-emerald btn-w100" onclick="saveMaqra()">💾 Simpan Maqra</button>
+        </div>
+      </div>
+
+      <!-- Stats + Filter + Table -->
+      <div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📊 Statistik</div>
+            <button class="btn btn-sm btn-outline" onclick="loadMaqraData()">🔄 Refresh</button>
+          </div>
+          <div class="card-body">
+            <div class="stats-row">
+              <div class="stat-box">
+                <div class="stat-val" id="statTotal">—</div>
+                <div class="stat-label">Total Maqra</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-val" id="statTersedia" style="color:var(--em)">—</div>
+                <div class="stat-label">Tersedia</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-val" id="statDiambil" style="color:var(--gold)">—</div>
+                <div class="stat-label">Diambil</div>
+              </div>
+            </div>
+            <div class="field-group" style="margin-bottom:0">
+              <label class="field-label">Filter Cabang</label>
+              <select class="field-select" id="filterCabang" onchange="filterMaqraTable()">
+                <option value="">-- Semua Cabang --</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><div class="card-title">📋 Daftar Maqra</div></div>
+          <div style="padding:0">
+            <div class="table-wrap">
+              <table id="maqraTable">
+                <thead><tr>
+                  <th>#</th><th>Cabang</th><th>Maqra</th><th>Status</th><th>Aksi</th>
+                </tr></thead>
+                <tbody id="maqraTableBody">
+                  <tr><td colspan="5" style="text-align:center;padding:24px;color:var(--g400)">Memuat data...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ TAB 2: Konfigurasi Waktu (GLOBAL) ════════════════════ -->
+  <div class="tab-pane" id="tabConfig">
+    <div class="two-col">
+
+      <!-- Form konfigurasi -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">⚙️ Jadwal Pengambilan Maqra</div>
+        </div>
+        <div class="card-body">
+
+          <!-- Info: global config -->
+          <div style="background:var(--em-xs);border:1px solid var(--em-light);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:20px;font-size:13px;color:#065f46">
+            <strong>ℹ️ Satu jadwal untuk semua cabang</strong><br>
+            Konfigurasi ini berlaku secara global untuk seluruh cabang lomba. Peserta terverifikasi di
+            semua cabang dapat mengambil maqra dalam rentang waktu yang sama.
+          </div>
+
+          <div class="form-row">
+            <div class="field-group">
+              <label class="field-label">Waktu Buka <span class="req">*</span></label>
+              <input type="datetime-local" class="field-input" id="cfgBuka">
+            </div>
+            <div class="field-group">
+              <label class="field-label">Waktu Tutup <span class="req">*</span></label>
+              <input type="datetime-local" class="field-input" id="cfgTutup">
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Override Manual</label>
+            <div class="override-tabs">
+              <div class="override-tab selected-auto" id="ov_auto" onclick="setOverride('')">
+                🔄 Otomatis
+              </div>
+              <div class="override-tab" id="ov_open" onclick="setOverride('buka')">
+                ✅ Paksa Buka
+              </div>
+              <div class="override-tab" id="ov_close" onclick="setOverride('tutup')">
+                🔒 Paksa Tutup
+              </div>
+            </div>
+            <input type="hidden" id="cfgOverride" value="">
+            <div style="font-size:11px;color:var(--g400);margin-top:6px">
+              Override akan mengabaikan pengaturan jadwal di atas
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Keterangan (opsional)</label>
+            <input class="field-input" id="cfgKeterangan" placeholder="catatan untuk admin">
+          </div>
+
+          <button class="btn btn-emerald btn-w100" onclick="saveConfig()">
+            💾 Simpan Konfigurasi Waktu
+          </button>
+        </div>
+      </div>
+
+      <!-- Status saat ini -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🔴 Status Pengambilan Maqra Saat Ini</div>
+          <button class="btn btn-sm btn-outline" onclick="loadMaqraData()">🔄 Refresh</button>
+        </div>
+        <div class="card-body">
+          <div class="global-status-wrap" id="globalStatusBox">
+            <div style="color:var(--g400);font-size:13px">Memuat status...</div>
+          </div>
+          <div style="font-size:13px;color:var(--g500);line-height:1.7">
+            <p>🟢 <strong>Buka</strong> — Peserta terverifikasi dapat mengambil maqra</p>
+            <p>🔴 <strong>Tutup</strong> — Pengambilan maqra dinonaktifkan</p>
+            <p>⚡ <strong>Override Buka</strong> — Dibuka paksa meskipun di luar jadwal</p>
+            <p>⛔ <strong>Override Tutup</strong> — Ditutup paksa meskipun dalam jadwal</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ TAB 3: Hasil Pengambilan ═════════════════════════════ -->
+  <div class="tab-pane" id="tabHasil">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">📊 Hasil Pengambilan Maqra</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-sm btn-outline" onclick="loadMaqraData()">🔄 Refresh</button>
+          <button class="btn btn-sm btn-emerald" onclick="exportHasil()">⬇️ Export CSV</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="field-group">
+          <input class="field-input" id="searchHasil"
+                 placeholder="🔍 Cari nama / nomor / maqra..." oninput="filterHasil()">
+        </div>
+      </div>
+      <div style="padding:0">
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>No.</th><th>Nomor Daftar</th><th>Nama</th><th>Kecamatan</th>
+              <th>Cabang</th><th>Maqra</th><th>Waktu</th>
+            </tr></thead>
+            <tbody id="hasilTableBody">
+              <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--g400)">Memuat data...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-box">
+    <div class="spinner"></div>
+    <p style="margin-top:12px;font-size:14px;font-weight:700;color:var(--g700)" id="loadingMsg">Memuat...</p>
+  </div>
+</div>
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="js/config.js"></script>
+<script src="js/admin-maqra.js"></script>
+<script>
+// Override tab visual toggle
+function setOverride(val) {
+  document.getElementById('cfgOverride').value = val;
+  document.getElementById('ov_auto') .className = 'override-tab' + (val===''     ? ' selected-auto'  : '');
+  document.getElementById('ov_open') .className = 'override-tab' + (val==='buka' ? ' selected-open'  : '');
+  document.getElementById('ov_close').className = 'override-tab' + (val==='tutup'? ' selected-close' : '');
+}
+// Sync hidden input → visual on load (called from renderGlobalConfigSection)
+document.addEventListener('DOMContentLoaded', () => {
+  const hidden = document.getElementById('cfgOverride');
+  if (hidden) setOverride(hidden.value || '');
+  // Also re-sync after loadMaqraData populates the hidden field
+  const orig = window.renderGlobalConfigSection;
+  if (typeof orig === 'function') {
+    window.renderGlobalConfigSection = function() {
+      orig();
+      const v = document.getElementById('cfgOverride')?.value || '';
+      setOverride(v);
+    };
+  }
+});
+</script>
+</body>
+</html>

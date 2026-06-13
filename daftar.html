@@ -269,10 +269,20 @@
 
 <!-- LOADING -->
 <div class="loading-overlay" id="loadingOverlay">
-  <div class="loading-box">
+  <div class="loading-box" style="width:340px;max-width:90vw">
     <div class="spinner"></div>
-    <p class="loading-msg">Memproses pendaftaran...</p>
-    <small class="loading-sub">Mohon tunggu, jangan tutup halaman ini</small>
+    <p class="loading-msg" style="margin:12px 0 4px;font-weight:700;font-size:15px">Memproses pendaftaran...</p>
+    <small class="loading-sub" style="color:var(--gray-400);font-size:13px">Mohon tunggu, jangan tutup halaman ini</small>
+    <!-- Progress bar -->
+    <div style="margin-top:16px;width:100%">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:11px;color:var(--gray-400);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Progress</span>
+        <span class="progress-pct" style="font-size:13px;font-weight:700;color:var(--emerald);font-variant-numeric:tabular-nums"></span>
+      </div>
+      <div style="background:var(--gray-200);border-radius:999px;height:8px;overflow:hidden">
+        <div class="progress-bar-inner" style="height:100%;width:0%;background:linear-gradient(90deg,var(--emerald),#10b981);border-radius:999px;transition:width .4s ease"></div>
+      </div>
+    </div>
   </div>
 </div>
 

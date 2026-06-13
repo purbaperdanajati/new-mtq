@@ -4,7 +4,7 @@
 //  Handles individu + team, age validation per member
 // ============================================================
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbzAP1q9Ol0ZYTEx3tlW3dcQGtwvzcaCBgmayYwAKeZaDmzLUDutW-Fwo55h_Jz3vFpG/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwl5y16V9Fcxub3AIScpE86ZwYiPBnRVuXWgQqonhTDat8dJoMnspEw1ifaCouDDixz/exec';
 
 // ── State ─────────────────────────────────────────────────────
 const state = {
@@ -52,19 +52,73 @@ async function loadConfig() {
   } catch {
     // Fallback config
     state.config = [
-      { cabang_lomba:'Tilawah Al-Qur\'an', golongan:'Anak',    tipe:'individu', umur_min:7,  umur_max:12, kuota:30, status_aktif:'Aktif' },
-      { cabang_lomba:'Tilawah Al-Qur\'an', golongan:'Remaja',  tipe:'individu', umur_min:13, umur_max:17, kuota:30, status_aktif:'Aktif' },
-      { cabang_lomba:'Tilawah Al-Qur\'an', golongan:'Dewasa',  tipe:'individu', umur_min:18, umur_max:45, kuota:20, status_aktif:'Aktif' },
-      { cabang_lomba:'Tilawah Al-Qur\'an', golongan:'Cacat',   tipe:'individu', umur_min:7,  umur_max:99, kuota:10, status_aktif:'Aktif' },
-      { cabang_lomba:'Tahfidz Al-Qur\'an', golongan:'1 Juz',   tipe:'individu', umur_min:7,  umur_max:15, kuota:25, status_aktif:'Aktif' },
-      { cabang_lomba:'Tahfidz Al-Qur\'an', golongan:'5 Juz',   tipe:'individu', umur_min:10, umur_max:22, kuota:20, status_aktif:'Aktif' },
-      { cabang_lomba:'Tahfidz Al-Qur\'an', golongan:'10 Juz',  tipe:'individu', umur_min:13, umur_max:35, kuota:15, status_aktif:'Aktif' },
-      { cabang_lomba:'Tahfidz Al-Qur\'an', golongan:'30 Juz',  tipe:'individu', umur_min:15, umur_max:50, kuota:10, status_aktif:'Aktif' },
-      { cabang_lomba:'Khat Al-Qur\'an',    golongan:'Naskhi',  tipe:'individu', umur_min:10, umur_max:25, kuota:20, status_aktif:'Aktif' },
-      { cabang_lomba:'Khat Al-Qur\'an',    golongan:'Hiasan',  tipe:'individu', umur_min:10, umur_max:35, kuota:15, status_aktif:'Aktif' },
-      { cabang_lomba:'Fahmil Qur\'an',     golongan:'Remaja',  tipe:'team',     umur_min:13, umur_max:18, kuota:15, status_aktif:'Aktif' },
-      { cabang_lomba:'Syarhil Qur\'an',    golongan:'Remaja',  tipe:'team',     umur_min:13, umur_max:22, kuota:15, status_aktif:'Aktif' },
-      { cabang_lomba:'MFQ',                golongan:'Remaja',  tipe:'team',     umur_min:13, umur_max:18, kuota:10, status_aktif:'Aktif' },
+      // Tartil
+      { cabang_lomba:"Tartil Al Qur'an Putra", tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:12, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+      { cabang_lomba:"Tartil Al Qur'an Putri", tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:12, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+      // Tilawah
+      { cabang_lomba:'Tilawah Anak-anak Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:14, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+      { cabang_lomba:'Tilawah Anak-anak Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:14, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+      { cabang_lomba:'Tilawah Remaja Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:24, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+      { cabang_lomba:'Tilawah Remaja Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:24, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+      { cabang_lomba:'Tilawah Dewasa Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:40, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+      { cabang_lomba:'Tilawah Dewasa Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:40, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+      // Qira'at
+      { cabang_lomba:"Qira'at Mujawwad Putra", tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:40, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+      { cabang_lomba:"Qira'at Mujawwad Putri", tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:40, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+      // Hafalan
+      { cabang_lomba:'Hafalan 1 Juz Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:15, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+      { cabang_lomba:'Hafalan 1 Juz Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:15, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+      { cabang_lomba:'Hafalan 5 Juz Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:20, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+      { cabang_lomba:'Hafalan 5 Juz Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:20, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+      { cabang_lomba:'Hafalan 10 Juz Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:20, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+      { cabang_lomba:'Hafalan 10 Juz Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:20, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+      { cabang_lomba:'Hafalan 20 Juz Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:22, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+      { cabang_lomba:'Hafalan 20 Juz Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:22, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+      { cabang_lomba:'Hafalan 30 Juz Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:22, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+      { cabang_lomba:'Hafalan 30 Juz Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:22, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+      // Tafsir
+      { cabang_lomba:'Tafsir Arab Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:22, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+      { cabang_lomba:'Tafsir Arab Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:22, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+      { cabang_lomba:'Tafsir Indonesia Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+      { cabang_lomba:'Tafsir Indonesia Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+      { cabang_lomba:'Tafsir Inggris Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+      { cabang_lomba:'Tafsir Inggris Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+      // Kaligrafi
+      { cabang_lomba:'Kaligrafi Naskah Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+      { cabang_lomba:'Kaligrafi Naskah Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+      { cabang_lomba:'Kaligrafi Hiasan Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+      { cabang_lomba:'Kaligrafi Hiasan Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+      { cabang_lomba:'Kaligrafi Dekorasi Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+      { cabang_lomba:'Kaligrafi Dekorasi Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+      { cabang_lomba:'Kaligrafi Kontemporer Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+      { cabang_lomba:'Kaligrafi Kontemporer Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+      // KTIQ
+      { cabang_lomba:'KTIQ Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:24, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+      { cabang_lomba:'KTIQ Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:24, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+      // Tim
+      { cabang_lomba:"Fahm Al Qur'an Putra", tipe:'team', gender:'L', umur_min:0, umur_max_tahun:18, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+      { cabang_lomba:"Fahm Al Qur'an Putri", tipe:'team', gender:'P', umur_min:0, umur_max_tahun:18, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+      { cabang_lomba:"Syarh Al Qur'an Putra", tipe:'team', gender:'L', umur_min:0, umur_max_tahun:18, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+      { cabang_lomba:"Syarh Al Qur'an Putri", tipe:'team', gender:'P', umur_min:0, umur_max_tahun:18, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' }
     ];
     showToast('Peringatan','Menggunakan data default (server tidak terjangkau)','warning');
   }

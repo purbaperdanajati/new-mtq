@@ -4,21 +4,33 @@
 // ============================================================
 
 var CABANG_PREFIX = [
-  { key:'Tilawah Anak',         prefix:'TWA' },
-  { key:'Tilawah Remaja',       prefix:'TWR' },
-  { key:'Tilawah Dewasa',       prefix:'TWD' },
-  { key:'Tilawah Cacat',        prefix:'TWC' },
-  { key:'Tahfidz 1 Juz',        prefix:'TH1' },
-  { key:'Tahfidz 5 Juz',        prefix:'TH5' },
-  { key:'Tahfidz 10 Juz',       prefix:'T10' },
-  { key:'Tahfidz 20 Juz',       prefix:'T20' },
-  { key:'Tahfidz 30 Juz',       prefix:'T30' },
-  { key:'Khat Naskhi',          prefix:'KHN' },
-  { key:'Khat Hiasan Mushaf',   prefix:'KHH' },
-  { key:"Fahmil Qur'an",        prefix:'FHM' },
-  { key:"Syarhil Qur'an",       prefix:'SYR' },
-  { key:'MFQ',                  prefix:'MFQ' },
-  { key:'Tartil',               prefix:'TTL' },
+  { key:"Tartil Al Qur'an",         prefix:'TA' },
+
+  { key:'Tilawah Anak-anak',        prefix:'TLA' },
+  { key:'Tilawah Remaja',           prefix:'TLR' },
+  { key:'Tilawah Dewasa',           prefix:'TLD' },
+
+  { key:"Qira'at Mujawwad",         prefix:'QM' },
+
+  { key:'Hafalan 1 Juz',            prefix:'H1J' },
+  { key:'Hafalan 5 Juz',            prefix:'H5J' },
+  { key:'Hafalan 10 Juz',           prefix:'H10J' },
+  { key:'Hafalan 20 Juz',           prefix:'H20J' },
+  { key:'Hafalan 30 Juz',           prefix:'H30J' },
+
+  { key:'Tafsir Arab',              prefix:'TFA' },
+  { key:'Tafsir Indonesia',         prefix:'TFI' },
+  { key:'Tafsir Inggris',           prefix:'TFE' },
+
+  { key:'Kaligrafi Naskah',         prefix:'KN' },
+  { key:'Kaligrafi Hiasan',         prefix:'KH' },
+  { key:'Kaligrafi Dekorasi',       prefix:'KD' },
+  { key:'Kaligrafi Kontemporer',    prefix:'KK' },
+
+  { key:'KTIQ',                     prefix:'KTIQ' },
+
+  { key:"Fahm Al Qur'an",           prefix:'FAQ' },
+  { key:"Syarh Al Qur'an",          prefix:'SAQ' },
 ];
 
 function getCabangPrefix_(cabangLomba) {
@@ -33,42 +45,108 @@ function getCabangPrefix_(cabangLomba) {
 // Replace the doGet switch in api.gs with this version
 
 function doGet(e) {
-  var action = (e && e.parameter) ? (e.parameter.action||'') : '';
-  logInfo('api','doGet',{action:action});
+  var params   = (e && e.parameter) ? e.parameter : {};
+  var action   = params.action   || '';
+  var callback = params.callback || '';
+ 
+  logInfo('api', 'doGet', { action: action, hasPostData: !!params.postData });
   var result;
+ 
   try {
-    switch(action) {
-      // ── Public endpoints ──────────────────────────────────
-      case 'ping'         : result = {success:true, pong:true, ts:new Date().toISOString()}; break;
-      case 'getConfig'      : result = apiGetConfig_();                   break;
-      case 'getStats'       : result = apiGetStats_();                    break;
-      case 'getQuota'       : result = apiGetQuota_(e.parameter);         break;
-      case 'checkDuplicate' : result = apiCheckDuplicate_(e.parameter);   break;
-      case 'checkNIK'       : result = apiCheckNIK_(e.parameter);         break;
-      case 'initSheets'     : result = {success:true,msg:initAllSheets()}; break;
-      case 'debugConfig'    : result = apiDebugConfig_();                  break;
-
-      // ── Admin endpoints (all JSONP GET — token validated inside) ──
-      case 'adminLogin'     : result = apiAdminLogin_(e.parameter);        break;
-      case 'getAllPendaftar' : result = apiGetAll_(e.parameter);            break;
-      case 'updateStatus'   : result = apiUpdateStatusGet_(e.parameter);   break;
-      case 'editPeserta'    : result = apiEditPesertaGet_(e.parameter);    break;
-      case 'deactivate'     : result = apiDeactivateGet_(e.parameter);     break;
-
-      default: result = {success:true,message:'MTQ 2026 API aktif',event:EVENT_INFO};
+    // ── JSONP-POST tunnel ─────────────────────────────────
+    // Frontend mengirim payload JSON sebagai ?postData=...
+    // agar tidak ada CORS preflight (fetch/XHR).
+    if (params.postData) {
+      var body;
+      try { body = JSON.parse(decodeURIComponent(params.postData)); }
+      catch(e1) { body = JSON.parse(params.postData); }
+      result = _dispatchPost(body);
+ 
+    } else {
+      // ── Normal GET dispatch ────────────────────────────
+      switch (action) {
+        // Public
+        case 'ping'          : result = { success:true, pong:true, ts:new Date().toISOString() }; break;
+        case 'getConfig'     : result = apiGetConfig_();                    break;
+        case 'getStats'      : result = apiGetStats_();                     break;
+        case 'getQuota'      : result = apiGetQuota_(params);               break;
+        case 'checkDuplicate': result = apiCheckDuplicate_(params);         break;
+        case 'checkNIK'      : result = apiCheckNIK_v2_(params);            break;
+        case 'initSheets'    : result = { success:true, msg: initAllSheets() }; break;
+        case 'debugConfig'   : result = apiDebugConfig_();                  break;
+ 
+        // Admin (token validated inside each function)
+        case 'adminLogin'    : result = apiAdminLogin_(params);             break;
+        case 'getAllPendaftar': result = apiGetAll_(params);                 break;
+        case 'updateStatus'  : result = apiUpdateStatusGet_(params);        break;
+        case 'editPeserta'   : result = apiEditPesertaGet_(params);         break;
+        case 'deactivate'    : result = apiDeactivateGet_(params);          break;
+ 
+        // ── NEW: Maqra (public) ──────────────────────────
+        case 'getMaqraStatus': result = apiGetMaqraStatus_(params);         break;
+ 
+        // ── NEW: Maqra (admin, token validated inside) ───
+        case 'getMaqraAdmin' : result = apiGetMaqraAdmin_(params);          break;
+ 
+        default: result = { success:true, message:'MTQ 2026 API aktif', event:EVENT_INFO };
+      }
     }
-  } catch(err) {
-    logError('api','doGet ERROR: '+err.message+' | '+err.stack);
-    result = {success:false,message:err.message};
+  } catch (err) {
+    logError('api', 'doGet ERROR: ' + err.message + ' | ' + err.stack);
+    result = { success:false, message: err.message };
   }
-  var ss=null; try{ss=SpreadsheetApp.openById(SPREADSHEET_ID);}catch(e2){}
+ 
+  var ss = null;
+  try { ss = SpreadsheetApp.openById(SPREADSHEET_ID); } catch(e2) {}
   _flushLog(ss);
-  if (e && e.parameter && e.parameter.callback) {
+ 
+  if (callback) {
     return ContentService
-      .createTextOutput(e.parameter.callback+'('+JSON.stringify(result)+')')
+      .createTextOutput(callback + '(' + JSON.stringify(result) + ')')
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
   return jsonResp_(result);
+}
+
+function dispatchGet_(params, action) {
+  switch (action) {
+    // Public
+    case 'ping'          : return { success:true, pong:true, ts:new Date().toISOString() };
+    case 'getConfig'     : return apiGetConfig_();
+    case 'getStats'      : return apiGetStats_();
+    case 'getQuota'      : return apiGetQuota_(params);
+    case 'checkDuplicate': return apiCheckDuplicate_(params);
+    case 'checkNIK'      : return apiCheckNIK_(params);
+    case 'initSheets'    : return { success:true, msg: initAllSheets() };
+    case 'debugConfig'   : return apiDebugConfig_();
+ 
+    // Maqra (public)
+    case 'getMaqraStatus': return apiGetMaqraStatus_(params);
+ 
+    // Admin (GET)
+    case 'adminLogin'    : return apiAdminLogin_(params);
+    case 'getAllPendaftar': return apiGetAll_(params);
+    case 'updateStatus'  : return apiUpdateStatusGet_(params);
+    case 'editPeserta'   : return apiEditPesertaGet_(params);
+    case 'deactivate'    : return apiDeactivateGet_(params);
+    case 'getMaqraAdmin' : return apiGetMaqraAdmin_(params);
+ 
+    default: return { success:true, message:'MTQ 2026 API aktif' };
+  }
+}
+
+function _dispatchPost(body) {
+  var action = String(body.action || '');
+  switch (action) {
+    case 'register'       : return apiRegister_(body);
+    // ── NEW: Maqra ──────────────────────────────────────────
+    case 'ambilMaqra'     : return apiAmbilMaqra_(body);
+    case 'saveMaqra'      : return apiSaveMaqraAdmin_(body);
+    case 'deleteMaqra'    : return apiDeleteMaqraAdmin_(body);
+    case 'saveMaqraConfig': return apiSaveMaqraConfig_(body);
+    case 'perbaikan'      : return apiPerbaikan_(body);
+    default: return { success:false, message:'Unknown action: ' + action };
+  }
 }
 
 // doPost kept for registration only (large base64 payload)
@@ -76,17 +154,14 @@ function doPost(e) {
   var result;
   try {
     var body = JSON.parse(e.postData.contents);
-    logInfo('api','doPost action: '+body.action);
-    if (body.action === 'register') {
-      result = apiRegister_(body);
-    } else {
-      result = {success:false, message:'Unknown POST action: '+body.action};
-    }
-  } catch(err) {
-    logError('api','doPost ERROR: '+err.message);
-    result = {success:false, message:err.message};
+    logInfo('api', 'doPost action: ' + body.action);
+    result = _dispatchPost(body);
+  } catch (err) {
+    logError('api', 'doPost ERROR: ' + err.message);
+    result = { success:false, message: err.message };
   }
-  var ss=null; try{ss=SpreadsheetApp.openById(SPREADSHEET_ID);}catch(e2){}
+  var ss = null;
+  try { ss = SpreadsheetApp.openById(SPREADSHEET_ID); } catch(e2) {}
   _flushLog(ss);
   return jsonResp_(result);
 }
@@ -196,12 +271,145 @@ function apiCheckDuplicate_(params) {
 
 // ── checkNIK (FIX #3) ─────────────────────────────────────────
 function apiCheckNIK_(params) {
-  var nik = String(params.nik||'').trim();
-  if (!nik) return { success:false, message:'NIK kosong' };
+  var nik = String(params.nik || '').trim();
+  if (!nik) return { success:false, message:'Parameter NIK diperlukan' };
+ 
+  var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(SHEET_PENDAFTAR);
+  if (!sheet) return { success:false, found:false, message:'Sheet tidak ditemukan' };
+ 
+  var lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return { success:true, found:false };
+ 
+  var rows = sheet.getRange(2, 1, lastRow - 1, PENDAFTAR_HEADERS.length).getValues();
+ 
+  for (var i = 0; i < rows.length; i++) {
+    var row    = rows[i];
+    var rowNIK = String(row[COL.NIK] || '').trim();
+ 
+    // Cek NIK ketua / individu
+    if (rowNIK === nik) {
+      return buildNIKResponse_(row, nik);
+    }
+ 
+    // Cek NIK anggota tim (dari kolom ANGGOTA_JSON)
+    var anggotaJson = row[COL.ANGGOTA_JSON] || '';
+    if (anggotaJson) {
+      try {
+        var anggota = JSON.parse(anggotaJson);
+        for (var j = 0; j < anggota.length; j++) {
+          if (String(anggota[j].nik || '').trim() === nik) {
+            return buildNIKResponse_(row, nik, anggota, j);
+          }
+        }
+      } catch (e2) {}
+    }
+  }
+ 
+  return { success:true, found:false };
+}
+
+function apiCheckNIK_v2_(params) {
+  var nik = String(params.nik || '').trim();
+  if (!nik) return { success:false, message:'NIK tidak boleh kosong' };
+ 
   var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
   var sheet = getOrCreateSheet_(ss, SHEET_PENDAFTAR, PENDAFTAR_HEADERS);
-  var check = checkNIKDuplicate_(sheet, [nik]);
-  return { success:true, isDuplicate:check.isDuplicate, nik:nik, msg:check.msg||'' };
+  var lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return { success:true, found:false };
+ 
+  var rows = sheet.getRange(2, 1, lastRow - 1, PENDAFTAR_HEADERS.length).getValues();
+ 
+  for (var i = 0; i < rows.length; i++) {
+    var row    = rows[i];
+    var rowNIK = String(row[COL.NIK] || '').trim();
+ 
+    // Ketua / individu
+    if (rowNIK === nik) {
+      return _buildNIKRecord(row, nik);
+    }
+ 
+    // Cek anggota tim di ANGGOTA_JSON
+    var anggotaRaw = row[COL.ANGGOTA_JSON];
+    if (anggotaRaw) {
+      try {
+        var anggota = JSON.parse(anggotaRaw);
+        for (var j = 0; j < anggota.length; j++) {
+          if (String(anggota[j].nik || '').trim() === nik) {
+            return _buildNIKRecord(row, nik, anggota, j);
+          }
+        }
+      } catch (pe) {}
+    }
+  }
+ 
+  return { success:true, found:false };
+}
+
+function _buildNIKRecord(row, nik, anggotaArr, anggotaIdx) {
+  var anggota = [];
+  try {
+    if (row[COL.ANGGOTA_JSON]) anggota = JSON.parse(row[COL.ANGGOTA_JSON]);
+  } catch(e) {}
+ 
+  return {
+    success: true,
+    found  : true,
+    record : {
+      nomor_pendaftaran : String(row[COL.NOMOR_PENDAFTARAN] || ''),
+      tipe_lomba        : String(row[COL.TIPE_LOMBA]        || 'individu'),
+      nama_tim          : String(row[COL.NAMA_TIM]          || ''),
+      kecamatan         : String(row[COL.KECAMATAN]         || ''),
+      cabang_lomba      : String(row[COL.CABANG_LOMBA]      || ''),
+      nama_lengkap      : String(row[COL.NAMA_LENGKAP]      || ''),
+      nik               : String(row[COL.NIK]               || ''),
+      tempat_lahir      : String(row[COL.TEMPAT_LAHIR]      || ''),
+      tanggal_lahir     : String(row[COL.TANGGAL_LAHIR]     || ''),
+      jenis_kelamin     : String(row[COL.JENIS_KELAMIN]     || ''),
+      alamat            : String(row[COL.ALAMAT]            || ''),
+      no_hp             : String(row[COL.NO_HP]             || ''),
+      email             : String(row[COL.EMAIL]             || ''),
+      status_verifikasi : String(row[COL.STATUS_VERIFIKASI] || 'Menunggu'),
+      catatan           : String(row[COL.CATATAN]           || ''),
+      anggota           : anggota,
+      nik_pencari       : nik,
+      is_ketua          : anggotaIdx === undefined || anggotaIdx === 0,
+    }
+  };
+}
+
+function buildNIKResponse_(row, nik, anggota, anggotaIdx) {
+  var anggotaArr = [];
+  try {
+    if (row[COL.ANGGOTA_JSON]) {
+      anggotaArr = JSON.parse(row[COL.ANGGOTA_JSON]);
+    }
+  } catch(e) {}
+ 
+  return {
+    success: true,
+    found  : true,
+    record : {
+      nomor_pendaftaran : String(row[COL.NOMOR_PENDAFTARAN] || ''),
+      tipe_lomba        : String(row[COL.TIPE_LOMBA]        || 'individu'),
+      nama_tim          : String(row[COL.NAMA_TIM]          || ''),
+      kecamatan         : String(row[COL.KECAMATAN]         || ''),
+      cabang_lomba      : String(row[COL.CABANG_LOMBA]      || ''),
+      nama_lengkap      : String(row[COL.NAMA_LENGKAP]      || ''),
+      nik               : String(row[COL.NIK]               || ''),
+      tempat_lahir      : String(row[COL.TEMPAT_LAHIR]      || ''),
+      tanggal_lahir     : String(row[COL.TANGGAL_LAHIR]     || ''),
+      jenis_kelamin     : String(row[COL.JENIS_KELAMIN]     || ''),
+      alamat            : String(row[COL.ALAMAT]            || ''),
+      no_hp             : String(row[COL.NO_HP]             || ''),
+      email             : String(row[COL.EMAIL]             || ''),
+      status_verifikasi : String(row[COL.STATUS_VERIFIKASI] || 'Menunggu'),
+      catatan           : String(row[COL.CATATAN]           || ''),
+      anggota           : anggotaArr,
+      nik_pencari       : nik,
+      is_ketua          : anggotaIdx === undefined || anggotaIdx === 0,
+    }
+  };
 }
 
 // ── getConfig ─────────────────────────────────────────────────
@@ -509,4 +717,122 @@ function updateRowField_(nomor, colIndex, value, catatan) {
     }
   }
   return {success:false, message:'Nomor pendaftaran tidak ditemukan: '+nomor};
+}
+
+
+// ── Catatan: apiGetMaqraStatus_ di maqra.gs perlu mendukung ──
+// cabang_lomba=GLOBAL — update getMaqraConfigStatus_ agar:
+// 1. Cari row dengan cabang_lomba = 'GLOBAL' dahulu
+// 2. Jika tidak ada, cari row dengan cabang_lomba = cabang peserta
+// Tambahkan ini di maqra.gs fungsi getMaqraConfigStatus_:
+//
+// function getMaqraConfigStatus_(ss, cabang) {
+//   var sheet = ss.getSheetByName(SHEET_MAQRA_CONFIG);
+//   if (!sheet || sheet.getLastRow() <= 1) return { isOpen:false };
+//   var rows = sheet.getRange(2,1,sheet.getLastRow()-1,5).getValues();
+//   // Try GLOBAL first, then specific cabang
+//   var targets = ['GLOBAL', cabang];
+//   for (var t=0; t<targets.length; t++) {
+//     for (var i=0; i<rows.length; i++) {
+//       if (String(rows[i][0]).trim() === targets[t]) {
+//         // ... same logic as before ...
+//       }
+//     }
+//   }
+//   return { isOpen:false };
+// }
+ 
+// ── Dummy logError_ (jika tidak ada di scope) ─────────────────
+function logError_(ctx, msg) {
+  // Ganti dengan fungsi log Anda yang sudah ada
+  console.error('['+ctx+'] '+msg);
+}
+
+function apiPerbaikan_(body) {
+  var nomor = String(body.nomor_pendaftaran || '').trim();
+  if (!nomor) return { success:false, message:'Nomor pendaftaran tidak ada' };
+ 
+  var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = getOrCreateSheet_(ss, SHEET_PENDAFTAR, PENDAFTAR_HEADERS);
+  var lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return { success:false, message:'Data kosong' };
+ 
+  // Cari baris berdasarkan nomor pendaftaran
+  var nums   = sheet.getRange(2, COL.NOMOR_PENDAFTARAN + 1, lastRow - 1, 1).getValues();
+  var rowNum = -1;
+  for (var i = 0; i < nums.length; i++) {
+    if (String(nums[i][0]).trim() === nomor) { rowNum = i + 2; break; }
+  }
+  if (rowNum < 0) return { success:false, message:'Nomor tidak ditemukan: ' + nomor };
+ 
+  // Hanya boleh jika status saat ini = Ditolak
+  var currentStatus = String(sheet.getRange(rowNum, COL.STATUS_VERIFIKASI + 1).getValue()).trim();
+  if (currentStatus !== 'Ditolak') {
+    return { success:false, message:'Perbaikan hanya berlaku untuk status Ditolak (saat ini: ' + currentStatus + ')' };
+  }
+ 
+  var members = body.members || [];
+  if (members.length > 0) {
+    var lead = members[0];
+    // Update kolom utama dari anggota pertama (ketua / individu)
+    if (lead.nama_lengkap)  sheet.getRange(rowNum, COL.NAMA_LENGKAP  + 1).setValue(lead.nama_lengkap);
+    if (lead.tempat_lahir)  sheet.getRange(rowNum, COL.TEMPAT_LAHIR  + 1).setValue(lead.tempat_lahir);
+    if (lead.tanggal_lahir) sheet.getRange(rowNum, COL.TANGGAL_LAHIR + 1).setValue(lead.tanggal_lahir);
+    if (lead.alamat)        sheet.getRange(rowNum, COL.ALAMAT         + 1).setValue(lead.alamat);
+    if (lead.no_hp)         sheet.getRange(rowNum, COL.NO_HP          + 1).setValue(lead.no_hp);
+    // CATATAN: NIK tidak pernah diupdate dari body — hanya data yang boleh diubah
+ 
+    // Upload berkas revisi ke Drive
+    try {
+      var cab  = String(sheet.getRange(rowNum, COL.CABANG_LOMBA + 1).getValue());
+      var kec  = String(sheet.getRange(rowNum, COL.KECAMATAN + 1).getValue());
+      var fold = getPesertaFolder_(cab, kec, nomor);
+      var ts   = new Date().getTime();
+ 
+      members.forEach(function(m, mi) {
+        var prefix = 'REVISI_' + ts + '_M' + (mi + 1) + '_';
+        if (m.foto) { try { uploadFile_(m.foto, fold, prefix + 'FOTO'); } catch(ue) {} }
+        if (m.ktp)  { try { uploadFile_(m.ktp,  fold, prefix + 'KTP');  } catch(ue) {} }
+        if (m.sertifikat && m.sertifikat.length) {
+          m.sertifikat.forEach(function(s, si) {
+            try { uploadFile_(s, fold, prefix + 'SERT' + (si + 1)); } catch(ue) {}
+          });
+        }
+      });
+ 
+      if (body.rekom) {
+        var rekomUrl = uploadFile_(body.rekom, fold, 'REVISI_' + ts + '_REKOMENDASI');
+        if (rekomUrl) sheet.getRange(rowNum, COL.LINK_REKOM + 1).setValue(rekomUrl);
+      }
+    } catch (uploadErr) {
+      logWarn('api', 'perbaikan upload error: ' + uploadErr.message);
+    }
+ 
+    // Update ANGGOTA_JSON untuk tim
+    if (members.length > 1) {
+      try {
+        var existingJson = sheet.getRange(rowNum, COL.ANGGOTA_JSON + 1).getValue();
+        var existing     = existingJson ? JSON.parse(existingJson) : [];
+        members.forEach(function(m, idx) {
+          if (!existing[idx]) return;
+          if (m.nama_lengkap)  existing[idx].nama_lengkap  = m.nama_lengkap;
+          if (m.tempat_lahir)  existing[idx].tempat_lahir  = m.tempat_lahir;
+          if (m.tanggal_lahir) existing[idx].tanggal_lahir = m.tanggal_lahir;
+          if (m.alamat)        existing[idx].alamat        = m.alamat;
+          if (m.no_hp)         existing[idx].no_hp         = m.no_hp;
+          // NIK tidak diupdate
+        });
+        sheet.getRange(rowNum, COL.ANGGOTA_JSON + 1).setValue(JSON.stringify(existing));
+      } catch (je) { logWarn('api', 'anggota JSON update error: ' + je.message); }
+    }
+  }
+ 
+  // Reset status ke Menunggu
+  sheet.getRange(rowNum, COL.STATUS_VERIFIKASI + 1).setValue('Menunggu');
+  sheet.getRange(rowNum, COL.CATATAN + 1).setValue(
+    'Direvisi oleh peserta pada ' + new Date().toLocaleString('id-ID')
+  );
+ 
+  writeLog_(ss, 'PERBAIKAN', nomor + ' direset ke Menunggu', 'ok');
+  return { success:true, nomor_pendaftaran:nomor, message:'Perbaikan berhasil dikirim.' };
 }

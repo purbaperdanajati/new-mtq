@@ -90,41 +90,72 @@ var CONFIG_HEADERS = [
 // FIX #2: kuota=31 (1 per kecamatan Indramayu = 31 kecamatan)
 // FIX #10: umur_min=0 (tidak ada batas bawah usia)
 var DEFAULT_CONFIG_DATA = [
-  // Tilawah
-  ['Tilawah Anak Putra',       'individu','L', 0,  9,11,29, 31,'Aktif'],
-  ['Tilawah Anak Putri',       'individu','P', 0,  9,11,29, 31,'Aktif'],
-  ['Tilawah Remaja Putra',     'individu','L', 0, 13,11,29, 31,'Aktif'],
-  ['Tilawah Remaja Putri',     'individu','P', 0, 13,11,29, 31,'Aktif'],
-  ['Tilawah Dewasa Putra',     'individu','L', 0, 40, 0, 0,  31,'Aktif'],
-  ['Tilawah Dewasa Putri',     'individu','P', 0, 40, 0, 0,  31,'Aktif'],
-  ['Tilawah Cacat Putra',      'individu','L', 0, 99, 0, 0,  31,'Aktif'],
-  ['Tilawah Cacat Putri',      'individu','P', 0, 99, 0, 0,  31,'Aktif'],
-  // Tahfidz
-  ['Tahfidz 1 Juz Putra',      'individu','L', 0, 12,11,29, 31,'Aktif'],
-  ['Tahfidz 1 Juz Putri',      'individu','P', 0, 12,11,29, 31,'Aktif'],
-  ['Tahfidz 5 Juz Putra',      'individu','L', 0, 18,11,29, 31,'Aktif'],
-  ['Tahfidz 5 Juz Putri',      'individu','P', 0, 18,11,29, 31,'Aktif'],
-  ['Tahfidz 10 Juz Putra',     'individu','L', 0, 30, 0, 0,  31,'Aktif'],
-  ['Tahfidz 10 Juz Putri',     'individu','P', 0, 30, 0, 0,  31,'Aktif'],
-  ['Tahfidz 20 Juz Putra',     'individu','L', 0, 40, 0, 0,  31,'Aktif'],
-  ['Tahfidz 20 Juz Putri',     'individu','P', 0, 40, 0, 0,  31,'Aktif'],
-  ['Tahfidz 30 Juz Putra',     'individu','L', 0, 50, 0, 0,  31,'Aktif'],
-  ['Tahfidz 30 Juz Putri',     'individu','P', 0, 50, 0, 0,  31,'Aktif'],
-  // Khat
-  ['Khat Naskhi Putra',        'individu','L', 0, 25, 0, 0,  31,'Aktif'],
-  ['Khat Naskhi Putri',        'individu','P', 0, 25, 0, 0,  31,'Aktif'],
-  ['Khat Hiasan Mushaf Putra', 'individu','L', 0, 35, 0, 0,  31,'Aktif'],
-  ['Khat Hiasan Mushaf Putri', 'individu','P', 0, 35, 0, 0,  31,'Aktif'],
-  // Fahmil (tim)
-  ["Fahmil Qur'an Putra",      'team',    'L', 0, 18,11,29, 31,'Aktif'],
-  ["Fahmil Qur'an Putri",      'team',    'P', 0, 18,11,29, 31,'Aktif'],
-  // Syarhil (tim)
-  ["Syarhil Qur'an Putra",     'team',    'L', 0, 22,11,29, 31,'Aktif'],
-  ["Syarhil Qur'an Putri",     'team',    'P', 0, 22,11,29, 31,'Aktif'],
-  // MFQ (tim)
-  ['MFQ Putra',                'team',    'L', 0, 18,11,29, 31,'Aktif'],
-  ['MFQ Putri',                'team',    'P', 0, 18,11,29, 31,'Aktif'],
   // Tartil
-  ['Tartil Putra',             'individu','L', 0,  8,11,29, 31,'Aktif'],
-  ['Tartil Putri',             'individu','P', 0,  8,11,29, 31,'Aktif'],
+  ["Tartil Al Qur'an Putra", 'individu','L', 0, 12,11,29, 31,'Aktif'],
+  ["Tartil Al Qur'an Putri", 'individu','P', 0, 12,11,29, 31,'Aktif'],
+
+  // Tilawah
+  ['Tilawah Anak-anak Putra', 'individu','L', 0, 14,11,29, 31,'Aktif'],
+  ['Tilawah Anak-anak Putri', 'individu','P', 0, 14,11,29, 31,'Aktif'],
+
+  ['Tilawah Remaja Putra', 'individu','L', 0, 24,11,29, 31,'Aktif'],
+  ['Tilawah Remaja Putri', 'individu','P', 0, 24,11,29, 31,'Aktif'],
+
+  ['Tilawah Dewasa Putra', 'individu','L', 0, 40,11,29, 31,'Aktif'],
+  ['Tilawah Dewasa Putri', 'individu','P', 0, 40,11,29, 31,'Aktif'],
+
+  // Qiraat
+  ["Qira'at Mujawwad Putra", 'individu','L', 0, 40,11,29, 31,'Aktif'],
+  ["Qira'at Mujawwad Putri", 'individu','P', 0, 40,11,29, 31,'Aktif'],
+
+  // Hafalan
+  ['Hafalan 1 Juz Putra', 'individu','L', 0, 15,11,29, 31,'Aktif'],
+  ['Hafalan 1 Juz Putri', 'individu','P', 0, 15,11,29, 31,'Aktif'],
+
+  ['Hafalan 5 Juz Putra', 'individu','L', 0, 20,11,29, 31,'Aktif'],
+  ['Hafalan 5 Juz Putri', 'individu','P', 0, 20,11,29, 31,'Aktif'],
+
+  ['Hafalan 10 Juz Putra', 'individu','L', 0, 20,11,29, 31,'Aktif'],
+  ['Hafalan 10 Juz Putri', 'individu','P', 0, 20,11,29, 31,'Aktif'],
+
+  ['Hafalan 20 Juz Putra', 'individu','L', 0, 22,11,29, 31,'Aktif'],
+  ['Hafalan 20 Juz Putri', 'individu','P', 0, 22,11,29, 31,'Aktif'],
+
+  ['Hafalan 30 Juz Putra', 'individu','L', 0, 22,11,29, 31,'Aktif'],
+  ['Hafalan 30 Juz Putri', 'individu','P', 0, 22,11,29, 31,'Aktif'],
+
+  // Tafsir
+  ['Tafsir Arab Putra', 'individu','L', 0, 22,11,29, 31,'Aktif'],
+  ['Tafsir Arab Putri', 'individu','P', 0, 22,11,29, 31,'Aktif'],
+
+  ['Tafsir Indonesia Putra', 'individu','L', 0, 34,11,29, 31,'Aktif'],
+  ['Tafsir Indonesia Putri', 'individu','P', 0, 34,11,29, 31,'Aktif'],
+
+  ['Tafsir Inggris Putra', 'individu','L', 0, 34,11,29, 31,'Aktif'],
+  ['Tafsir Inggris Putri', 'individu','P', 0, 34,11,29, 31,'Aktif'],
+
+  // Kaligrafi
+  ['Kaligrafi Naskah Putra', 'individu','L', 0, 34,11,29, 31,'Aktif'],
+  ['Kaligrafi Naskah Putri', 'individu','P', 0, 34,11,29, 31,'Aktif'],
+
+  ['Kaligrafi Hiasan Putra', 'individu','L', 0, 34,11,29, 31,'Aktif'],
+  ['Kaligrafi Hiasan Putri', 'individu','P', 0, 34,11,29, 31,'Aktif'],
+
+  ['Kaligrafi Dekorasi Putra', 'individu','L', 0, 34,11,29, 31,'Aktif'],
+  ['Kaligrafi Dekorasi Putri', 'individu','P', 0, 34,11,29, 31,'Aktif'],
+
+  ['Kaligrafi Kontemporer Putra', 'individu','L', 0, 34,11,29, 31,'Aktif'],
+  ['Kaligrafi Kontemporer Putri', 'individu','P', 0, 34,11,29, 31,'Aktif'],
+
+  // KTIQ
+  ['KTIQ Putra', 'individu','L', 0, 24,11,29, 31,'Aktif'],
+  ['KTIQ Putri', 'individu','P', 0, 24,11,29, 31,'Aktif'],
+
+  // Fahm Al Qur'an (Tim)
+  ["Fahm Al Qur'an Putra", 'team','L', 0, 18,11,29, 31,'Aktif'],
+  ["Fahm Al Qur'an Putri", 'team','P', 0, 18,11,29, 31,'Aktif'],
+
+  // Syarh Al Qur'an (Tim)
+  ["Syarh Al Qur'an Putra", 'team','L', 0, 18,11,29, 31,'Aktif'],
+  ["Syarh Al Qur'an Putri", 'team','P', 0, 18,11,29, 31,'Aktif']
 ];
