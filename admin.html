@@ -691,8 +691,6 @@
 // API_URL: satu sumber dari js/config.js (window.MTQ_API_URL) — jangan ubah di sini
 const API_URL = window.MTQ_API_URL || '';
 
-// ── Logger (pakai log dari config.js, tambah method khusus admin) ──
-// TIDAK redeclare const log — sudah ada di js/config.js
 const adminLog = {
   _p: (lvl, ...a) => console.log(`%c[ADMIN][${lvl}]`,`color:${({INFO:'#065f46',WARN:'#b45309',ERROR:'#dc2626',DEBUG:'#6b7280'}[lvl]||'#374151')};font-weight:bold`,...a),
   info : (...a) => adminLog._p('INFO',  ...a),
@@ -716,6 +714,21 @@ const adm = {
   editing     : null,
   cabangConfig: [],   // from getConfig — used for age requirement display
 };
+
+
+// ── Loading Overlay ───────────────────────────────────────────
+function showLoading(msg = 'Memproses...', sub = 'Mohon tunggu') {
+  const el  = document.getElementById('loadingOverlay');
+  const msg_el = document.getElementById('loadingMsg');
+  const sub_el = document.getElementById('loadingSub');
+  if (msg_el) msg_el.textContent = msg;
+  if (sub_el) sub_el.textContent = sub;
+  if (el) { el.style.display = 'flex'; }
+}
+function hideLoading() {
+  const el = document.getElementById('loadingOverlay');
+  if (el) el.style.display = 'none';
+}
 
 // ── Init ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -1222,10 +1235,12 @@ function execVerify(nomor, status) {
   const catatan = document.getElementById('catatanInput').value.trim();
   closeModal('confirmModal');
   adminLog.info('execVerify', nomor, status, catatan);
+  showLoading('Mengubah status pendaftaran...', `${nomor} → ${status}`);
 
   jsonp(`${API_URL}?action=updateStatus&token=${encodeURIComponent(adm.token)}`+
         `&nomor=${encodeURIComponent(nomor)}&status=${encodeURIComponent(status)}`+
         `&catatan=${encodeURIComponent(catatan)}`, 'updStatus', (data) => {
+    hideLoading();
     if (data && data.success) {
       const row = adm.allData.find(r=>r.nomor_pendaftaran===nomor);
       if (row){ row.status_verifikasi=status; if(catatan) row.catatan=catatan; }
@@ -1249,10 +1264,12 @@ function execDeactivate(nomor) {
   const catatan = document.getElementById('catatanInput').value.trim();
   closeModal('confirmModal');
   adminLog.info('execDeactivate', nomor, catatan);
+  showLoading('Menonaktifkan peserta...', nomor);
 
   jsonp(`${API_URL}?action=deactivate&token=${encodeURIComponent(adm.token)}`+
         `&nomor=${encodeURIComponent(nomor)}&catatan=${encodeURIComponent(catatan)}`,
         'deactivate', (data) => {
+    hideLoading();
     if (data && data.success) {
       const row = adm.allData.find(r=>r.nomor_pendaftaran===nomor);
       if (row){ row.status_verifikasi='Nonaktif'; if(catatan) row.catatan=catatan; }
@@ -1681,5 +1698,20 @@ window.addEventListener('resize', () => {
     }
   });
   </script>
+
+<!-- ══ LOADING OVERLAY ══════════════════════════════════════ -->
+<div id="loadingOverlay" style="
+  display:none;position:fixed;inset:0;z-index:9999;
+  background:rgba(0,0,0,.45);backdrop-filter:blur(3px);
+  align-items:center;justify-content:center;">
+  <div style="background:var(--white);border-radius:16px;padding:32px 40px;text-align:center;
+              box-shadow:0 24px 60px rgba(0,0,0,.25);min-width:220px">
+    <div style="width:44px;height:44px;border:4px solid var(--emerald-light);border-top-color:var(--emerald);
+                border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 16px"></div>
+    <div id="loadingMsg" style="font-size:14px;font-weight:600;color:var(--gray-700)">Memproses...</div>
+    <div id="loadingSub" style="font-size:12px;color:var(--gray-400);margin-top:4px">Mohon tunggu</div>
+  </div>
+</div>
+
 </body>
 </html>

@@ -208,8 +208,8 @@ function renderMaqraSection(maqraData, rec) {
 function buildLanternStrip(list) {
   const strip = document.getElementById('lanternStrip');
   strip.innerHTML = '';
-  // Repeat list several times for seamless spinning effect
-  const repeated = [...list, ...list, ...list, ...list, ...list];
+  // Repeat list 6x agar item tengah selalu bisa dicapai
+  const repeated = [...list, ...list, ...list, ...list, ...list, ...list];
   repeated.forEach((item, i) => {
     const div = document.createElement('div');
     div.className = 'lantern-item';
@@ -234,29 +234,32 @@ async function startSpin() {
   resultReveal.classList.remove('show');
   status.textContent = '🌟 Mengambil maqra...';
 
-  // Phase 1: quick spins (CSS animation preview, no commit yet)
-  strip.style.transition = 'none';
-  strip.style.transform = 'translateY(0)';
-
-  const itemH = 50;
+  // Phase 1: quick spins — mulai dari 1/6 strip agar smooth
+  const itemH      = 50;
   const totalItems = strip.childElementCount;
+  const safeMax    = Math.floor(totalItems * 0.55) * itemH; // maks 55% strip
 
-  // Spin animation — randomize speed
-  let currentOffset = 0;
+  // Mulai dari 1/6 posisi agar tidak lompat dari nol
+  let currentOffset = Math.floor(totalItems / 6) * itemH;
+  strip.style.transition = 'none';
+  strip.style.transform  = `translateY(-${currentOffset}px)`;
+  // Force reflow agar transition 'none' langsung diterapkan sebelum animasi
+  void strip.offsetHeight;
+
   const phases = [
-    { dur: 300, itemsPerPhase: 8 },
-    { dur: 200, itemsPerPhase: 12 },
-    { dur: 180, itemsPerPhase: 15 },
-    { dur: 160, itemsPerPhase: 15 },
+    { dur: 320, itemsPerPhase: 6  },
+    { dur: 220, itemsPerPhase: 10 },
+    { dur: 180, itemsPerPhase: 12 },
+    { dur: 160, itemsPerPhase: 12 },
   ];
 
   for (const ph of phases) {
     for (let i = 0; i < ph.itemsPerPhase; i++) {
       currentOffset += itemH;
-      if (currentOffset >= (totalItems - 10) * itemH) currentOffset = 0;
-      strip.style.transition = `transform ${ph.dur}ms ease`;
-      strip.style.transform = `translateY(-${currentOffset}px)`;
-      await sleep(ph.dur + 10);
+      if (currentOffset >= safeMax) currentOffset = Math.floor(totalItems / 6) * itemH;
+      strip.style.transition = `transform ${ph.dur}ms ease-in-out`;
+      strip.style.transform  = `translateY(-${currentOffset}px)`;
+      await sleep(ph.dur + 8);
     }
   }
 
@@ -308,21 +311,45 @@ async function startSpin() {
   }
   if (targetIdx < 0) targetIdx = midStart; // fallback
 
-  // The window center is at 100px (200px height / 2), item height 50px
-  const windowCenterY = 100;
-  const targetY = targetIdx * itemH - windowCenterY + itemH / 2;
+  // Hitung windowCenterY secara dinamis dari DOM — bukan hardcode
+  const lanternWindow = strip.parentElement;
+  const windowH       = lanternWindow ? lanternWindow.clientHeight : 200;
+  const windowCenterY = windowH / 2;
+  const targetY       = targetIdx * itemH - windowCenterY + itemH / 2;
 
-  // Slow deceleration to target
-  strip.style.transition = 'transform 1.8s cubic-bezier(0.25,1,0.5,1)';
+  // Smooth deceleration ke posisi yang tepat
+  strip.style.transition = 'transform 2s cubic-bezier(0.16, 1, 0.3, 1)';
   strip.style.transform  = `translateY(-${targetY}px)`;
-  await sleep(1900);
+  await sleep(2050);
 
   // Highlight chosen item
   items.forEach(it => it.classList.remove('highlight'));
-  if (items[targetIdx]) items[targetIdx].classList.add('highlight');
+  if (items[targetIdx]) {
+    items[targetIdx].classList.add('highlight');
+
+    // Micro-correction: ukur posisi aktual item vs center container
+    // agar teks benar-benar tepat di tengah garis emas, bukan off by a few px
+    const container = strip.parentElement;
+    if (container) {
+      const containerRect = container.getBoundingClientRect();
+      const itemRect      = items[targetIdx].getBoundingClientRect();
+      const itemCenter    = itemRect.top + itemRect.height / 2;
+      const containerCenter = containerRect.top + containerRect.height / 2;
+      const diff = itemCenter - containerCenter;
+
+      if (Math.abs(diff) > 1) {
+        // Koreksi sisa offset tanpa animasi baru — langsung snap
+        const currentY   = parseFloat(strip.style.transform.replace('translateY(', '').replace('px)', '')) || 0;
+        const correctedY = Math.abs(currentY) + diff;
+        strip.style.transition = 'transform 0.3s ease-out';
+        strip.style.transform  = `translateY(-${correctedY}px)`;
+        await sleep(320);
+      }
+    }
+  }
 
   // Phase 4: reveal result
-  await sleep(200);
+  await sleep(150);
   showResultReveal(chosenMaqra);
 
   // Confetti burst!

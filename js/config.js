@@ -8,7 +8,7 @@ const MTQ_CONFIG = {
 
   // ── Google Apps Script Web App URL ──────────────────────────
   // Setelah deploy di Apps Script, paste URL-nya di sini
-  API_URL: 'https://script.google.com/macros/s/AKfycbwl5y16V9Fcxub3AIScpE86ZwYiPBnRVuXWgQqonhTDat8dJoMnspEw1ifaCouDDixz/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbw7hEv8PuIEn5YEvQd7U6bK88_WSfIcgRs4Cpo03fpeAeSiRNVo3dXwrlB6qGtsP3QW/exec',
 
   // ── Fallback (akan ditimpa nilai dari API saat getConfig) ───
   PENDAFTARAN_BUKA : '2026-06-01T00:00:00',
@@ -29,13 +29,26 @@ const MTQ_CONFIG = {
 
 // ── Logger terpusat ──────────────────────────────────────────
 const log = {
-  info : (...a) => console.log  ('%c[MTQ] INFO' , 'color:#065f46;font-weight:bold', ...a),
-  warn : (...a) => console.warn ('%c[MTQ] WARN' , 'color:#b45309;font-weight:bold', ...a),
+  info : (...a) => console.log('%c[MTQ] INFO', 'color:#065f46;font-weight:bold', ...a),
+  warn : (...a) => console.warn('%c[MTQ] WARN', 'color:#b45309;font-weight:bold', ...a),
   error: (...a) => console.error('%c[MTQ] ERROR', 'color:#dc2626;font-weight:bold', ...a),
   debug: (...a) => console.debug('%c[MTQ] DEBUG', 'color:#6b7280;font-weight:bold', ...a),
-  group: (n)    => console.group  (`%c[MTQ] ${n}`, 'color:#047857;font-weight:bold'),
-  end  : ()     => console.groupEnd(),
-  table: (d)    => console.table(d),
+  step : (n, msg) => console.group(
+    `%c[MTQ] STEP ${n}: ${msg}`,
+    'color:#0369a1;font-weight:bold'
+  ),
+
+  group: (title) => console.group(
+    `%c[MTQ] ${title}`,
+    'color:#047857;font-weight:bold'
+  ),
+
+  end  : () => console.groupEnd(),
+
+  time : (label) => console.time(`[MTQ] ${label}`),
+  timeEnd: (label) => console.timeEnd(`[MTQ] ${label}`),
+
+  table: (data) => console.table(data),
 };
 
 // ── Utilitas Tanggal ─────────────────────────────────────────

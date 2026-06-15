@@ -8,17 +8,6 @@
 const API_URL = window.MTQ_API_URL || '';
 const AGE_CUTOFF = '2026-07-01';   // tanggal hitungan umur (mutlak)
 
-// ── Logger terpusat ──────────────────────────────────────────
-const log = {
-  info : (...a) => console.log  ('%c[MTQ] INFO' , 'color:#065f46;font-weight:bold', ...a),
-  warn : (...a) => console.warn ('%c[MTQ] WARN' , 'color:#b45309;font-weight:bold', ...a),
-  error: (...a) => console.error('%c[MTQ] ERROR', 'color:#dc2626;font-weight:bold', ...a),
-  step : (n, msg) => console.group(`%c[MTQ] STEP ${n}: ${msg}`, 'color:#0369a1;font-weight:bold'),
-  end  : () => console.groupEnd(),
-  time : (label) => console.time(`[MTQ] ${label}`),
-  timeEnd: (label) => console.timeEnd(`[MTQ] ${label}`),
-};
-
 // ── State ─────────────────────────────────────────────────────
 let state = {
   step: 1,
@@ -166,31 +155,81 @@ document.addEventListener('DOMContentLoaded', () => {
   renderStep(1);
 });
 
-// ── JSONP helper ──────────────────────────────────────────────
-function jsonp(url, cbPrefix, fn, timeout = 10000) {
+// ── API helper — fetch dulu, JSONP sebagai fallback ───────────
+// Menggunakan fetch() agar tidak ada SyntaxError di console
+// saat server mengembalikan HTML (mis. redirect login GAS).
+function jsonp(url, cbPrefix, fn, timeout = 8000) {
+  // Coba fetch terlebih dahulu (no-cors mode tidak bisa baca body,
+  // gunakan cors — GAS deployed sebagai "Anyone" sudah support ini)
+  const fetchUrl = url.includes('callback=') ? url : url;
+  fetch(fetchUrl + '&callback=_noop', {
+    method: 'GET',
+    redirect: 'follow',
+    signal: AbortSignal.timeout ? AbortSignal.timeout(timeout) : undefined,
+  })
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.text();
+    })
+    .then(text => {
+      // GAS JSONP membungkus JSON dalam callback(_noop(...))
+      // Coba ekstrak JSON dari dalam callback wrapper
+      let json = null;
+
+      // Pola: cbName({...}) atau cbName([...])
+      const match = text.match(/^[^(]+\((.+)\)\s*;?\s*$/s);
+      if (match) {
+        try { json = JSON.parse(match[1]); } catch(e) { /* bukan JSON */ }
+      }
+
+      // Pola langsung: server mengembalikan JSON tanpa wrapper
+      if (!json) {
+        try { json = JSON.parse(text); } catch(e) { /* bukan JSON */ }
+      }
+
+      if (json) {
+        try { fn(json); } catch(e) { log.error('API callback error', e); }
+      } else {
+        // Server mengembalikan HTML atau format tidak dikenal — fallback
+        log.warn('API response bukan JSON, memakai fallback. Preview:', text.slice(0, 80));
+        fn(null);
+      }
+    })
+    .catch(err => {
+      // fetch gagal (network error, timeout, dll) — fallback ke JSONP klasik
+      log.warn('fetch gagal, mencoba JSONP klasik:', err.message);
+      _jsonpClassic(url, cbPrefix, fn, timeout);
+    });
+}
+
+// JSONP klasik sebagai fallback jika fetch tidak bisa (mis. CORS block)
+function _jsonpClassic(url, cbPrefix, fn, timeout) {
   const cbName = cbPrefix + '_' + Date.now();
   const script = document.createElement('script');
+  let done = false;
   let timer;
-  window[cbName] = (data) => {
+
+  function cleanup(result) {
+    if (done) return;
+    done = true;
     clearTimeout(timer);
-    try { fn(data); } catch(e) { log.error('JSONP callback error', e); }
     delete window[cbName];
     script.remove();
-  };
+    try { fn(result); } catch(e) { log.error('JSONP callback error', e); }
+  }
+
+  window[cbName] = (data) => cleanup(data);
+
   script.src = `${url}&callback=${cbName}`;
   script.onerror = () => {
-    clearTimeout(timer);
     log.warn('JSONP script error for', url);
-    delete window[cbName];
-    script.remove();
-    fn(null);
+    cleanup(null);
   };
   timer = setTimeout(() => {
     log.warn('JSONP timeout for', url);
-    delete window[cbName];
-    script.remove();
-    fn(null);
+    cleanup(null);
   }, timeout);
+
   document.head.appendChild(script);
 }
 

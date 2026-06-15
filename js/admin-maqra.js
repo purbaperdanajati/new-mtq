@@ -245,6 +245,8 @@ function maqraFilterHasil() {
 }
 
 // ── Save Maqra ────────────────────────────────────────────────
+// Kirim sebagai bulk_text (plain text newline-separated) bukan JSON array
+// agar URL tidak melebihi batas GAS ~8KB
 async function maqraSaveMaqra() {
   const cabang  = document.getElementById('maqraCabang')?.value.trim();
   const bulk    = document.getElementById('maqraBulk')?.value.trim();
@@ -257,28 +259,25 @@ async function maqraSaveMaqra() {
   const lines = bulk.split('\n').map(l => l.trim()).filter(Boolean);
   if (!lines.length) { maqraShowToast('Peringatan', 'Tidak ada maqra yang dapat dibaca', 'warning'); return; }
 
-  const safeId = cabang.replace(/[^A-Za-z0-9]/g,'_').toUpperCase();
-  const items  = lines.map((line, idx) => ({
-    id_maqra    : `${safeId}_${String(idx+1).padStart(3,'0')}`,
-    cabang_lomba: cabang,
-    maqra_teks  : line,
-    maqra_detail: detail,
-    nomor_urut  : idx + 1,
-  }));
-
-  const msg = `Simpan ${items.length} maqra untuk "${cabang}"?` +
+  const msg = `Simpan ${lines.length} maqra untuk "${cabang}"?` +
     (replace ? '\n\n⚠️ Maqra yang belum diambil akan DIHAPUS dan diganti.' : '');
   if (!confirm(msg)) return;
 
-  maqraShowLoading(true, 'Menyimpan maqra...');
+  maqraShowLoading(true, `Menyimpan ${lines.length} maqra...`);
   try {
+    // Kirim bulk_text bukan array items — URL jauh lebih pendek
     const data = await maqraJsonpPost({
-      action: 'saveMaqra', token: _maqraToken,
-      cabang_lomba: cabang, items, replace,
+      action      : 'saveMaqra',
+      token       : _maqraToken,
+      cabang_lomba: cabang,
+      bulk_text   : lines.join('\n'),   // plain text, GAS parse sendiri
+      detail      : detail,
+      replace     : replace,
     });
     if (data.success) {
       maqraShowToast('Berhasil', `${data.added} maqra berhasil disimpan untuk ${cabang}`, 'success', 5000);
       document.getElementById('maqraBulk').value = '';
+      document.getElementById('maqraDetailPrefix').value = '';
       document.getElementById('maqraReplace').checked = false;
       maqraLoadData();
     } else {
@@ -286,7 +285,7 @@ async function maqraSaveMaqra() {
       maqraShowToast('Gagal', data.message || 'Terjadi kesalahan', 'error');
     }
   } catch (err) {
-    maqraShowToast('Error', err.message, 'error');
+    maqraShowToast('Error', 'Gagal mengirim data: ' + err.message, 'error');
   } finally {
     maqraShowLoading(false);
   }
