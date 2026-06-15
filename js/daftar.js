@@ -4,8 +4,8 @@
 //       file name overflow, submit logging, CORS POST workaround
 // ============================================================
 
-// API_URL: satu sumber dari config.js — jangan ganti di sini
-const API_URL = (typeof MTQ_CONFIG !== 'undefined' ? MTQ_CONFIG.API_URL : 'https://script.google.com/macros/s/AKfycbwl5y16V9Fcxub3AIScpE86ZwYiPBnRVuXWgQqonhTDat8dJoMnspEw1ifaCouDDixz/exec');
+// API_URL: satu sumber dari js/config.js (window.MTQ_API_URL) — jangan ubah di sini
+const API_URL = window.MTQ_API_URL || '';
 const AGE_CUTOFF = '2026-07-01';   // tanggal hitungan umur (mutlak)
 
 // ── Logger terpusat ──────────────────────────────────────────

@@ -1,10 +1,10 @@
-
 // ============================================================
 //  MTQ 2026 – daftar.js  (complete rewrite)
 //  Handles individu + team, age validation per member
 // ============================================================
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbwl5y16V9Fcxub3AIScpE86ZwYiPBnRVuXWgQqonhTDat8dJoMnspEw1ifaCouDDixz/exec';
+// API_URL: satu sumber dari js/config.js (window.MTQ_API_URL) — jangan ubah di sini
+const API_URL = window.MTQ_API_URL || '';
 
 // ── State ─────────────────────────────────────────────────────
 const state = {

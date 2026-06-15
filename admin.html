@@ -6,6 +6,8 @@
   <title>Admin — MTQ 2026</title>
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="js/document-previewer.css">
+  <!-- Config terpusat — SATU sumber API_URL -->
+  <script src="js/config.js"></script>
   <!-- PDF.js (required by DocumentPreviewer) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
@@ -299,7 +301,7 @@
         <li>Klik <strong>Deploy → Manage deployments</strong></li>
         <li>Edit deployment yang ada → ubah versi ke <strong>New version</strong></li>
         <li>Klik <strong>Deploy</strong></li>
-        <li>Jika URL berubah, update di <code>config.js</code> dan <code>admin.html</code></li>
+        <li>Jika URL berubah, cukup update di <code>js/config.js</code> — berlaku untuk semua halaman</li>
       </ol>
       <div style="margin-top:8px;color:#6b7280">Atau: buka URL ini di browser untuk test JSONP:<br>
         <code id="testUrl" style="font-size:11px;word-break:break-all;color:#0369a1"></code>
@@ -342,6 +344,9 @@
     </div>
     <div class="sidebar-item" id="nav-stats" onclick="showPage('stats')">
       <span class="icon">📊</span> Statistik
+    </div>
+    <div class="sidebar-item" id="nav-maqra" onclick="showPage('maqra')">
+      <span class="icon">📖</span> Manajemen Maqra
     </div>
     <div class="sidebar-label">Aksi</div>
     <div class="sidebar-item" onclick="refreshData()"><span class="icon">🔄</span> Refresh Data</div>
@@ -440,6 +445,202 @@
       </div>
     </section>
 
+    <!-- ══ PAGE: MAQRA ═════════════════════════════════════════ -->
+    <section class="admin-page-section" id="page-maqra">
+      <div class="page-header">
+        <div>
+          <div class="page-title">📖 Manajemen Maqra</div>
+          <div class="page-sub">Kelola daftar maqra dan jadwal pengambilan</div>
+        </div>
+      </div>
+
+      <!-- Tab bar Maqra -->
+      <div style="display:flex;gap:2px;background:var(--gray-100);border-radius:12px;padding:4px;margin-bottom:24px;flex-wrap:wrap">
+        <button class="maqra-tab-btn" id="mtab-list" onclick="switchMaqraTab('tabMaqraList')"
+          style="padding:10px 16px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;flex:1;text-align:center;transition:all .2s;background:var(--white);color:var(--emerald);box-shadow:0 2px 8px rgba(0,0,0,.08)">
+          📋 Daftar Maqra
+        </button>
+        <button class="maqra-tab-btn" id="mtab-config" onclick="switchMaqraTab('tabMaqraConfig')"
+          style="padding:10px 16px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;flex:1;text-align:center;transition:all .2s;background:transparent;color:var(--gray-500)">
+          ⚙️ Jadwal Pengambilan
+        </button>
+        <button class="maqra-tab-btn" id="mtab-hasil" onclick="switchMaqraTab('tabMaqraHasil')"
+          style="padding:10px 16px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;flex:1;text-align:center;transition:all .2s;background:transparent;color:var(--gray-500)">
+          📊 Hasil Pengambilan
+        </button>
+      </div>
+
+      <!-- SUB TAB 1: Daftar Maqra -->
+      <div class="maqra-tab-pane" id="tabMaqraList" style="display:block">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
+
+          <!-- Input maqra -->
+          <div class="admin-card">
+            <div class="admin-card-header"><h2>➕ Tambah / Ganti Maqra</h2></div>
+            <div style="padding:20px">
+              <div class="field-group">
+                <label class="field-label">Cabang Lomba <span class="req">*</span></label>
+                <select class="field-select" id="maqraCabang">
+                  <option value="">-- Pilih Cabang --</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Daftar Maqra <span class="req">*</span></label>
+                <textarea class="field-input" id="maqraBulk"
+                  style="min-height:200px;font-family:monospace;font-size:13px;line-height:1.7;resize:vertical"
+                  placeholder="Satu baris = satu maqra. Contoh:&#10;Al-Baqarah: 1-5&#10;Al-Baqarah: 6-10&#10;Ali Imran: 1-8"></textarea>
+                <div style="font-size:12px;color:var(--gray-400);margin-top:6px;line-height:1.6">
+                  📌 Format bebas — satu baris = satu maqra<br>
+                  ⚠️ Centang "Ganti semua" untuk menghapus maqra lama yang belum diambil
+                </div>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Keterangan Tambahan (opsional)</label>
+                <input class="field-input" id="maqraDetailPrefix" placeholder="mis: Juz 1, tartil, dll">
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+                <input type="checkbox" id="maqraReplace" style="width:16px;height:16px;accent-color:var(--emerald)">
+                <label for="maqraReplace" style="font-size:13px;cursor:pointer;color:var(--gray-600)">Ganti semua maqra yang belum diambil untuk cabang ini</label>
+              </div>
+              <button class="btn btn-emerald" style="width:100%;justify-content:center" onclick="maqraSaveMaqra()">💾 Simpan Maqra</button>
+            </div>
+          </div>
+
+          <!-- Stats + Filter -->
+          <div>
+            <div class="admin-card" style="margin-bottom:16px">
+              <div class="admin-card-header">
+                <h2>📊 Statistik</h2>
+                <button class="btn btn-outline" style="font-size:12px;padding:5px 10px" onclick="maqraLoadData()">🔄 Refresh</button>
+              </div>
+              <div style="padding:20px">
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+                  <div style="background:var(--gray-50);border-radius:10px;padding:14px;text-align:center;border:1px solid var(--gray-200)">
+                    <div style="font-size:26px;font-weight:800;color:var(--emerald)" id="maqraStatTotal">—</div>
+                    <div style="font-size:12px;color:var(--gray-400)">Total Maqra</div>
+                  </div>
+                  <div style="background:var(--gray-50);border-radius:10px;padding:14px;text-align:center;border:1px solid var(--gray-200)">
+                    <div style="font-size:26px;font-weight:800;color:var(--emerald)" id="maqraStatTersedia">—</div>
+                    <div style="font-size:12px;color:var(--gray-400)">Tersedia</div>
+                  </div>
+                  <div style="background:var(--gray-50);border-radius:10px;padding:14px;text-align:center;border:1px solid var(--gray-200)">
+                    <div style="font-size:26px;font-weight:800;color:var(--gold)" id="maqraStatDiambil">—</div>
+                    <div style="font-size:12px;color:var(--gray-400)">Diambil</div>
+                  </div>
+                </div>
+                <div class="field-group" style="margin-bottom:0">
+                  <label class="field-label">Filter Cabang</label>
+                  <select class="field-select" id="maqraFilterCabang" onchange="maqraFilterTable()">
+                    <option value="">-- Semua Cabang --</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="admin-card">
+              <div class="admin-card-header"><h2>📋 Daftar Maqra</h2></div>
+              <div class="table-wrap">
+                <table class="data-table" id="maqraTable">
+                  <thead><tr><th>#</th><th>Cabang</th><th>Maqra</th><th>Status</th><th>Aksi</th></tr></thead>
+                  <tbody id="maqraTableBody">
+                    <tr><td colspan="5" style="text-align:center;padding:24px;color:var(--gray-400)">Memuat data...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- SUB TAB 2: Konfigurasi Jadwal -->
+      <div class="maqra-tab-pane" id="tabMaqraConfig" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
+
+          <div class="admin-card">
+            <div class="admin-card-header"><h2>⚙️ Jadwal Pengambilan Maqra</h2></div>
+            <div style="padding:20px">
+              <div style="background:var(--emerald-xs);border:1px solid var(--emerald-light);border-radius:8px;padding:12px 14px;margin-bottom:20px;font-size:13px;color:#065f46">
+                <strong>ℹ️ Satu jadwal untuk semua cabang</strong><br>
+                Konfigurasi ini berlaku secara global untuk seluruh cabang lomba.
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div class="field-group">
+                  <label class="field-label">Waktu Buka <span class="req">*</span></label>
+                  <input type="datetime-local" class="field-input" id="maqraCfgBuka">
+                </div>
+                <div class="field-group">
+                  <label class="field-label">Waktu Tutup <span class="req">*</span></label>
+                  <input type="datetime-local" class="field-input" id="maqraCfgTutup">
+                </div>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Override Manual</label>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:4px">
+                  <div id="maqra_ov_auto" onclick="maqraSetOverride('')"
+                    style="padding:8px;border:1.5px solid var(--emerald);background:var(--emerald-xs);color:var(--emerald);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;text-align:center">🔄 Otomatis</div>
+                  <div id="maqra_ov_open" onclick="maqraSetOverride('buka')"
+                    style="padding:8px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;text-align:center;background:var(--white);color:var(--gray-600)">✅ Paksa Buka</div>
+                  <div id="maqra_ov_close" onclick="maqraSetOverride('tutup')"
+                    style="padding:8px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;text-align:center;background:var(--white);color:var(--gray-600)">🔒 Paksa Tutup</div>
+                </div>
+                <input type="hidden" id="maqraCfgOverride" value="">
+                <div style="font-size:11px;color:var(--gray-400);margin-top:6px">Override mengabaikan pengaturan jadwal di atas</div>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Keterangan (opsional)</label>
+                <input class="field-input" id="maqraCfgKeterangan" placeholder="catatan untuk admin">
+              </div>
+              <button class="btn btn-emerald" style="width:100%;justify-content:center" onclick="maqraSaveConfig()">💾 Simpan Konfigurasi</button>
+            </div>
+          </div>
+
+          <div class="admin-card">
+            <div class="admin-card-header">
+              <h2>🔴 Status Saat Ini</h2>
+              <button class="btn btn-outline" style="font-size:12px;padding:5px 10px" onclick="maqraLoadData()">🔄 Refresh</button>
+            </div>
+            <div style="padding:20px">
+              <div id="maqraGlobalStatusBox" style="background:var(--gray-50);border:1.5px solid var(--gray-200);border-radius:10px;padding:16px;margin-bottom:16px;font-size:13px;color:var(--gray-400)">Memuat status...</div>
+              <div style="font-size:13px;color:var(--gray-500);line-height:1.8">
+                <p>🟢 <strong>Buka</strong> — Peserta terverifikasi dapat mengambil maqra</p>
+                <p>🔴 <strong>Tutup</strong> — Pengambilan maqra dinonaktifkan</p>
+                <p>⚡ <strong>Override Buka</strong> — Dibuka paksa meski di luar jadwal</p>
+                <p>⛔ <strong>Override Tutup</strong> — Ditutup paksa meski dalam jadwal</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- SUB TAB 3: Hasil Pengambilan -->
+      <div class="maqra-tab-pane" id="tabMaqraHasil" style="display:none">
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h2>📊 Hasil Pengambilan Maqra</h2>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-outline" style="font-size:12px;padding:5px 10px" onclick="maqraLoadData()">🔄 Refresh</button>
+              <button class="btn btn-emerald" style="font-size:12px;padding:5px 10px" onclick="maqraExportHasil()">⬇️ Export CSV</button>
+            </div>
+          </div>
+          <div style="padding:16px 20px">
+            <input class="field-input" id="maqraSearchHasil"
+              placeholder="🔍 Cari nama / nomor / maqra..." oninput="maqraFilterHasil()">
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>No.</th><th>Nomor Daftar</th><th>Nama</th><th>Kecamatan</th><th>Cabang</th><th>Maqra</th><th>Waktu</th></tr></thead>
+              <tbody id="maqraHasilTableBody">
+                <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--gray-400)">Memuat data...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
   </main>
 </div>
 
@@ -487,18 +688,17 @@
 //  All API calls via JSONP GET — zero CORS issues
 //  Password sent as btoa(pass) to avoid URL-encoding problems
 // ============================================================
-// API_URL — ubah di sini ATAU di js/config.js (untuk daftar.html & index.html)
-// Admin.html tidak load config.js agar tidak konflik deklarasi 'log'
-const API_URL = (window.MTQ_API_URL || 'https://script.google.com/macros/s/AKfycbwl5y16V9Fcxub3AIScpE86ZwYiPBnRVuXWgQqonhTDat8dJoMnspEw1ifaCouDDixz/exec');
+// API_URL: satu sumber dari js/config.js (window.MTQ_API_URL) — jangan ubah di sini
+const API_URL = window.MTQ_API_URL || '';
 
-// ── Logger ────────────────────────────────────────────────────
-const log = {
-  _c: { INFO:'#065f46', WARN:'#b45309', ERROR:'#dc2626', DEBUG:'#6b7280' },
+// ── Logger (pakai log dari config.js, tambah method khusus admin) ──
+// TIDAK redeclare const log — sudah ada di js/config.js
+const adminLog = {
   _p: (lvl, ...a) => console.log(`%c[ADMIN][${lvl}]`,`color:${({INFO:'#065f46',WARN:'#b45309',ERROR:'#dc2626',DEBUG:'#6b7280'}[lvl]||'#374151')};font-weight:bold`,...a),
-  info : (...a) => log._p('INFO',  ...a),
-  warn : (...a) => log._p('WARN',  ...a),
-  error: (...a) => log._p('ERROR', ...a),
-  debug: (...a) => log._p('DEBUG', ...a),
+  info : (...a) => adminLog._p('INFO',  ...a),
+  warn : (...a) => adminLog._p('WARN',  ...a),
+  error: (...a) => adminLog._p('ERROR', ...a),
+  debug: (...a) => adminLog._p('DEBUG', ...a),
   step : (n,...a)=> console.group(`%c[ADMIN][STEP ${n}]`,'color:#0369a1;font-weight:bold',...a),
   end  : ()     => console.groupEnd(),
   time : (l)    => console.time('[ADMIN] '+l),
@@ -519,7 +719,7 @@ const adm = {
 
 // ── Init ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  log.info('DOMContentLoaded');
+  adminLog.info('DOMContentLoaded');
   initDarkMode();
   initCaptcha();
   initDocumentPreviewer();
@@ -529,10 +729,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('adminSidebar')?.classList.toggle('open'));
   const saved = sessionStorage.getItem('mtq_admin_token');
   if (saved) {
-    log.info('Token found — auto-login');
+    adminLog.info('Token found — auto-login');
     adm.token = saved; hideLoginOverlay(); loadAll();
   } else {
-    log.info('No token — show login');
+    adminLog.info('No token — show login');
   }
 });
 
@@ -592,7 +792,7 @@ function initCaptcha() {
 
   const ansEl = document.getElementById('captchaAns');
   if (ansEl) ansEl.value = '';
-  log.debug('Captcha generated:', _captchaText.length, 'chars');
+  adminLog.debug('Captcha generated:', _captchaText.length, 'chars');
 }
 
 // ── Password visibility toggle ───────────────────────────────────────────
@@ -611,22 +811,22 @@ function togglePassVis() {
 // WHY base64: btoa() converts all chars to [A-Za-z0-9+/=],
 //             so special chars (@, !, #, +) survive URL-encoding.
 function doLogin() {
-  log.step('LOGIN', 'doLogin');
+  adminLog.step('LOGIN', 'doLogin');
   const pass   = document.getElementById('loginPass').value;
   const ansEl  = document.getElementById('captchaAns');
   const errEl  = document.getElementById('loginErr');
   const errMsg = document.getElementById('loginErrMsg');
   const showErr = (msg) => {
     errEl.style.display = 'block'; errMsg.textContent = msg;
-    log.warn('Login error:', msg);
+    adminLog.warn('Login error:', msg);
   };
 
-  if (!pass) { showErr('Password tidak boleh kosong'); log.end(); return; }
+  if (!pass) { showErr('Password tidak boleh kosong'); adminLog.end(); return; }
 
   const userAns = (ansEl?.value || '').trim().toUpperCase();
-  log.debug('Captcha — user:', userAns, 'expected:', _captchaText);
+  adminLog.debug('Captcha — user:', userAns, 'expected:', _captchaText);
   if (!userAns || userAns !== _captchaText) {
-    showErr('Captcha salah. Ketik ulang atau klik gambar untuk ganti.'); initCaptcha(); log.end(); return;
+    showErr('Captcha salah. Ketik ulang atau klik gambar untuk ganti.'); initCaptcha(); adminLog.end(); return;
   }
 
   const btn = document.querySelector('.login-overlay .btn-emerald');
@@ -640,31 +840,31 @@ function doLogin() {
   } catch(e) {
     b64pass = btoa(pass);
   }
-  log.info('Login via JSONP — pw.length (b64):', b64pass.length);
-  log.time('login');
+  adminLog.info('Login via JSONP — pw.length (b64):', b64pass.length);
+  adminLog.time('login');
 
   jsonp(`${API_URL}?action=adminLogin&pw=${encodeURIComponent(b64pass)}`, 'adminLogin', (data) => {
     btn.disabled = false; btn.innerHTML = 'Masuk →';
-    log.timeEnd('login');
-    log.info('Login response:', data);
+    adminLog.timeEnd('login');
+    adminLog.info('Login response:', data);
 
     if (data?.__jsonpError) {
       // JSONP script failed to load — deployment issue, not a password issue
       const isTimeout = data.message === 'JSONP_TIMEOUT';
-      log.error('JSONP load failure — deployment likely outdated');
+      adminLog.error('JSONP load failure — deployment likely outdated');
       showErr(
         isTimeout
           ? '⏱️ Server tidak merespons (timeout). Pastikan GAS sudah di-deploy dan URL benar.'
           : '🔌 Gagal terhubung ke server. GAS belum di-deploy ulang atau URL sudah berubah. Lihat panduan di bawah.'
       );
       document.getElementById('deployGuide').style.display = 'block';
-      log.end(); return;
+      adminLog.end(); return;
     }
 
     if (data && data.success) {
       adm.token = data.token;
       sessionStorage.setItem('mtq_admin_token', data.token);
-      log.info('Login ✓ token.length:', data.token?.length);
+      adminLog.info('Login ✓ token.length:', data.token?.length);
       errEl.style.display = 'none';
       document.getElementById('deployGuide').style.display = 'none';
       hideLoginOverlay();
@@ -685,12 +885,12 @@ function doLogin() {
         document.getElementById('deployGuide').style.display = 'block';
       }
     }
-    log.end();
+    adminLog.end();
   });
 }
 
 function doLogout() {
-  log.info('doLogout');
+  adminLog.info('doLogout');
   adm.token = null; sessionStorage.removeItem('mtq_admin_token');
   document.getElementById('loginOverlay').style.display = 'flex';
   document.getElementById('loginPass').value = '';
@@ -714,25 +914,25 @@ function testConnection() {
   const errMsg = document.getElementById('loginErrMsg');
   errEl.style.display = 'none';
 
-  log.info('testConnection — pinging server...');
+  adminLog.info('testConnection — pinging server...');
 
   jsonp(`${API_URL}?action=ping`, 'ping', (data) => {
     if (data?.__jsonpError) {
       errEl.style.display = 'block';
       errMsg.textContent  = '🔌 Koneksi gagal — GAS tidak merespons dengan JSONP. Lihat panduan di bawah.';
       if (guide) guide.style.display = 'block';
-      log.error('Ping FAILED — JSONP error. Deployment harus diperbarui.');
+      adminLog.error('Ping FAILED — JSONP error. Deployment harus diperbarui.');
     } else if (data?.pong) {
       errEl.style.display = 'block';
       errEl.style.borderLeftColor = 'var(--emerald)';
       errMsg.textContent  = '✅ Koneksi OK! Server merespons dengan benar. Masukkan password Anda.';
       errMsg.style.color  = 'var(--emerald)';
       if (guide) guide.style.display = 'none';
-      log.info('Ping OK — server responding correctly', data);
+      adminLog.info('Ping OK — server responding correctly', data);
     } else {
       errEl.style.display = 'block';
       errMsg.textContent  = '⚠️ Server merespons tapi data tidak sesuai: ' + JSON.stringify(data);
-      log.warn('Ping partial — server responded but unexpected data', data);
+      adminLog.warn('Ping partial — server responded but unexpected data', data);
     }
   });
 }
@@ -748,26 +948,26 @@ function showPage(name) {
 
 // ── Load All ──────────────────────────────────────────────────
 function loadAll() {
-  log.info('loadAll');
+  adminLog.info('loadAll');
   document.getElementById('tableSubtitle').textContent = 'Memuat data...';
   document.getElementById('pesertaTbody').innerHTML =
     '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gray-400)"><span class="spin"></span> Memuat...</td></tr>';
 
   jsonp(`${API_URL}?action=getAllPendaftar&token=${encodeURIComponent(adm.token)}`, 'getAllPendaftar', (data) => {
     if (!data || !data.success) {
-      log.error('loadAll failed', data);
+      adminLog.error('loadAll failed', data);
       if (data?.message?.includes('tidak valid')) { doLogout(); return; }
       toast('Gagal', data?.message || 'Gagal memuat data', 'error');
       document.getElementById('tableSubtitle').textContent = 'Gagal memuat data';
       return;
     }
     adm.allData = data.data || [];
-    log.info('Loaded', adm.allData.length, 'records');
+    adminLog.info('Loaded', adm.allData.length, 'records');
 
     // Store Drive API key from authenticated response
     if (data.driveApiKey && window._dp) {
       window._dp.config.googleDriveApiKey = data.driveApiKey;
-      log.info('Drive API key received, length:', data.driveApiKey.length);
+      adminLog.info('Drive API key received, length:', data.driveApiKey.length);
     }
 
     populateFilterDropdowns();
@@ -869,7 +1069,7 @@ function openDetail(nomor) {
   const r = adm.allData.find(x => x.nomor_pendaftaran === nomor);
   if (!r) return;
   adm.editing = r;
-  log.info('openDetail', nomor, 'tipe:', r.tipe_lomba);
+  adminLog.info('openDetail', nomor, 'tipe:', r.tipe_lomba);
 
   document.getElementById('modalTitle').textContent  = 'Detail Peserta';
   document.getElementById('modalRegNum').textContent = nomor;
@@ -985,7 +1185,7 @@ function saveEdit(fieldKey, nomor) {
   const input = document.getElementById(`ef_${fieldKey}_input`);
   const newVal = input?.value?.trim();
   if (newVal === undefined) return;
-  log.info('saveEdit', fieldKey, nomor, newVal);
+  adminLog.info('saveEdit', fieldKey, nomor, newVal);
   const btn = input.nextElementSibling;
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span>';
 
@@ -1021,7 +1221,7 @@ function doVerify(nomor, status){ quickVerify(nomor, status); }
 function execVerify(nomor, status) {
   const catatan = document.getElementById('catatanInput').value.trim();
   closeModal('confirmModal');
-  log.info('execVerify', nomor, status, catatan);
+  adminLog.info('execVerify', nomor, status, catatan);
 
   jsonp(`${API_URL}?action=updateStatus&token=${encodeURIComponent(adm.token)}`+
         `&nomor=${encodeURIComponent(nomor)}&status=${encodeURIComponent(status)}`+
@@ -1048,7 +1248,7 @@ function doDeactivate(nomor){ quickDeactivate(nomor); }
 function execDeactivate(nomor) {
   const catatan = document.getElementById('catatanInput').value.trim();
   closeModal('confirmModal');
-  log.info('execDeactivate', nomor, catatan);
+  adminLog.info('execDeactivate', nomor, catatan);
 
   jsonp(`${API_URL}?action=deactivate&token=${encodeURIComponent(adm.token)}`+
         `&nomor=${encodeURIComponent(nomor)}&catatan=${encodeURIComponent(catatan)}`,
@@ -1173,19 +1373,19 @@ function jsonp(url, cbPrefix, fn, timeout=12000) {
   let timer;
   window[cbName] = (data) => {
     clearTimeout(timer);
-    try { fn(data); } catch(e){ log.error('JSONP cb error',e); }
+    try { fn(data); } catch(e){ adminLog.error('JSONP cb error',e); }
     delete window[cbName]; script.remove();
   };
   script.src = `${url}&callback=${cbName}`;
   script.onerror = () => {
     clearTimeout(timer);
-    log.error('JSONP script.onerror — server returned non-JS or HTTP error for:', cbPrefix);
-    log.error('URL attempted:', url.split('?')[0]+'?action='+new URLSearchParams(url.split('?')[1]||'').get('action'));
+    adminLog.error('JSONP script.onerror — server returned non-JS or HTTP error for:', cbPrefix);
+    adminLog.error('URL attempted:', url.split('?')[0]+'?action='+new URLSearchParams(url.split('?')[1]||'').get('action'));
     delete window[cbName]; script.remove();
     fn({ __jsonpError: true, message: 'JSONP_LOAD_FAILED' });
   };
   timer = setTimeout(() => {
-    log.warn('JSONP timeout after 12s for:', cbPrefix);
+    adminLog.warn('JSONP timeout after 12s for:', cbPrefix);
     delete window[cbName]; script.remove();
     fn({ __jsonpError: true, message: 'JSONP_TIMEOUT' });
   }, timeout);
@@ -1214,7 +1414,7 @@ function loadCabangConfig() {
   jsonp(`${API_URL}?action=getConfig`, 'adminCfg', (data) => {
     if (data && data.success && data.config) {
       adm.cabangConfig = data.config;
-      log.info('cabangConfig loaded:', data.config.length, 'cabang');
+      adminLog.info('cabangConfig loaded:', data.config.length, 'cabang');
     }
   });
 }
@@ -1340,7 +1540,7 @@ window.addEventListener('DOMContentLoaded', () => {
 // ── Document Previewer setup (FIX #4) ─────────────────────────
 function initDocumentPreviewer() {
   if (typeof DocumentPreviewer === 'undefined') {
-    log.warn('DocumentPreviewer not loaded — doc preview will open in new tab');
+    adminLog.warn('DocumentPreviewer not loaded — doc preview will open in new tab');
     return;
   }
   window._dp = new DocumentPreviewer({
@@ -1355,23 +1555,23 @@ function initDocumentPreviewer() {
     googleDriveApiKey: '',    // filled in after loadAll() returns driveApiKey
     debug        : false,
     onOpen: (url, name) => {
-      log.info('DocPreviewer opened:', name, url);
+      adminLog.info('DocPreviewer opened:', name, url);
       // dp-open already added in openDocPreview() for instant layout shift
       document.body.classList.add('dp-open'); // idempotent
       _updateDpWidth();
     },
     onClose: () => {
-      log.info('DocPreviewer closed');
+      adminLog.info('DocPreviewer closed');
       document.body.classList.remove('dp-open');
     },
     onError: (err) => {
-      log.error('DocPreviewer error:', err.message);
+      adminLog.error('DocPreviewer error:', err.message);
       toast('Preview Gagal', err.message, 'error');
     },
   });
   // Mount the previewer into the DOM
   window._dp.mount('#dp-modal-root');
-  log.info('DocumentPreviewer initialized');
+  adminLog.info('DocumentPreviewer initialized');
 }
 
 // Adjust dp-width CSS variable for responsive layout
@@ -1392,7 +1592,7 @@ function _updateDpWidth() {
  */
 function openDocPreview(url, name) {
   if (!url) { toast('Dokumen', 'URL dokumen tidak tersedia', 'warning'); return; }
-  log.info('openDocPreview:', name, url);
+  adminLog.info('openDocPreview:', name, url);
 
   // Mobile: open in new tab
   if (window.innerWidth <= 768) { window.open(url, '_blank'); return; }
@@ -1402,10 +1602,10 @@ function openDocPreview(url, name) {
   // FIX Issue 6: shift layout IMMEDIATELY before async load
   _updateDpWidth();
   document.body.classList.add('dp-open');   // instant layout shift
-  log.info('dp-open applied — starting async load');
+  adminLog.info('dp-open applied — starting async load');
 
   window._dp.open(url, name).catch(err => {
-    log.error('DocPreview open error:', err.message);
+    adminLog.error('DocPreview open error:', err.message);
     document.body.classList.remove('dp-open'); // revert on error
     window.open(url, '_blank');
   });
@@ -1426,5 +1626,60 @@ window.addEventListener('resize', () => {
 
 </script>
   <script src="js/document-previewer.js"></script>
+
+  <!-- ══ Manajemen Maqra — dimuat setelah admin login ══ -->
+  <script src="js/admin-maqra.js"></script>
+  <script>
+  // ── Tab switcher untuk sub-tab Maqra ─────────────────────────
+  function switchMaqraTab(id) {
+    document.querySelectorAll('.maqra-tab-pane').forEach(p => p.style.display = 'none');
+    document.getElementById(id).style.display = 'block';
+    const map = { tabMaqraList:'mtab-list', tabMaqraConfig:'mtab-config', tabMaqraHasil:'mtab-hasil' };
+    document.querySelectorAll('.maqra-tab-btn').forEach(b => {
+      b.style.background = 'transparent';
+      b.style.color = 'var(--gray-500)';
+      b.style.boxShadow = 'none';
+    });
+    const active = document.getElementById(map[id]);
+    if (active) {
+      active.style.background = 'var(--white)';
+      active.style.color = 'var(--emerald)';
+      active.style.boxShadow = '0 2px 8px rgba(0,0,0,.08)';
+    }
+  }
+
+  // ── Override toggle visual untuk halaman maqra ───────────────
+  function maqraSetOverride(val) {
+    document.getElementById('maqraCfgOverride').value = val;
+    const styles = {
+      auto:  { border:'var(--emerald)', bg:'var(--emerald-xs)', color:'var(--emerald)' },
+      open:  { border:'#22c55e',        bg:'#f0fdf4',           color:'#166534'        },
+      close: { border:'#dc2626',        bg:'#fef2f2',           color:'#dc2626'        },
+      off:   { border:'var(--gray-200)',bg:'var(--white)',       color:'var(--gray-600)'},
+    };
+    function apply(el, s) {
+      el.style.borderColor = s.border;
+      el.style.background  = s.bg;
+      el.style.color       = s.color;
+    }
+    apply(document.getElementById('maqra_ov_auto'),  val===''      ? styles.auto  : styles.off);
+    apply(document.getElementById('maqra_ov_open'),  val==='buka'  ? styles.open  : styles.off);
+    apply(document.getElementById('maqra_ov_close'), val==='tutup' ? styles.close : styles.off);
+  }
+
+  // ── Pastikan maqra diinisialisasi saat halaman maqra dibuka ──
+  // Dibungkus DOMContentLoaded agar showPage sudah terdefinisi
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof showPage === 'function') {
+      const _origShowPage = showPage;
+      showPage = function(page) {
+        _origShowPage(page);
+        if (page === 'maqra' && typeof maqraInit === 'function') {
+          maqraInit();
+        }
+      };
+    }
+  });
+  </script>
 </body>
 </html>

@@ -9,8 +9,8 @@
 //  ✅ Setelah verify, langsung tampilkan maqra tanpa input NIK ulang
 // ============================================================
 
-const API_URL = (typeof MTQ_CONFIG !== 'undefined' ? MTQ_CONFIG.API_URL :
-  'https://script.google.com/macros/s/AKfycbwl5y16V9Fcxub3AIScpE86ZwYiPBnRVuXWgQqonhTDat8dJoMnspEw1ifaCouDDixz/exec');
+// API_URL: satu sumber dari js/config.js (window.MTQ_API_URL) — jangan ubah di sini
+const API_URL = window.MTQ_API_URL || '';
 
 let _record      = null;   // data peserta dari server
 let _editFiles   = {};     // file untuk form perbaikan
