@@ -144,9 +144,202 @@ function maqraRenderMaqraTable(list) {
     </tr>`).join('');
 }
 
+// ── UI Helpers: Mode toggle ───────────────────────────────────
+let _maqraMode = 'tambah'; // 'tambah' | 'ganti'
+
+function maqraSetMode(mode) {
+  _maqraMode = mode;
+  const isTambah = mode === 'tambah';
+
+  const btnT = document.getElementById('maqraModeTambah');
+  const btnG = document.getElementById('maqraModeGanti');
+  const warn = document.getElementById('maqraReplaceWarn');
+  const inp  = document.getElementById('maqraReplace');
+
+  if (btnT) {
+    btnT.style.border     = isTambah ? '2px solid var(--emerald)' : '2px solid var(--gray-200)';
+    btnT.style.background = isTambah ? 'var(--emerald-xs)' : 'var(--white)';
+    btnT.style.color      = isTambah ? 'var(--emerald)' : 'var(--gray-600)';
+  }
+  if (btnG) {
+    btnG.style.border     = !isTambah ? '2px solid #dc2626' : '2px solid var(--gray-200)';
+    btnG.style.background = !isTambah ? '#fef2f2' : 'var(--white)';
+    btnG.style.color      = !isTambah ? '#dc2626' : 'var(--gray-600)';
+  }
+  if (warn) warn.style.display = isTambah ? 'none' : 'block';
+  if (inp)  inp.value = isTambah ? 'false' : 'true';
+}
+
+// ── Hitung baris textarea ─────────────────────────────────────
+function maqraCountLines() {
+  const bulk = document.getElementById('maqraBulk')?.value || '';
+  const count = bulk.split('\n').map(l => l.trim()).filter(Boolean).length;
+  const el = document.getElementById('maqraBulkCount');
+  if (el) el.textContent = count + (count === 1 ? ' baris' : ' baris');
+}
+
+// ── Info maqra yang sudah ada saat pilih cabang ───────────────
+function maqraOnCabangChange() {
+  const cabang  = document.getElementById('maqraCabang')?.value || '';
+  const infoBox = document.getElementById('maqraCabangInfo');
+  if (!infoBox) return;
+  if (!cabang) { infoBox.style.display = 'none'; return; }
+
+  const existing = _allMaqra.filter(m => m.cabang_lomba === cabang);
+  const tersedia = existing.filter(m => !m.sudah_diambil).length;
+  const diambil  = existing.filter(m => m.sudah_diambil).length;
+
+  if (!existing.length) {
+    infoBox.style.cssText = 'display:block;margin-top:8px;padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.6;background:var(--emerald-xs);border:1px solid var(--emerald-light);color:#065f46';
+    infoBox.innerHTML = '✅ Belum ada maqra untuk cabang ini. Silakan tambahkan.';
+  } else {
+    infoBox.style.cssText = 'display:block;margin-top:8px;padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.6;background:#fef3c7;border:1px solid #fde68a;color:#b45309';
+    infoBox.innerHTML = `⚠️ Sudah ada <strong>${existing.length} maqra</strong> — Tersedia: <strong>${tersedia}</strong> · Diambil: <strong>${diambil}</strong><br>
+      Mode <strong>Tambah</strong>: maqra baru ditambahkan di bawah yang ada.<br>
+      Mode <strong>Ganti Semua</strong>: maqra belum diambil (${tersedia}) akan <span style="color:#dc2626;font-weight:700">dihapus</span>.`;
+  }
+}
+
+// ── Render tabel sebagai grouped-by-cabang cards ──────────────
+function maqraRenderMaqraTable(list) {
+  // Legacy ID masih digunakan oleh beberapa tempat, buat dummy
+  const legacyTbody = document.getElementById('maqraTableBody');
+  if (legacyTbody) legacyTbody.innerHTML = '';
+
+  const container = document.getElementById('maqraCabangGroups');
+  if (!container) return;
+
+  if (!list.length) {
+    container.innerHTML = `<div style="text-align:center;padding:48px 24px;color:var(--gray-400)">
+      <div style="font-size:40px;margin-bottom:12px">📭</div>
+      <div style="font-size:15px;font-weight:600">Belum ada maqra</div>
+      <div style="font-size:13px;margin-top:6px">Tambahkan maqra menggunakan form di sebelah kiri</div>
+    </div>`;
+    return;
+  }
+
+  // Group by cabang
+  const groups = {};
+  list.forEach(m => {
+    if (!groups[m.cabang_lomba]) groups[m.cabang_lomba] = [];
+    groups[m.cabang_lomba].push(m);
+  });
+
+  const sortedCabangs = Object.keys(groups).sort();
+  container.innerHTML = sortedCabangs.map(cabang => {
+    const items    = groups[cabang];
+    const tersedia = items.filter(m => !m.sudah_diambil).length;
+    const diambil  = items.filter(m =>  m.sudah_diambil).length;
+    const pct      = items.length ? Math.round(diambil / items.length * 100) : 0;
+
+    const rows = items.map((m, i) => `
+      <tr style="${m.sudah_diambil ? 'opacity:.55' : ''}">
+        <td style="color:var(--gray-400);font-size:11px;white-space:nowrap">${m.nomor_urut || i+1}</td>
+        <td>
+          <span style="font-weight:600;color:var(--gray-800)">${maqraEsc(m.maqra_teks)}</span>
+          ${m.maqra_detail ? `<span style="font-size:11px;color:var(--gray-400);margin-left:6px">${maqraEsc(m.maqra_detail)}</span>` : ''}
+        </td>
+        <td>
+          ${m.sudah_diambil
+            ? `<span style="background:#fef3c7;color:#b45309;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap">✅ Diambil</span>
+               ${m.diambil_oleh ? `<div style="font-size:10px;color:var(--gray-400);margin-top:2px">→ ${maqraEsc(m.diambil_oleh)}</div>` : ''}`
+            : `<span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700">⏳ Tersedia</span>`}
+        </td>
+        <td>
+          ${!m.sudah_diambil
+            ? `<button onclick="maqraDelete('${maqraEsc(m.id_maqra)}')"
+                style="background:#fef2f2;color:#dc2626;border:none;border-radius:6px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s"
+                onmouseover="this.style.background='#dc2626';this.style.color='#fff'"
+                onmouseout="this.style.background='#fef2f2';this.style.color='#dc2626'">🗑️</button>`
+            : '<span style="color:var(--gray-300);font-size:12px">—</span>'}
+        </td>
+      </tr>`).join('');
+
+    return `
+      <div class="admin-card" style="margin-bottom:14px">
+        <div class="admin-card-header" style="cursor:pointer;user-select:none"
+          onclick="maqraToggleCabangGroup('grp_${cabang.replace(/[^a-zA-Z0-9]/g,'_')}')"
+          title="Klik untuk buka/tutup">
+          <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+            <span style="font-size:16px">📖</span>
+            <span style="font-weight:700;font-size:14px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${maqraEsc(cabang)}</span>
+            <div style="display:flex;gap:6px;flex-shrink:0">
+              <span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700">${tersedia} tersedia</span>
+              ${diambil > 0 ? `<span style="background:#fef3c7;color:#b45309;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700">${diambil} diambil</span>` : ''}
+            </div>
+          </div>
+          <!-- Progress bar -->
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:10px">
+            <div style="width:80px;height:6px;background:var(--gray-200);border-radius:999px;overflow:hidden">
+              <div style="height:100%;width:${pct}%;background:${pct===100?'#22c55e':'var(--gold)'};border-radius:999px;transition:width .4s"></div>
+            </div>
+            <span style="font-size:11px;color:var(--gray-400);font-weight:600;min-width:28px">${pct}%</span>
+            <span style="font-size:14px;color:var(--gray-400)">▾</span>
+          </div>
+        </div>
+        <div id="grp_${cabang.replace(/[^a-zA-Z0-9]/g,'_')}" style="overflow:hidden;transition:max-height .3s ease;max-height:9999px">
+          <div class="table-wrap">
+            <table class="data-table" style="font-size:12px">
+              <thead><tr><th style="width:40px">#</th><th>Maqra</th><th style="width:120px">Status</th><th style="width:44px">Aksi</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+          <div style="padding:10px 16px;border-top:1px solid var(--gray-100);display:flex;align-items:center;gap:8px">
+            <button onclick="maqraPresetTambah('${maqraEsc(cabang)}')"
+              style="font-size:12px;padding:5px 10px;background:var(--emerald-xs);color:var(--emerald);border:1px solid var(--emerald-light);border-radius:6px;cursor:pointer;font-weight:600">
+              ➕ Tambah Maqra
+            </button>
+            ${tersedia > 0
+              ? `<button onclick="maqraPresetGanti('${maqraEsc(cabang)}')"
+                  style="font-size:12px;padding:5px 10px;background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;border-radius:6px;cursor:pointer;font-weight:600">
+                  🔄 Ganti Semua
+                </button>`
+              : ''}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// Toggle expand/collapse group card
+function maqraToggleCabangGroup(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const isOpen = el.style.maxHeight && el.style.maxHeight !== '0px';
+  el.style.maxHeight = isOpen ? '0px' : (el.scrollHeight + 200) + 'px';
+}
+
+// Quick-fill form dari tombol cabang card
+function maqraPresetTambah(cabang) {
+  const sel = document.getElementById('maqraCabang');
+  if (sel) { sel.value = cabang; maqraOnCabangChange(); }
+  maqraSetMode('tambah');
+  document.getElementById('maqraBulk')?.focus();
+  document.getElementById('maqraBulk')?.scrollIntoView({ behavior:'smooth', block:'center' });
+}
+function maqraPresetGanti(cabang) {
+  const sel = document.getElementById('maqraCabang');
+  if (sel) { sel.value = cabang; maqraOnCabangChange(); }
+  maqraSetMode('ganti');
+  document.getElementById('maqraBulk')?.focus();
+  document.getElementById('maqraBulk')?.scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
+// ── Updated filter: search + cabang + status ──────────────────
 function maqraFilterTable() {
-  const cabang   = document.getElementById('maqraFilterCabang')?.value || '';
-  const filtered = cabang ? _allMaqra.filter(m => m.cabang_lomba === cabang) : _allMaqra;
+  const cabang = document.getElementById('maqraFilterCabang')?.value || '';
+  const status = document.getElementById('maqraFilterStatus')?.value || '';
+  const query  = (document.getElementById('maqraSearchInput')?.value || '').toLowerCase().trim();
+
+  let filtered = _allMaqra;
+  if (cabang) filtered = filtered.filter(m => m.cabang_lomba === cabang);
+  if (status === 'tersedia') filtered = filtered.filter(m => !m.sudah_diambil);
+  if (status === 'diambil')  filtered = filtered.filter(m =>  m.sudah_diambil);
+  if (query)  filtered = filtered.filter(m =>
+    maqraEsc(m.maqra_teks).toLowerCase().includes(query) ||
+    maqraEsc(m.cabang_lomba).toLowerCase().includes(query) ||
+    (m.maqra_detail||'').toLowerCase().includes(query)
+  );
   maqraRenderMaqraTable(filtered);
 }
 
@@ -245,13 +438,16 @@ function maqraFilterHasil() {
 }
 
 // ── Save Maqra ────────────────────────────────────────────────
-// Kirim sebagai bulk_text (plain text newline-separated) bukan JSON array
-// agar URL tidak melebihi batas GAS ~8KB
+// ── Save Maqra ────────────────────────────────────────────────
+// Frontend parse bulk_text → items[] sebelum dikirim ke backend
+// karena backend mengharapkan body.items bukan body.bulk_text
 async function maqraSaveMaqra() {
   const cabang  = document.getElementById('maqraCabang')?.value.trim();
   const bulk    = document.getElementById('maqraBulk')?.value.trim();
   const detail  = document.getElementById('maqraDetailPrefix')?.value.trim() || '';
-  const replace = document.getElementById('maqraReplace')?.checked || false;
+  // Baca dari hidden input (value 'true'/'false') atau dari _maqraMode
+  const replaceEl = document.getElementById('maqraReplace');
+  const replace = replaceEl ? (replaceEl.value === 'true' || replaceEl.checked === true) : (_maqraMode === 'ganti');
 
   if (!cabang) { maqraShowToast('Peringatan', 'Pilih cabang lomba terlebih dahulu', 'warning'); return; }
   if (!bulk)   { maqraShowToast('Peringatan', 'Isi daftar maqra terlebih dahulu', 'warning'); return; }
@@ -259,26 +455,46 @@ async function maqraSaveMaqra() {
   const lines = bulk.split('\n').map(l => l.trim()).filter(Boolean);
   if (!lines.length) { maqraShowToast('Peringatan', 'Tidak ada maqra yang dapat dibaca', 'warning'); return; }
 
-  const msg = `Simpan ${lines.length} maqra untuk "${cabang}"?` +
-    (replace ? '\n\n⚠️ Maqra yang belum diambil akan DIHAPUS dan diganti.' : '');
+  // ── Hitung nomor urut mulai dari maqra terakhir cabang ini ──
+  // Agar penambahan baru tidak bentrok dengan yang sudah ada
+  const existingForCabang = _allMaqra.filter(m => m.cabang_lomba === cabang);
+  const startUrut = replace ? 1 : existingForCabang.length + 1;
+
+  // ── Build items array — ini yang diharapkan backend ─────────
+  const items = lines.map((line, idx) => {
+    const nomorUrut = startUrut + idx;
+    const idSuffix  = String(nomorUrut).padStart(3, '0');
+    const cabangKey = cabang.replace(/[^A-Za-z0-9]/g, '_').toUpperCase().substring(0, 20);
+    return {
+      id_maqra    : `${cabangKey}_${idSuffix}`,
+      cabang_lomba: cabang,
+      maqra_teks  : line,
+      maqra_detail: detail,
+      nomor_urut  : nomorUrut,
+    };
+  });
+
+  const modeLabel = replace ? 'GANTI SEMUA' : 'TAMBAH';
+  const msg = `${modeLabel} ${items.length} maqra untuk "${cabang}"?`
+    + (replace ? '\n\n⚠️ Maqra lama yang BELUM diambil akan dihapus.' : '');
   if (!confirm(msg)) return;
 
-  maqraShowLoading(true, `Menyimpan ${lines.length} maqra...`);
+  maqraShowLoading(true, `Menyimpan ${items.length} maqra...`);
   try {
-    // Kirim bulk_text bukan array items — URL jauh lebih pendek
     const data = await maqraJsonpPost({
       action      : 'saveMaqra',
       token       : _maqraToken,
       cabang_lomba: cabang,
-      bulk_text   : lines.join('\n'),   // plain text, GAS parse sendiri
-      detail      : detail,
-      replace     : replace,
+      items,                   // ← array yang benar, bukan bulk_text
+      replace,
     });
     if (data.success) {
       maqraShowToast('Berhasil', `${data.added} maqra berhasil disimpan untuk ${cabang}`, 'success', 5000);
       document.getElementById('maqraBulk').value = '';
       document.getElementById('maqraDetailPrefix').value = '';
-      document.getElementById('maqraReplace').checked = false;
+      if (replaceEl) replaceEl.value = 'false';
+      maqraSetMode('tambah');
+      maqraCountLines();
       maqraLoadData();
     } else {
       if (data.message === 'Sesi tidak valid') { maqraHandleSessionExpired(); return; }
@@ -417,10 +633,17 @@ function maqraEsc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 function maqraShowLoading(show, msg = 'Memuat...') {
-  // Gunakan showLoading dari admin.js jika tersedia, fallback ke overlay sendiri
-  if (typeof showLoading === 'function') { showLoading(show, msg); return; }
-  document.getElementById('loadingOverlay')?.classList.toggle('show', show);
-  const lm = document.getElementById('loadingMsg'); if (lm) lm.textContent = msg;
+  // showLoading(msg,sub) dan hideLoading() dari admin.js — signature berbeda,
+  // JANGAN panggil showLoading(show,msg) karena itu selalu menampilkan overlay.
+  if (show) {
+    if (typeof showLoading  === 'function') { showLoading(msg, 'Mohon tunggu'); return; }
+  } else {
+    if (typeof hideLoading  === 'function') { hideLoading(); return; }
+  }
+  // Fallback jika admin.js belum tersedia
+  const el = document.getElementById('loadingOverlay');
+  if (el) el.style.display = show ? 'flex' : 'none';
+  const lm = document.getElementById('loadingMsg'); if (lm && show) lm.textContent = msg;
 }
 function maqraShowToast(title, msg, type = 'info', duration = 4000) {
   // Gunakan showToast dari admin.js jika tersedia

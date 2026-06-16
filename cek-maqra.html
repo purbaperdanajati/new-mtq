@@ -252,8 +252,47 @@
                placeholder="Masukkan NIK 16 digit"
                maxlength="16" inputmode="numeric">
       </div>
-      <button class="btn-search" id="searchBtn" onclick="cekStatus()">🔍 Cek</button>
     </div>
+
+    <!-- Image Captcha (canvas) -->
+    <div style="margin-top:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
+        <span style="font-size:12px;font-weight:700;color:var(--g500)">🔒 Verifikasi Keamanan</span>
+        <span style="font-size:11px;color:var(--g400)">Klik gambar untuk ganti</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="position:relative;display:inline-block;flex-shrink:0">
+          <canvas id="captchaCanvas" width="200" height="58"
+            onclick="refreshCaptcha()" title="Klik untuk ganti captcha"
+            style="display:block;border-radius:10px;cursor:pointer;
+                   box-shadow:0 2px 8px rgba(0,0,0,.12);user-select:none;
+                   border:2px solid var(--em-light,#a7f3d0)"></canvas>
+          <div style="position:absolute;bottom:2px;right:6px;font-size:8px;
+                      color:rgba(255,255,255,0.4);pointer-events:none;font-weight:700;letter-spacing:.5px">MTQ2026</div>
+        </div>
+        <button onclick="refreshCaptcha()" title="Ganti captcha"
+          style="background:var(--em-xs,#ecfdf5);border:1.5px solid var(--em-light,#a7f3d0);
+                 border-radius:10px;padding:10px 13px;cursor:pointer;font-size:18px;
+                 transition:all .2s;flex-shrink:0;display:flex;align-items:center;justify-content:center"
+          onmouseover="this.style.background='var(--em-pale,#d1fae5)'"
+          onmouseout="this.style.background='var(--em-xs,#ecfdf5)'">🔄</button>
+        <div style="flex:1;min-width:160px">
+          <input type="text" id="captchaInput" maxlength="6"
+            placeholder="Ketik 6 karakter dari gambar"
+            style="width:100%;padding:11px 14px;border:2px solid var(--g200);border-radius:10px;
+                   font-size:18px;font-family:'Courier New',monospace;letter-spacing:6px;
+                   font-weight:700;text-transform:uppercase;text-align:center;
+                   color:var(--g800);background:var(--white);outline:none;transition:all .2s"
+            oninput="this.value=this.value.toUpperCase()"
+            onfocus="this.style.borderColor='var(--em)';this.style.boxShadow='0 0 0 3px rgba(5,150,105,.12)'"
+            onblur="this.style.borderColor='var(--g200)';this.style.boxShadow='none'">
+          <div id="captchaErr" style="font-size:11px;color:var(--red);margin-top:3px;display:none">⚠️ Kode tidak sesuai</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-search" id="searchBtn" onclick="cekStatus()"
+      style="width:100%;margin-top:14px;justify-content:center">🔍 Cek Status</button>
   </div>
 
   <!-- Status result area -->

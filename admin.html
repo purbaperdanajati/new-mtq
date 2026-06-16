@@ -472,80 +472,118 @@
 
       <!-- SUB TAB 1: Daftar Maqra -->
       <div class="maqra-tab-pane" id="tabMaqraList" style="display:block">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
 
-          <!-- Input maqra -->
-          <div class="admin-card">
-            <div class="admin-card-header"><h2>➕ Tambah / Ganti Maqra</h2></div>
-            <div style="padding:20px">
-              <div class="field-group">
-                <label class="field-label">Cabang Lomba <span class="req">*</span></label>
-                <select class="field-select" id="maqraCabang">
-                  <option value="">-- Pilih Cabang --</option>
-                </select>
+        <!-- ── Stats Bar ───────────────────────────────────────── -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+          <div style="background:var(--white);border:1px solid var(--gray-200);border-radius:12px;padding:16px 18px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow-sm)">
+            <span style="font-size:26px">📋</span>
+            <div><div style="font-size:24px;font-weight:800;color:var(--emerald);line-height:1" id="maqraStatTotal">—</div><div style="font-size:11px;color:var(--gray-400);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Total Maqra</div></div>
+          </div>
+          <div style="background:var(--white);border:1px solid var(--gray-200);border-radius:12px;padding:16px 18px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow-sm)">
+            <span style="font-size:26px">⏳</span>
+            <div><div style="font-size:24px;font-weight:800;color:var(--emerald);line-height:1" id="maqraStatTersedia">—</div><div style="font-size:11px;color:var(--gray-400);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Tersedia</div></div>
+          </div>
+          <div style="background:var(--white);border:1px solid var(--gray-200);border-radius:12px;padding:16px 18px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow-sm)">
+            <span style="font-size:26px">✅</span>
+            <div><div style="font-size:24px;font-weight:800;color:var(--gold);line-height:1" id="maqraStatDiambil">—</div><div style="font-size:11px;color:var(--gray-400);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Diambil</div></div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:400px 1fr;gap:20px;align-items:start">
+
+          <!-- ── Panel Kiri: Input ──────────────────────────────── -->
+          <div style="position:sticky;top:80px">
+            <div class="admin-card">
+              <div class="admin-card-header">
+                <h2>➕ Tambah / Ganti Maqra</h2>
+                <button class="btn btn-outline" style="font-size:12px;padding:4px 10px" onclick="maqraLoadData()">🔄</button>
               </div>
-              <div class="field-group">
-                <label class="field-label">Daftar Maqra <span class="req">*</span></label>
-                <textarea class="field-input" id="maqraBulk"
-                  style="min-height:200px;font-family:monospace;font-size:13px;line-height:1.7;resize:vertical"
-                  placeholder="Satu baris = satu maqra. Contoh:&#10;Al-Baqarah: 1-5&#10;Al-Baqarah: 6-10&#10;Ali Imran: 1-8"></textarea>
-                <div style="font-size:12px;color:var(--gray-400);margin-top:6px;line-height:1.6">
-                  📌 Format bebas — satu baris = satu maqra<br>
-                  ⚠️ Centang "Ganti semua" untuk menghapus maqra lama yang belum diambil
+              <div style="padding:20px">
+
+                <!-- Pilih cabang + info jumlah existing -->
+                <div class="field-group">
+                  <label class="field-label">Cabang Lomba <span class="req">*</span></label>
+                  <select class="field-select" id="maqraCabang" onchange="maqraOnCabangChange()">
+                    <option value="">-- Pilih Cabang --</option>
+                  </select>
+                  <!-- Info maqra existing untuk cabang ini -->
+                  <div id="maqraCabangInfo" style="display:none;margin-top:8px;padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.6"></div>
                 </div>
+
+                <!-- Mode selector -->
+                <div class="field-group">
+                  <label class="field-label">Mode Input</label>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px" id="maqraModeButtons">
+                    <button type="button" id="maqraModeTambah" onclick="maqraSetMode('tambah')"
+                      style="padding:9px 8px;border:2px solid var(--emerald);background:var(--emerald-xs);color:var(--emerald);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;text-align:center">
+                      ➕ Tambah<div style="font-size:10px;font-weight:400;opacity:.8">Simpan di bawah yang ada</div>
+                    </button>
+                    <button type="button" id="maqraModeGanti" onclick="maqraSetMode('ganti')"
+                      style="padding:9px 8px;border:2px solid var(--gray-200);background:var(--white);color:var(--gray-600);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;text-align:center">
+                      🔄 Ganti Semua<div style="font-size:10px;font-weight:400;opacity:.8">Hapus lama + isi baru</div>
+                    </button>
+                  </div>
+                  <input type="hidden" id="maqraReplace" value="false">
+                </div>
+
+                <!-- Warning jika mode ganti -->
+                <div id="maqraReplaceWarn" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 12px;font-size:12px;color:#dc2626;margin-bottom:12px">
+                  ⚠️ <strong>Mode Ganti Semua:</strong> Maqra lama yang <strong>belum diambil</strong> akan dihapus dan diganti dengan daftar baru.
+                </div>
+
+                <!-- Textarea bulk input -->
+                <div class="field-group">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                    <label class="field-label" style="margin:0">Daftar Maqra <span class="req">*</span></label>
+                    <span id="maqraBulkCount" style="font-size:11px;color:var(--gray-400);font-weight:600">0 baris</span>
+                  </div>
+                  <textarea class="field-input" id="maqraBulk"
+                    style="min-height:220px;font-family:'Courier New',monospace;font-size:13px;line-height:1.8;resize:vertical"
+                    placeholder="Satu baris = satu maqra. Contoh:&#10;Al-Baqarah: 1-5&#10;Al-Baqarah: 6-10&#10;Al-Baqarah: 11-20&#10;Ali Imran: 1-8"
+                    oninput="maqraCountLines()"></textarea>
+                  <div style="font-size:11px;color:var(--gray-400);margin-top:5px;line-height:1.6">
+                    📌 Format bebas — satu baris = satu maqra. Baris kosong diabaikan.
+                  </div>
+                </div>
+
+                <div class="field-group">
+                  <label class="field-label">Keterangan / Sub-detail (opsional)</label>
+                  <input class="field-input" id="maqraDetailPrefix" placeholder="mis: Juz 1, Tartil, Murottal...">
+                  <div style="font-size:11px;color:var(--gray-400);margin-top:4px">Berlaku untuk semua maqra dalam daftar ini</div>
+                </div>
+
+                <button class="btn btn-emerald" style="width:100%;justify-content:center;padding:12px" onclick="maqraSaveMaqra()" id="maqraSaveBtn">
+                  💾 Simpan Maqra
+                </button>
               </div>
-              <div class="field-group">
-                <label class="field-label">Keterangan Tambahan (opsional)</label>
-                <input class="field-input" id="maqraDetailPrefix" placeholder="mis: Juz 1, tartil, dll">
-              </div>
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
-                <input type="checkbox" id="maqraReplace" style="width:16px;height:16px;accent-color:var(--emerald)">
-                <label for="maqraReplace" style="font-size:13px;cursor:pointer;color:var(--gray-600)">Ganti semua maqra yang belum diambil untuk cabang ini</label>
-              </div>
-              <button class="btn btn-emerald" style="width:100%;justify-content:center" onclick="maqraSaveMaqra()">💾 Simpan Maqra</button>
             </div>
           </div>
 
-          <!-- Stats + Filter -->
+          <!-- ── Panel Kanan: Tabel per Cabang ─────────────────── -->
           <div>
-            <div class="admin-card" style="margin-bottom:16px">
-              <div class="admin-card-header">
-                <h2>📊 Statistik</h2>
-                <button class="btn btn-outline" style="font-size:12px;padding:5px 10px" onclick="maqraLoadData()">🔄 Refresh</button>
+            <!-- Filter + Search bar -->
+            <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+              <div style="position:relative;flex:1;min-width:200px">
+                <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--gray-400)">🔍</span>
+                <input class="field-input" id="maqraSearchInput" placeholder="Cari maqra..."
+                  style="padding-left:34px;width:100%;box-sizing:border-box"
+                  oninput="maqraFilterTable()">
               </div>
-              <div style="padding:20px">
-                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
-                  <div style="background:var(--gray-50);border-radius:10px;padding:14px;text-align:center;border:1px solid var(--gray-200)">
-                    <div style="font-size:26px;font-weight:800;color:var(--emerald)" id="maqraStatTotal">—</div>
-                    <div style="font-size:12px;color:var(--gray-400)">Total Maqra</div>
-                  </div>
-                  <div style="background:var(--gray-50);border-radius:10px;padding:14px;text-align:center;border:1px solid var(--gray-200)">
-                    <div style="font-size:26px;font-weight:800;color:var(--emerald)" id="maqraStatTersedia">—</div>
-                    <div style="font-size:12px;color:var(--gray-400)">Tersedia</div>
-                  </div>
-                  <div style="background:var(--gray-50);border-radius:10px;padding:14px;text-align:center;border:1px solid var(--gray-200)">
-                    <div style="font-size:26px;font-weight:800;color:var(--gold)" id="maqraStatDiambil">—</div>
-                    <div style="font-size:12px;color:var(--gray-400)">Diambil</div>
-                  </div>
-                </div>
-                <div class="field-group" style="margin-bottom:0">
-                  <label class="field-label">Filter Cabang</label>
-                  <select class="field-select" id="maqraFilterCabang" onchange="maqraFilterTable()">
-                    <option value="">-- Semua Cabang --</option>
-                  </select>
-                </div>
-              </div>
+              <select class="field-select" id="maqraFilterCabang" onchange="maqraFilterTable()" style="min-width:180px">
+                <option value="">-- Semua Cabang --</option>
+              </select>
+              <select class="field-select" id="maqraFilterStatus" onchange="maqraFilterTable()" style="min-width:140px">
+                <option value="">Semua Status</option>
+                <option value="tersedia">⏳ Tersedia</option>
+                <option value="diambil">✅ Diambil</option>
+              </select>
             </div>
 
-            <div class="admin-card">
-              <div class="admin-card-header"><h2>📋 Daftar Maqra</h2></div>
-              <div class="table-wrap">
-                <table class="data-table" id="maqraTable">
-                  <thead><tr><th>#</th><th>Cabang</th><th>Maqra</th><th>Status</th><th>Aksi</th></tr></thead>
-                  <tbody id="maqraTableBody">
-                    <tr><td colspan="5" style="text-align:center;padding:24px;color:var(--gray-400)">Memuat data...</td></tr>
-                  </tbody>
-                </table>
+            <!-- Per-cabang grouped view -->
+            <div id="maqraCabangGroups">
+              <div style="text-align:center;padding:40px;color:var(--gray-400)">
+                <div style="font-size:32px;margin-bottom:8px">📋</div>
+                <div>Memuat data maqra...</div>
               </div>
             </div>
           </div>

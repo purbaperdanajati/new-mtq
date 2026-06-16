@@ -12,18 +12,112 @@
 // API_URL: satu sumber dari js/config.js (window.MTQ_API_URL) — jangan ubah di sini
 const API_URL = window.MTQ_API_URL || '';
 
-let _record      = null;   // data peserta dari server
-let _editFiles   = {};     // file untuk form perbaikan
-let _maqraList   = [];     // daftar maqra tersedia
-let _spinning    = false;
-let _maqraResult = null;
+let _record       = null;   // data peserta dari server
+let _editFiles    = {};     // file untuk form perbaikan
+let _maqraList    = [];     // daftar maqra tersedia
+let _spinning     = false;
+let _maqraResult  = null;
+let _captchaCode  = '';     // captcha saat ini
+
+// ── Canvas Image Captcha ──────────────────────────────────────
+function generateCaptcha() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  _captchaCode = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+
+  const canvas = document.getElementById('captchaCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+
+  // ── Background gradient ──────────────────────────────────
+  const grad = ctx.createLinearGradient(0, 0, w, h);
+  grad.addColorStop(0,   '#064e3b');
+  grad.addColorStop(0.5, '#047857');
+  grad.addColorStop(1,   '#059669');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  // ── Noise dots ───────────────────────────────────────────
+  for (let i = 0; i < 160; i++) {
+    ctx.beginPath();
+    ctx.arc(Math.random()*w, Math.random()*h, Math.random()*1.6+0.3, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(255,255,255,${0.06+Math.random()*0.18})`;
+    ctx.fill();
+  }
+
+  // ── Interference bezier lines ────────────────────────────
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath();
+    ctx.moveTo(Math.random()*w, Math.random()*h);
+    ctx.bezierCurveTo(
+      Math.random()*w, Math.random()*h,
+      Math.random()*w, Math.random()*h,
+      Math.random()*w, Math.random()*h
+    );
+    ctx.strokeStyle = `rgba(255,255,255,${0.12+Math.random()*0.18})`;
+    ctx.lineWidth = 0.8 + Math.random()*1.2;
+    ctx.stroke();
+  }
+
+  // ── Draw each character ──────────────────────────────────
+  const charW = (w - 20) / 6;
+  const lightColors = ['#ffffff','#d1fae5','#a7f3d0','#fef3c7','#fde68a','#bbf7d0'];
+  _captchaCode.split('').forEach((char, i) => {
+    ctx.save();
+    const cx = 12 + i * charW + charW / 2;
+    const cy = h / 2 + 5;
+    ctx.translate(cx, cy);
+    ctx.rotate((Math.random() - 0.5) * 0.52);
+
+    const size = 22 + Math.floor(Math.random() * 7);
+    ctx.font = `bold ${size}px 'Courier New','Lucida Console',monospace`;
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Subtle shadow for depth
+    ctx.shadowColor   = 'rgba(0,0,0,0.45)';
+    ctx.shadowBlur    = 4;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
+
+    // Thin stroke for crispness
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth   = 2.5;
+    ctx.strokeText(char, 0, 0);
+
+    ctx.fillStyle = lightColors[i % lightColors.length];
+    ctx.fillText(char, 0, 0);
+    ctx.restore();
+  });
+
+  // ── Top & bottom decorative stripe ──────────────────────
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  ctx.fillRect(0, 0, w, 3);
+  ctx.fillRect(0, h-3, w, 3);
+
+  // Clear input
+  const inp = document.getElementById('captchaInput');
+  if (inp) { inp.value = ''; inp.style.borderColor = 'var(--g200)'; inp.style.boxShadow = 'none'; }
+  const err = document.getElementById('captchaErr');
+  if (err) err.style.display = 'none';
+}
+
+function refreshCaptcha() {
+  generateCaptcha();
+  document.getElementById('captchaInput')?.focus();
+}
 
 // ── DOM Ready ─────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   initDarkMode();
+  generateCaptcha();
   const input = document.getElementById('nikInput');
   input.addEventListener('keydown', e => { if (e.key === 'Enter') cekStatus(); });
   input.addEventListener('input',   e => { e.target.value = e.target.value.replace(/\D/g, ''); });
+  // Enter di captcha input juga trigger cek
+  document.getElementById('captchaInput')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') cekStatus();
+  });
 });
 
 function initDarkMode() {
@@ -44,11 +138,27 @@ function applyTheme(t) {
 //  STEP 1 — Cek Status NIK
 // ════════════════════════════════════════════════════════════
 async function cekStatus() {
-  const nik = document.getElementById('nikInput').value.trim();
+  const nik     = document.getElementById('nikInput').value.trim();
+  const capInp  = (document.getElementById('captchaInput')?.value || '').trim().toUpperCase();
+  const capErr  = document.getElementById('captchaErr');
+
   if (!nik || nik.length < 16) {
     showToast('Peringatan', 'Masukkan NIK 16 digit yang valid', 'warning');
+    document.getElementById('nikInput').focus();
     return;
   }
+
+  // Validasi captcha
+  if (capInp !== _captchaCode) {
+    if (capErr) { capErr.style.display = 'block'; capErr.textContent = 'Kode verifikasi tidak sesuai'; }
+    const ci = document.getElementById('captchaInput');
+    if (ci) { ci.style.borderColor = 'var(--red, #dc2626)'; ci.value = ''; ci.focus(); }
+    generateCaptcha();   // ganti captcha baru
+    showToast('Verifikasi Gagal', 'Kode keamanan salah — kode baru telah dibuat', 'warning');
+    return;
+  }
+  if (capErr) capErr.style.display = 'none';
+
   showLoading(true, 'Mencari data peserta...');
   document.getElementById('searchBtn').disabled = true;
   clearAreas();
@@ -73,6 +183,7 @@ async function cekStatus() {
   } finally {
     showLoading(false);
     document.getElementById('searchBtn').disabled = false;
+    generateCaptcha();   // selalu refresh captcha setelah submit
   }
 }
 
@@ -351,7 +462,8 @@ function buildLanternStrip(list) {
   const strip = document.getElementById('lanternStrip');
   if (!strip) return;
   strip.innerHTML = '';
-  [...list,...list,...list,...list,...list].forEach(item => {
+  // 6x repeat agar zona aman cukup panjang
+  [...list,...list,...list,...list,...list,...list].forEach(item => {
     const div = document.createElement('div');
     div.className   = 'lantern-item';
     div.textContent = item.maqra_teks || item.maqra || '—';
@@ -373,25 +485,30 @@ async function startSpin() {
   if (reveal) reveal.classList.remove('show');
   if (status) status.textContent = '🌟 Mengambil maqra...';
 
-  strip.style.transition = 'none';
-  strip.style.transform  = 'translateY(0)';
-
   const itemH      = 50;
   const totalItems = strip.childElementCount;
-  let offset       = 0;
+  const safeMax    = Math.floor(totalItems * 0.55) * itemH;
 
-  // Phase 1: teaser spin (no API call yet)
+  // Mulai dari 1/6 posisi agar tidak lompat dari nol
+  let offset = Math.floor(totalItems / 6) * itemH;
+  strip.style.transition = 'none';
+  strip.style.transform  = `translateY(-${offset}px)`;
+  void strip.offsetHeight; // force reflow
+
+  // Phase 1: teaser spin — akselerasi bertahap
   const phases = [
-    { dur:300, count:8 }, { dur:220, count:10 },
-    { dur:190, count:12 }, { dur:165, count:12 },
+    { dur:320, count:5  },
+    { dur:220, count:8  },
+    { dur:175, count:10 },
+    { dur:150, count:10 },
   ];
   for (const ph of phases) {
     for (let i = 0; i < ph.count; i++) {
       offset += itemH;
-      if (offset >= (totalItems - 10) * itemH) offset = 0;
-      strip.style.transition = `transform ${ph.dur}ms ease`;
+      if (offset >= safeMax) offset = Math.floor(totalItems / 6) * itemH;
+      strip.style.transition = `transform ${ph.dur}ms ease-in-out`;
       strip.style.transform  = `translateY(-${offset}px)`;
-      await sleep(ph.dur + 12);
+      await sleep(ph.dur + 8);
     }
   }
 
@@ -432,16 +549,36 @@ async function startSpin() {
   for (let i = midStart; i < items.length - 5; i++) {
     if ((items[i].textContent || '').trim() === refTxt) { targetIdx = i; break; }
   }
-  const targetY = targetIdx * itemH - 100 + itemH / 2;
-  strip.style.transition = 'transform 1.8s cubic-bezier(0.22,1,0.36,1)';
+  // Hitung windowCenterY dinamis dari DOM
+  const lanternBox  = document.getElementById('lanternBox');
+  const windowH     = lanternBox ? lanternBox.clientHeight : 200;
+  const windowCenterY = windowH / 2;
+  const targetY     = targetIdx * itemH - windowCenterY + itemH / 2;
+
+  strip.style.transition = 'transform 2s cubic-bezier(0.16,1,0.3,1)';
   strip.style.transform  = `translateY(-${targetY}px)`;
-  await sleep(1900);
+  await sleep(2100);
 
   items.forEach(it => it.classList.remove('highlight'));
-  if (items[targetIdx]) items[targetIdx].classList.add('highlight');
+  if (items[targetIdx]) {
+    items[targetIdx].classList.add('highlight');
+
+    // Micro-correction: koreksi sisa selisih agar teks persis di tengah garis emas
+    if (lanternBox) {
+      const containerRect = lanternBox.getBoundingClientRect();
+      const itemRect      = items[targetIdx].getBoundingClientRect();
+      const diff = (itemRect.top + itemRect.height / 2) - (containerRect.top + containerRect.height / 2);
+      if (Math.abs(diff) > 1) {
+        const cur = parseFloat(strip.style.transform.replace('translateY(','').replace('px)','')) || 0;
+        strip.style.transition = 'transform 0.3s ease-out';
+        strip.style.transform  = `translateY(-${Math.abs(cur) + diff}px)`;
+        await sleep(320);
+      }
+    }
+  }
 
   // Phase 4: reveal
-  await sleep(200);
+  await sleep(120);
   const ayat  = document.getElementById('resultAyat');
   const surah = document.getElementById('resultSurah');
   const nomor = document.getElementById('resultNomor');
@@ -521,6 +658,16 @@ function showEditForm() {
          tanggal_lahir:rec.tanggal_lahir, jenis_kelamin:rec.jenis_kelamin,
          alamat:rec.alamat, no_hp:rec.no_hp }];
   _editFiles = {};
+  // Simpan ageRule dari _record untuk dipakai saat validasi DOB
+  // Field ini dikirim dari server bersama data peserta (umur_min, umur_max_*)
+  const _ageRule = {
+    min   : rec.umur_min         ?? 0,
+    maxThn: rec.umur_max_tahun   ?? 99,
+    maxBln: rec.umur_max_bulan   ?? 11,
+    maxHri: rec.umur_max_hari    ?? 30,
+    cutoff: (typeof MTQ_CONFIG !== 'undefined' ? MTQ_CONFIG.AGE_CUTOFF_DATE : null)
+            || rec.age_cutoff || new Date().toISOString().slice(0,10),
+  };
 
   let membersHtml = anggota.map((m, idx) => {
     const isKetua = idx === 0;
@@ -548,7 +695,10 @@ function showEditForm() {
           </div>
           <div class="field-group">
             <label class="field-label">Tanggal Lahir</label>
-            <input class="field-input" type="date" id="em_dob_${idx}" value="${esc(m.tanggal_lahir||'')}">
+            <input class="field-input" type="date" id="em_dob_${idx}"
+                   value="${esc(m.tanggal_lahir||'')}"
+                   onchange="validateDOB(this, ${JSON.stringify(_ageRule)}, '${esc(idx.toString())}')">
+            <div id="age_msg_${idx}" style="margin-top:5px;font-size:12px;font-weight:600;display:none"></div>
           </div>
           <div class="field-group">
             <label class="field-label">Alamat</label>
@@ -571,11 +721,8 @@ function showEditForm() {
         </div>
         <div class="field-group" style="margin-top:10px">
           <label class="field-label">🏅 Sertifikat / Piagam (opsional)</label>
-          <div class="two-col">
-            ${uzMini('sert_'+idx+'_1','Sertifikat 1')}
-            ${uzMini('sert_'+idx+'_2','Sertifikat 2')}
-          </div>
-          <div style="font-size:11px;color:var(--g400);margin-top:4px">JPG/PNG/PDF — maks. 2 MB per file</div>
+          ${uzMini('sert_'+idx+'_1','Sertifikat / Piagam')}
+          <div style="font-size:11px;color:var(--g400);margin-top:4px">JPG/PNG/PDF — maks. 2 MB</div>
         </div>
       </div>`;
   }).join('');
@@ -613,10 +760,82 @@ function showEditForm() {
   // Bind upload zones
   for (let i = 0; i < anggota.length; i++) {
     bindUZ('foto_'+i); bindUZ('ktp_'+i);
-    bindUZ('sert_'+i+'_1'); bindUZ('sert_'+i+'_2');
+    bindUZ('sert_'+i+'_1');
   }
   bindUZ('rekom');
   setTimeout(() => document.getElementById('editArea').scrollIntoView({ behavior:'smooth', block:'start' }), 100);
+}
+
+// ── Validasi Tanggal Lahir pada Edit Form ────────────────────
+function validateDOB(input, ageRule, idx) {
+  const dob     = input.value;
+  const msgEl   = document.getElementById('age_msg_' + idx);
+  if (!msgEl) return;
+
+  if (!dob) { msgEl.style.display = 'none'; return; }
+
+  // Gunakan calcAgeAt dari config.js jika tersedia
+  let age;
+  if (typeof calcAgeAt === 'function') {
+    age = calcAgeAt(dob, ageRule.cutoff);
+  } else {
+    // Fallback manual
+    const cutoff = new Date(ageRule.cutoff + 'T00:00:00');
+    const dobD   = new Date(dob + 'T00:00:00');
+    let yr = cutoff.getFullYear() - dobD.getFullYear();
+    let mo = cutoff.getMonth()    - dobD.getMonth();
+    let dy = cutoff.getDate()     - dobD.getDate();
+    if (dy < 0) { mo--; dy += new Date(cutoff.getFullYear(), cutoff.getMonth(), 0).getDate(); }
+    if (mo < 0) { yr--; mo += 12; }
+    age = { tahun: yr, bulan: mo, hari: dy };
+  }
+
+  let ok = true, msg = '';
+  const { min, maxThn, maxBln, maxHri } = ageRule;
+
+  // Cek minimum
+  if (age.tahun < min) {
+    ok = false;
+    msg = `⚠️ Usia terlalu muda — minimum ${min} tahun (usia Anda: ${age.tahun} thn ${age.bulan} bln ${age.hari} hr)`;
+  }
+  // Cek maximum (presisi hari)
+  else if (maxThn < 99) {
+    const melebihiThn = age.tahun > maxThn;
+    const melebihiBln = age.tahun === maxThn && age.bulan > maxBln;
+    const melebihiHri = age.tahun === maxThn && age.bulan === maxBln && age.hari > maxHri;
+    if (melebihiThn || melebihiBln || melebihiHri) {
+      ok = false;
+      msg = `⚠️ Usia melebihi batas — maksimal ${maxThn} thn ${maxBln} bln ${maxHri} hr ` +
+            `(usia Anda: ${age.tahun} thn ${age.bulan} bln ${age.hari} hr)`;
+    }
+  }
+
+  if (ok) {
+    msg = `✅ Usia valid: ${age.tahun} thn ${age.bulan} bln ${age.hari} hr`;
+    msgEl.style.color       = 'var(--em, #059669)';
+    input.style.borderColor = 'var(--em, #059669)';
+    input.style.boxShadow   = '0 0 0 3px rgba(5,150,105,.1)';
+  } else {
+    msgEl.style.color       = 'var(--red, #dc2626)';
+    input.style.borderColor = 'var(--red, #dc2626)';
+    input.style.boxShadow   = '0 0 0 3px rgba(220,38,38,.1)';
+  }
+
+  msgEl.textContent    = msg;
+  msgEl.style.display  = 'block';
+}
+
+// Validasi semua DOB sebelum submit
+function allDOBValid(anggotaCount, ageRule) {
+  for (let i = 0; i < anggotaCount; i++) {
+    const inp = document.getElementById('em_dob_' + i);
+    if (!inp || !inp.value) continue;
+    // Trigger ulang validasi untuk memperbarui visual
+    validateDOB(inp, ageRule, i.toString());
+    const msgEl = document.getElementById('age_msg_' + i);
+    if (msgEl && msgEl.textContent.startsWith('⚠️')) return false;
+  }
+  return true;
 }
 
 function uzMini(key, label) {
@@ -675,6 +894,22 @@ async function submitPerbaikan(nomor, memberCount) {
   if (!_editFiles['rekom']) {
     showToast('Peringatan','Surat rekomendasi wajib diupload ulang','warning'); return;
   }
+
+  // Validasi usia semua anggota sebelum submit
+  const _ageRule = {
+    min   : _record?.umur_min       ?? 0,
+    maxThn: _record?.umur_max_tahun ?? 99,
+    maxBln: _record?.umur_max_bulan ?? 11,
+    maxHri: _record?.umur_max_hari  ?? 30,
+    cutoff: (typeof MTQ_CONFIG !== 'undefined' ? MTQ_CONFIG.AGE_CUTOFF_DATE : null)
+            || _record?.age_cutoff || new Date().toISOString().slice(0,10),
+  };
+  if (!allDOBValid(memberCount, _ageRule)) {
+    showToast('Data Tidak Valid', 'Tanggal lahir tidak memenuhi syarat usia cabang lomba ini', 'error');
+    const firstErr = document.querySelector('[id^="age_msg_"]');
+    if (firstErr) firstErr.scrollIntoView({ behavior:'smooth', block:'center' });
+    return;
+  }
   showLoading(true,'Mengirim perbaikan...');
   const btn = document.getElementById('submitPerbBtn');
   if (btn) btn.disabled = true;
@@ -682,7 +917,7 @@ async function submitPerbaikan(nomor, memberCount) {
   try {
     const srcAnggota = _record?.anggota || [{ nik: _record?.nik }];
     const members = Array.from({ length: memberCount }, (_, i) => {
-      const serts = [_editFiles['sert_'+i+'_1'], _editFiles['sert_'+i+'_2']].filter(Boolean);
+      const serts = [_editFiles['sert_'+i+'_1']].filter(Boolean);
       return {
         nama_lengkap  : (document.getElementById('em_nama_'+i)?.value||'').trim(),
         nik           : (srcAnggota[i]?.nik||'').trim(),  // ← NIK dari data asli, bukan form
