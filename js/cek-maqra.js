@@ -9,8 +9,13 @@
 //  ✅ Setelah verify, langsung tampilkan maqra tanpa input NIK ulang
 // ============================================================
 
-// API_URL: satu sumber dari js/config.js (window.MTQ_API_URL) — jangan ubah di sini
-const API_URL = window.MTQ_API_URL || '';
+// API_URL dibaca LAZILY saat dipakai (bukan saat file di-parse)
+// karena config.js mungkin belum selesai dieksekusi saat baris ini dijalankan
+function getApiUrl() {
+  const url = window.MTQ_API_URL || (typeof MTQ_CONFIG !== 'undefined' ? MTQ_CONFIG.API_URL : '') || '';
+  if (!url) console.error('[MTQ] API_URL kosong — pastikan js/config.js dimuat sebelum cek-maqra.js');
+  return url;
+}
 
 let _record       = null;   // data peserta dari server
 let _editFiles    = {};     // file untuk form perbaikan
@@ -21,15 +26,14 @@ let _captchaCode  = '';     // captcha saat ini
 
 // ── Canvas Image Captcha ──────────────────────────────────────
 function generateCaptcha() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  _captchaCode = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  const pool = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  _captchaCode = Array.from({length:6}, () => pool[Math.floor(Math.random()*pool.length)]).join('');
 
   const canvas = document.getElementById('captchaCanvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   const w = canvas.width, h = canvas.height;
 
-  // ── Background gradient ──────────────────────────────────
   const grad = ctx.createLinearGradient(0, 0, w, h);
   grad.addColorStop(0,   '#064e3b');
   grad.addColorStop(0.5, '#047857');
@@ -37,65 +41,45 @@ function generateCaptcha() {
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h);
 
-  // ── Noise dots ───────────────────────────────────────────
   for (let i = 0; i < 160; i++) {
     ctx.beginPath();
     ctx.arc(Math.random()*w, Math.random()*h, Math.random()*1.6+0.3, 0, Math.PI*2);
     ctx.fillStyle = `rgba(255,255,255,${0.06+Math.random()*0.18})`;
     ctx.fill();
   }
-
-  // ── Interference bezier lines ────────────────────────────
   for (let i = 0; i < 4; i++) {
     ctx.beginPath();
     ctx.moveTo(Math.random()*w, Math.random()*h);
-    ctx.bezierCurveTo(
-      Math.random()*w, Math.random()*h,
-      Math.random()*w, Math.random()*h,
-      Math.random()*w, Math.random()*h
-    );
+    ctx.bezierCurveTo(Math.random()*w, Math.random()*h, Math.random()*w, Math.random()*h, Math.random()*w, Math.random()*h);
     ctx.strokeStyle = `rgba(255,255,255,${0.12+Math.random()*0.18})`;
     ctx.lineWidth = 0.8 + Math.random()*1.2;
     ctx.stroke();
   }
 
-  // ── Draw each character ──────────────────────────────────
   const charW = (w - 20) / 6;
   const lightColors = ['#ffffff','#d1fae5','#a7f3d0','#fef3c7','#fde68a','#bbf7d0'];
   _captchaCode.split('').forEach((char, i) => {
     ctx.save();
-    const cx = 12 + i * charW + charW / 2;
-    const cy = h / 2 + 5;
-    ctx.translate(cx, cy);
+    ctx.translate(12 + i * charW + charW / 2, h / 2 + 5);
     ctx.rotate((Math.random() - 0.5) * 0.52);
-
-    const size = 22 + Math.floor(Math.random() * 7);
-    ctx.font = `bold ${size}px 'Courier New','Lucida Console',monospace`;
-    ctx.textAlign    = 'center';
+    ctx.font      = `bold ${22 + Math.floor(Math.random()*7)}px 'Courier New',monospace`;
+    ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-
-    // Subtle shadow for depth
     ctx.shadowColor   = 'rgba(0,0,0,0.45)';
     ctx.shadowBlur    = 4;
     ctx.shadowOffsetX = 1;
     ctx.shadowOffsetY = 1;
-
-    // Thin stroke for crispness
-    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-    ctx.lineWidth   = 2.5;
+    ctx.strokeStyle   = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth     = 2.5;
     ctx.strokeText(char, 0, 0);
-
     ctx.fillStyle = lightColors[i % lightColors.length];
     ctx.fillText(char, 0, 0);
     ctx.restore();
   });
-
-  // ── Top & bottom decorative stripe ──────────────────────
   ctx.fillStyle = 'rgba(255,255,255,0.08)';
   ctx.fillRect(0, 0, w, 3);
   ctx.fillRect(0, h-3, w, 3);
 
-  // Clear input
   const inp = document.getElementById('captchaInput');
   if (inp) { inp.value = ''; inp.style.borderColor = 'var(--g200)'; inp.style.boxShadow = 'none'; }
   const err = document.getElementById('captchaErr');
@@ -162,6 +146,15 @@ async function cekStatus() {
   showLoading(true, 'Mencari data peserta...');
   document.getElementById('searchBtn').disabled = true;
   clearAreas();
+
+  // Guard: pastikan API_URL sudah tersedia sebelum request
+  if (!getApiUrl()) {
+    showLoading(false);
+    document.getElementById('searchBtn').disabled = false;
+    showToast('Konfigurasi Error', 'API URL belum terkonfigurasi. Periksa js/config.js', 'error', 8000);
+    console.error('[MTQ] window.MTQ_API_URL kosong saat cekStatus dipanggil');
+    return;
+  }
 
   try {
     const data = await jsonpGet({ action: 'checkNIK', nik });
@@ -247,6 +240,11 @@ function renderStatusCard(rec) {
   let actionHtml = '';
   if (status === 'Ditolak') {
     actionHtml = `<button class="btn btn-red" onclick="showEditForm()">✏️ Perbaiki Data</button>`;
+  }
+  if (status === 'Terverifikasi') {
+    actionHtml += `<button class="btn btn-emerald" onclick="downloadKartuPeserta()" style="background:linear-gradient(135deg,#065f46,#059669);box-shadow:0 2px 8px rgba(5,150,105,.35)">
+      🪪 Unduh Kartu Peserta
+    </button>`;
   }
   actionHtml += `<a href="index.html" class="btn btn-outline">🏠 Beranda</a>`;
 
@@ -369,8 +367,9 @@ function renderMaqraArea(maqraData, rec) {
         <div class="mrc-surah">${esc(m.maqra_detail||m.surah||'')}</div>
         <div class="mrc-nomor">Nomor Undian: ${esc(m.nomor_maqra||'-')}</div>
       </div>
-      <div style="display:flex;gap:10px;justify-content:center;margin-bottom:8px">
-        <button class="btn btn-emerald btn-sm" onclick="downloadBukti()">⬇️ Unduh Bukti</button>
+      <div style="display:flex;gap:10px;justify-content:center;margin-bottom:8px;flex-wrap:wrap">
+        <button class="btn btn-emerald btn-sm" onclick="downloadKartuPeserta()" style="background:linear-gradient(135deg,#065f46,#059669);gap:6px">🪪 Kartu Peserta PDF</button>
+        <button class="btn btn-outline btn-sm" onclick="downloadBukti()">⬇️ Unduh Bukti Maqra</button>
         <a href="index.html" class="btn btn-outline btn-sm">🏠 Beranda</a>
       </div>`;
     return;
@@ -423,8 +422,9 @@ function buildSpinCardHtml() {
               <div class="mrc-surah" id="resultSurah">—</div>
               <div class="mrc-nomor" id="resultNomor">—</div>
             </div>
-            <div style="display:flex;gap:10px;justify-content:center;margin-top:14px">
-              <button class="btn btn-emerald btn-sm" onclick="downloadBukti()">⬇️ Unduh Bukti</button>
+            <div style="display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap">
+              <button class="btn btn-emerald btn-sm" onclick="downloadKartuPeserta()" style="background:linear-gradient(135deg,#065f46,#059669)">🪪 Kartu Peserta PDF</button>
+              <button class="btn btn-outline btn-sm" onclick="downloadBukti()">⬇️ Unduh Bukti</button>
               <a href="index.html" class="btn btn-outline btn-sm">🏠 Beranda</a>
             </div>
           </div>
@@ -643,6 +643,457 @@ function downloadBukti() {
     download: `Bukti_Maqra_${(rec.nomor_pendaftaran||'MTQ').replace(/[^A-Za-z0-9]/g,'_')}.html`
   });
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+// ════════════════════════════════════════════════════════════
+//  KARTU PESERTA — PDF cocard (Canvas → jsPDF)
+// ════════════════════════════════════════════════════════════
+
+/**
+ * Entry point — kumpulkan anggota, render canvas per member, gabung jadi PDF
+ */
+async function downloadKartuPeserta() {
+  if (!_record) return;
+  const rec     = _record;
+  const isTeam  = (rec.tipe_lomba || '').toLowerCase() === 'team';
+
+  // Bangun daftar member: untuk tim pakai rec.anggota, individu bungkus jadi array 1 item
+  const anggota = isTeam && Array.isArray(rec.anggota) && rec.anggota.length
+    ? rec.anggota
+    : [{ nama_lengkap: rec.nama_lengkap, nik: rec.nik,
+         foto_url: rec.foto_url || rec.foto_drive_url || '',
+         no_peserta: rec.nomor_pendaftaran }];
+
+  showLoading(true, 'Membuat kartu peserta...');
+  try {
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+
+    // Dimensi cocard: 85.6 × 140 mm, @3× scale untuk kualitas cetak
+    const CARD_W_MM = 85.6;
+    const CARD_H_MM = 140;
+    const SCALE     = 3.0;
+    const PX_PER_MM = 96 / 25.4 * SCALE;
+    const CW        = Math.round(CARD_W_MM * PX_PER_MM);
+    const CH        = Math.round(CARD_H_MM * PX_PER_MM);
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:[CARD_W_MM, CARD_H_MM] });
+
+    for (let i = 0; i < anggota.length; i++) {
+      const member = anggota[i];
+      if (i > 0) pdf.addPage([CARD_W_MM, CARD_H_MM], 'portrait');
+      const canvas = await renderKartuCanvas(member, rec, i, isTeam, CW, CH);
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      pdf.addImage(imgData, 'JPEG', 0, 0, CARD_W_MM, CARD_H_MM);
+    }
+
+    const fname = `Kartu_Peserta_MTQ2026_${(rec.nomor_pendaftaran||'MTQ').replace(/[^A-Za-z0-9]/g,'_')}.pdf`;
+    pdf.save(fname);
+    showToast('Berhasil', `Kartu peserta diunduh — ${anggota.length} halaman`, 'success', 5000);
+  } catch (err) {
+    console.error('[KartuPeserta]', err);
+    showToast('Error', 'Gagal membuat kartu: ' + err.message, 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+/** Render satu kartu cocard ke canvas dan kembalikan canvas-nya */
+async function renderKartuCanvas(member, rec, memberIdx, isTeam, CW, CH) {
+  const canvas = document.createElement('canvas');
+  canvas.width  = CW;
+  canvas.height = CH;
+  const ctx = canvas.getContext('2d');
+
+  const nama   = (member.nama_lengkap || rec.nama_lengkap || '—').toUpperCase();
+  const cabang = rec.cabang_lomba || '—';
+  const kec    = rec.kecamatan    || '—';
+  const noReg  = member.no_peserta || rec.nomor_pendaftaran || '—';
+  const GOLD   = '#f59e0b';
+
+  // px(mm) → canvas pixel
+  const px = mm => mm * (CW / 85.6);
+
+  // ─────────────────────────────────────────────────────────
+  // 1. BACKGROUND
+  // ─────────────────────────────────────────────────────────
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, CH);
+  bgGrad.addColorStop(0,   '#021b12');
+  bgGrad.addColorStop(0.4, '#064e3b');
+  bgGrad.addColorStop(1,   '#0a6647');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, CW, CH);
+
+  // ─────────────────────────────────────────────────────────
+  // 2. POLA GEOMETRIK (arabesque grid)
+  // ─────────────────────────────────────────────────────────
+  ctx.save();
+  ctx.globalAlpha = 0.055;
+  const pts = px(18);
+  for (let ry = -pts; ry < CH + pts; ry += pts) {
+    for (let cx2 = -pts; cx2 < CW + pts; cx2 += pts) {
+      // Segi delapan tipis
+      ctx.beginPath();
+      const r = px(5.5);
+      for (let a = 0; a < 8; a++) {
+        const ang = (a / 8) * Math.PI * 2 - Math.PI / 8;
+        const mx  = cx2 + Math.cos(ang) * r;
+        const my  = ry  + Math.sin(ang) * r;
+        a === 0 ? ctx.moveTo(mx, my) : ctx.lineTo(mx, my);
+      }
+      ctx.closePath();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth   = 0.7;
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+
+  // ─────────────────────────────────────────────────────────
+  // 3. GARIS SISI EMAS (kiri & kanan)
+  // ─────────────────────────────────────────────────────────
+  const stripeW = px(3);
+  // Left stripe
+  const lgL = ctx.createLinearGradient(0, 0, 0, CH);
+  lgL.addColorStop(0,   '#fbbf24');
+  lgL.addColorStop(0.5, '#fde68a');
+  lgL.addColorStop(1,   '#d97706');
+  ctx.fillStyle = lgL;
+  ctx.fillRect(0, 0, stripeW, CH);
+  // Right stripe
+  ctx.fillRect(CW - stripeW, 0, stripeW, CH);
+  // Inner glow lines
+  ctx.fillStyle = 'rgba(255,255,255,0.18)';
+  ctx.fillRect(stripeW, 0, px(0.7), CH);
+  ctx.fillRect(CW - stripeW - px(0.7), 0, px(0.7), CH);
+
+  // ─────────────────────────────────────────────────────────
+  // 4. HEADER BAND
+  // ─────────────────────────────────────────────────────────
+  const hdrH = px(28);
+  const hGrad = ctx.createLinearGradient(0, 0, CW, 0);
+  hGrad.addColorStop(0, '#047857');
+  hGrad.addColorStop(0.5, '#059669');
+  hGrad.addColorStop(1, '#047857');
+  ctx.fillStyle = hGrad;
+  ctx.fillRect(stripeW, 0, CW - stripeW * 2, hdrH);
+
+  // Gold separator bawah header
+  ctx.fillStyle = GOLD;
+  ctx.fillRect(stripeW, hdrH, CW - stripeW * 2, px(1));
+
+  // Teks header
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'alphabetic';
+
+  // "MTQ" besar
+  ctx.font      = `900 ${px(9)}px Georgia,serif`;
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowColor   = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur    = px(2);
+  ctx.shadowOffsetY = px(0.8);
+  ctx.fillText('MTQ 2026', CW / 2, px(10.5));
+
+  ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+
+  ctx.font      = `600 ${px(3.6)}px 'Segoe UI',sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,0.88)';
+  ctx.fillText('MUSABAQAH TILAWATIL QUR\'AN', CW / 2, px(16));
+
+  ctx.font      = `${px(3)}px 'Segoe UI',sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,0.65)';
+  ctx.fillText('KABUPATEN INDRAMAYU', CW / 2, px(20.5));
+
+  // Basmalah
+  ctx.font      = `${px(3.4)}px Georgia,serif`;
+  ctx.fillStyle = GOLD;
+  ctx.fillText('بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ', CW / 2, px(25.5));
+
+  // ─────────────────────────────────────────────────────────
+  // 5. CHIP PERAN (PESERTA / KETUA TIM / ANGGOTA TIM N)
+  // ─────────────────────────────────────────────────────────
+  const chipTxt = isTeam
+    ? (memberIdx === 0 ? '👑  KETUA TIM' : `ANGGOTA TIM ${memberIdx + 1}`)
+    : '✦  PESERTA';
+  const chipY = hdrH + px(4.5);
+  const chipH = px(5.8);
+  const chipW = px(30);
+  const chipX = (CW - chipW) / 2;
+  // Shadow
+  ctx.shadowColor = 'rgba(0,0,0,0.35)';
+  ctx.shadowBlur  = px(1.5);
+  ctx.shadowOffsetY = px(0.5);
+  roundRect(ctx, chipX, chipY, chipW, chipH, px(2.8));
+  ctx.fillStyle = isTeam && memberIdx === 0 ? '#d97706' : GOLD;
+  ctx.fill();
+  ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  ctx.font      = `bold ${px(3)}px 'Segoe UI',sans-serif`;
+  ctx.fillStyle = '#1a0600';
+  ctx.textAlign = 'center';
+  ctx.fillText(chipTxt, CW / 2, chipY + chipH * 0.68);
+
+  // ─────────────────────────────────────────────────────────
+  // 6. FOTO PESERTA (lingkaran dengan ring emas)
+  // ─────────────────────────────────────────────────────────
+  const photoR  = px(15.5);
+  const photoCX = CW / 2;
+  const photoCY = hdrH + px(13.5) + photoR;
+
+  // Ring emas (gradient)
+  const ringGrad = ctx.createRadialGradient(photoCX, photoCY, photoR + px(0.5), photoCX, photoCY, photoR + px(3));
+  ringGrad.addColorStop(0, '#fde68a');
+  ringGrad.addColorStop(0.5, '#f59e0b');
+  ringGrad.addColorStop(1, '#b45309');
+  ctx.beginPath();
+  ctx.arc(photoCX, photoCY, photoR + px(2.8), 0, Math.PI * 2);
+  ctx.fillStyle = ringGrad;
+  ctx.shadowColor = 'rgba(0,0,0,0.4)';
+  ctx.shadowBlur  = px(3);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Ring putih tipis
+  ctx.beginPath();
+  ctx.arc(photoCX, photoCY, photoR + px(0.6), 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.fill();
+
+  // Foto (clip lingkaran)
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(photoCX, photoCY, photoR, 0, Math.PI * 2);
+  ctx.clip();
+
+  const fotoSrc  = member.foto_url || member.foto_drive_url || rec.foto_url || '';
+  const fotoReal = gDriveThumbUrl(fotoSrc); // konversi Drive link → thumbnail
+  let fotoOk = false;
+
+  if (fotoReal) {
+    const img = await loadImageSafe(fotoReal);
+    if (img) {
+      // Object-fit: cover — center crop
+      const ar = img.naturalWidth / img.naturalHeight;
+      let sw, sh, sx, sy;
+      if (ar > 1) { sh = img.naturalHeight; sw = sh; sx = (img.naturalWidth - sw) / 2; sy = 0; }
+      else         { sw = img.naturalWidth;  sh = sw; sy = (img.naturalHeight - sh) / 2; sx = 0; }
+      ctx.drawImage(img, sx, sy, sw, sh,
+        photoCX - photoR, photoCY - photoR, photoR * 2, photoR * 2);
+      fotoOk = true;
+    }
+  }
+
+  if (!fotoOk) {
+    // Placeholder inisial
+    const phG = ctx.createLinearGradient(photoCX - photoR, photoCY - photoR, photoCX + photoR, photoCY + photoR);
+    phG.addColorStop(0, '#1d6348'); phG.addColorStop(1, '#0a2e1e');
+    ctx.fillStyle = phG;
+    ctx.fillRect(photoCX - photoR, photoCY - photoR, photoR * 2, photoR * 2);
+    ctx.font      = `bold ${px(18)}px Georgia,serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText((nama[0] || '?'), photoCX, photoCY);
+    ctx.textBaseline = 'alphabetic';
+  }
+  ctx.restore();
+
+  // ─────────────────────────────────────────────────────────
+  // 7. KARTU INFO PUTIH (nama + data)
+  // ─────────────────────────────────────────────────────────
+  const cardTop    = photoCY + photoR + px(4.5);
+  const cardMargin = stripeW + px(3);
+  const cardW      = CW - cardMargin * 2;
+  const footH      = px(15);
+  const cardH      = CH - cardTop - footH - px(2);
+
+  // Shadow kartu
+  ctx.shadowColor   = 'rgba(0,0,0,0.28)';
+  ctx.shadowBlur    = px(4);
+  ctx.shadowOffsetY = px(1.5);
+  roundRect(ctx, cardMargin, cardTop, cardW, cardH, px(4));
+  ctx.fillStyle = 'rgba(255,255,255,0.97)';
+  ctx.fill();
+  ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+
+  // Gold top border kartu
+  roundRect(ctx, cardMargin, cardTop, cardW, px(1.5), px(4));
+  ctx.fillStyle = GOLD;
+  ctx.fill();
+
+  // ── Nama ──────────────────────────────────────────────────
+  const namaMaxW = cardW - px(8);
+  const namaLines = wrapText(ctx, nama, namaMaxW, `bold ${px(5.4)}px Georgia,serif`);
+  ctx.font      = `bold ${px(5.4)}px Georgia,serif`;
+  ctx.fillStyle = '#065f46';
+  ctx.textAlign = 'center';
+  const namaStartY = cardTop + px(7.5);
+  namaLines.forEach((line, i) => {
+    ctx.fillText(line, CW / 2, namaStartY + i * px(6.6));
+  });
+
+  // Garis emas ornamental
+  const divY = namaStartY + namaLines.length * px(6.6) + px(1.5);
+  const divLen = px(20);
+  const divMid = CW / 2;
+  ctx.fillStyle = GOLD;
+  ctx.fillRect(divMid - divLen, divY, divLen * 2, px(0.7));
+  // Diamond tengah
+  ctx.save();
+  ctx.translate(divMid, divY + px(0.35));
+  ctx.rotate(Math.PI / 4);
+  ctx.fillRect(-px(1.1), -px(1.1), px(2.2), px(2.2));
+  ctx.restore();
+
+  // ── Rows info ──────────────────────────────────────────────
+  const rowStart = divY + px(5);
+  const ROW_H    = px(10);
+
+  drawKartuRow(ctx, px, cardMargin, cardW, rowStart,        GOLD,    '🏆', 'CABANG LOMBA', cabang);
+  drawKartuRow(ctx, px, cardMargin, cardW, rowStart + ROW_H, '#059669', '📍', 'KECAMATAN',  kec);
+  drawKartuRow(ctx, px, cardMargin, cardW, rowStart + ROW_H*2, '#1d4ed8', '🪪', 'NO. PESERTA', noReg);
+
+  // ─────────────────────────────────────────────────────────
+  // 8. FOOTER BAND
+  // ─────────────────────────────────────────────────────────
+  const footY = CH - footH;
+  const fGrad = ctx.createLinearGradient(0, footY, 0, CH);
+  fGrad.addColorStop(0, '#047857');
+  fGrad.addColorStop(1, '#021b12');
+  ctx.fillStyle = fGrad;
+  ctx.fillRect(stripeW, footY, CW - stripeW * 2, footH);
+
+  // Gold line atas footer
+  ctx.fillStyle = GOLD;
+  ctx.fillRect(stripeW, footY, CW - stripeW * 2, px(0.8));
+
+  // Nomor peserta (monospace, bold)
+  ctx.font      = `bold ${px(4.2)}px 'Courier New',monospace`;
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.fillText(noReg, CW / 2, footY + px(7));
+
+  // Teks panitia
+  ctx.font      = `${px(2.8)}px 'Segoe UI',sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.fillText('Panitia MTQ Kabupaten Indramayu 2026', CW / 2, footY + px(12.5));
+
+  // Dots dekoratif
+  [-px(16), 0, px(16)].forEach(dx => {
+    ctx.beginPath();
+    ctx.arc(CW / 2 + dx, footY + px(0.4) + px(0.8), px(0.7), 0, Math.PI * 2);
+    ctx.fillStyle = GOLD;
+    ctx.fill();
+  });
+
+  return canvas;
+}
+
+/** Gambar satu baris info (label + value) di dalam kartu putih */
+function drawKartuRow(ctx, px, cardMargin, cardW, y, accentColor, _icon, label, value) {
+  const rowH   = px(9);
+  const padL   = px(4);
+  const x      = cardMargin;
+  const innerW = cardW;
+
+  // Subtle row bg
+  roundRect(ctx, x + px(2), y, innerW - px(4), rowH, px(2));
+  ctx.fillStyle = 'rgba(5,150,105,0.04)';
+  ctx.fill();
+
+  // Accent bar kiri
+  ctx.fillStyle = accentColor;
+  ctx.fillRect(x + px(2), y, px(1.5), rowH);
+
+  // Label
+  ctx.font      = `500 ${px(2.6)}px 'Segoe UI',sans-serif`;
+  ctx.fillStyle = '#9ca3af';
+  ctx.textAlign = 'left';
+  ctx.fillText(label, x + padL + px(1.5), y + px(3.2));
+
+  // Value
+  ctx.font      = `bold ${px(3.8)}px 'Segoe UI',sans-serif`;
+  ctx.fillStyle = '#1f2937';
+  ctx.fillText(
+    truncateText(ctx, value, innerW - padL - px(6)),
+    x + padL + px(1.5), y + px(7.2)
+  );
+}
+
+/** Konversi berbagai format URL Google Drive → URL thumbnail yang bisa dimuat tanpa CORS */
+function gDriveThumbUrl(url) {
+  if (!url) return '';
+  // Sudah berupa URL thumbnail
+  if (url.includes('thumbnail?') || url.includes('export=view')) return url;
+  // https://drive.google.com/file/d/FILE_ID/view
+  let m = url.match(/\/file\/d\/([^\/\?&]+)/);
+  if (m) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w400`;
+  // https://drive.google.com/open?id=FILE_ID
+  m = url.match(/[?&]id=([^&]+)/);
+  if (m) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w400`;
+  // Sudah berupa URL data: atau https biasa
+  return url;
+}
+
+/** Helper: roundRect polyfill (cek native dulu) */
+function roundRect(ctx, x, y, w, h, r) {
+  if (typeof ctx.roundRect === 'function') {
+    ctx.beginPath(); ctx.roundRect(x, y, w, h, r); return;
+  }
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);  ctx.quadraticCurveTo(x + w, y,     x + w, y + r);
+  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);  ctx.quadraticCurveTo(x, y + h,     x, y + h - r);
+  ctx.lineTo(x, y + r);      ctx.quadraticCurveTo(x, y,         x + r, y);
+  ctx.closePath();
+}
+
+/** Helper: bungkus teks panjang ke array baris */
+function wrapText(ctx, text, maxWidth, font) {
+  ctx.font = font;
+  const words = String(text).split(' ');
+  const lines = [];
+  let cur = '';
+  for (const w of words) {
+    const test = cur ? cur + ' ' + w : w;
+    if (ctx.measureText(test).width > maxWidth && cur) { lines.push(cur); cur = w; }
+    else cur = test;
+  }
+  if (cur) lines.push(cur);
+  return lines.length ? lines : [text];
+}
+
+/** Helper: potong teks agar muat maxWidth */
+function truncateText(ctx, text, maxWidth) {
+  if (ctx.measureText(String(text)).width <= maxWidth) return text;
+  let t = String(text);
+  while (t.length > 1 && ctx.measureText(t + '…').width > maxWidth) t = t.slice(0, -1);
+  return t + '…';
+}
+
+/** Helper: muat gambar dengan crossOrigin anonymous, timeout 6 detik */
+function loadImageSafe(url) {
+  return new Promise(resolve => {
+    if (!url) { resolve(null); return; }
+    const img  = new Image();
+    img.crossOrigin = 'anonymous';
+    const t = setTimeout(() => resolve(null), 6000);
+    img.onload  = () => { clearTimeout(t); resolve(img); };
+    img.onerror = () => { clearTimeout(t); resolve(null); };
+    img.src = url;
+  });
+}
+
+/** Helper: lazy-load script tag (skip jika sudah ada) */
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src     = src;
+    s.onload  = resolve;
+    s.onerror = () => reject(new Error('Gagal load: ' + src));
+    document.head.appendChild(s);
+  });
 }
 
 // ════════════════════════════════════════════════════════════
@@ -956,31 +1407,83 @@ async function submitPerbaikan(nomor, memberCount) {
 // ════════════════════════════════════════════════════════════
 //  TRANSPORT — JSONP only (no fetch, no CORS)
 // ════════════════════════════════════════════════════════════
-function jsonpGet(params, timeout = 15000) {
-  return new Promise((resolve, reject) => {
-    const cb = 'mtqCM_' + Date.now() + '_' + Math.floor(Math.random()*9999);
-    const qs = Object.entries(params).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
-    const s  = document.createElement('script');
-    let timer;
-    window[cb] = d => { clearTimeout(timer); delete window[cb]; s.remove(); resolve(d); };
-    s.src = `${API_URL}?${qs}&callback=${cb}`;
-    s.onerror = () => { clearTimeout(timer); delete window[cb]; s.remove(); reject(new Error('Network error')); };
-    timer = setTimeout(() => { delete window[cb]; s.remove(); reject(new Error('Timeout')); }, timeout);
-    document.head.appendChild(s);
-  });
+// ════════════════════════════════════════════════════════════
+//  TRANSPORT — Pure JSONP (satu-satunya cara yang benar untuk GAS)
+//
+//  Kenapa bukan fetch():
+//  GAS /exec redirect script.google.com → script.googleusercontent.com.
+//  fetch() kena CORS block di redirect tersebut.
+//
+//  Kenapa JSONP dengan ?callback= berhasil:
+//  Saat GAS menerima ?callback=xxx, ia TIDAK melakukan redirect —
+//  langsung return: xxx({...}) dengan MimeType.JAVASCRIPT dari
+//  script.google.com itu sendiri. <script> tag tidak perlu CORS.
+// ════════════════════════════════════════════════════════════
+
+/**
+ * GET request ke GAS via JSONP — selalu sertakan ?callback=
+ */
+function jsonpGet(params, timeout = 20000) {
+  const apiUrl = getApiUrl();
+  if (!apiUrl) return Promise.reject(new Error('API_URL tidak terkonfigurasi — periksa js/config.js'));
+
+  const qs = Object.entries(params)
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join('&');
+
+  return _jsonp(`${apiUrl}?${qs}`, timeout);
 }
 
+/**
+ * POST-via-GET tunnel — payload JSON di ?postData=, dengan ?callback=
+ */
 function jsonpPost(payload, timeout = 30000) {
+  const apiUrl = getApiUrl();
+  if (!apiUrl) return Promise.reject(new Error('API_URL tidak terkonfigurasi — periksa js/config.js'));
+
+  const enc = encodeURIComponent(JSON.stringify(payload));
+  return _jsonp(`${apiUrl}?postData=${enc}`, timeout);
+}
+
+/**
+ * Core JSONP — tambahkan &callback=xxx ke URL, inject <script>, tunggu callback
+ * GAS tidak redirect ketika ada parameter callback=
+ */
+function _jsonp(baseUrl, timeout) {
   return new Promise((resolve, reject) => {
-    const cb  = 'mtqCMP_' + Date.now() + '_' + Math.floor(Math.random()*9999);
-    const enc = encodeURIComponent(JSON.stringify(payload));
-    const s   = document.createElement('script');
-    let timer;
-    window[cb] = d => { clearTimeout(timer); delete window[cb]; s.remove(); resolve(d); };
-    s.src = `${API_URL}?postData=${enc}&callback=${cb}`;
-    s.onerror = () => { clearTimeout(timer); delete window[cb]; s.remove(); reject(new Error('Network error')); };
-    timer = setTimeout(() => { delete window[cb]; s.remove(); reject(new Error('Timeout')); }, timeout);
-    document.head.appendChild(s);
+    const cbName = 'mtq_' + Date.now() + '_' + Math.floor(Math.random() * 999999);
+    const sep    = baseUrl.includes('?') ? '&' : '?';
+    const script = document.createElement('script');
+    let   timer;
+
+    window[cbName] = function(data) {
+      clearTimeout(timer);
+      try { delete window[cbName]; } catch(_) { window[cbName] = undefined; }
+      script.remove();
+      resolve(data);
+    };
+
+    script.src = `${baseUrl}${sep}callback=${cbName}`;
+
+    script.onerror = function() {
+      clearTimeout(timer);
+      try { delete window[cbName]; } catch(_) { window[cbName] = undefined; }
+      script.remove();
+      reject(new Error(
+        'Gagal menghubungi server. Pastikan:\n' +
+        '1. Deploy GAS sudah diperbarui (Re-deploy)\n' +
+        '2. Akses: "Anyone" (bukan hanya yang punya akun Google)\n' +
+        '3. URL di config.js sudah benar'
+      ));
+    };
+
+    timer = setTimeout(function() {
+      try { delete window[cbName]; } catch(_) { window[cbName] = undefined; }
+      script.remove();
+      reject(new Error('Request timeout (' + Math.round(timeout/1000) + 's) — server lambat merespons'));
+    }, timeout);
+
+    document.head.appendChild(script);
   });
 }
 

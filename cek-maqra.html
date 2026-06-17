@@ -254,7 +254,7 @@
       </div>
     </div>
 
-    <!-- Image Captcha (canvas) -->
+    <!-- Captcha -->
     <div style="margin-top:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
         <span style="font-size:12px;font-weight:700;color:var(--g500)">🔒 Verifikasi Keamanan</span>
@@ -319,7 +319,21 @@
 <div class="toast-container" id="toastContainer"></div>
 <div class="confetti-container" id="confettiContainer"></div>
 
+<!-- PENTING: config.js HARUS dimuat pertama agar window.MTQ_API_URL tersedia -->
 <script src="js/config.js"></script>
+<script>
+  // Deteksi dini: warning jika API_URL tidak terkonfigurasi
+  (function() {
+    const url = window.MTQ_API_URL || (typeof MTQ_CONFIG !== 'undefined' ? MTQ_CONFIG.API_URL : '');
+    if (!url) {
+      console.error('[MTQ] KRITIS: window.MTQ_API_URL kosong setelah config.js dimuat!');
+      console.error('[MTQ] Pastikan MTQ_CONFIG.API_URL sudah diisi di js/config.js');
+    } else {
+      console.log('[MTQ] API_URL OK, panjang:', url.length);
+    }
+  })();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="js/cek-maqra.js"></script>
 </body>
 </html>

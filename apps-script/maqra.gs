@@ -529,82 +529,10 @@ function markMaqraAmbil_(ss, idMaqra, nomorPendaftaran) {
 }
 
 // ── Helper: perbaikan endpoint (tambahkan ke doPost) ──────────
-function apiPerbaikan_(body) {
-  var nomor   = String(body.nomor_pendaftaran || '').trim();
-  if (!nomor) return { success:false, message:'Nomor pendaftaran tidak ada' };
-
-  var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var sheet = ss.getSheetByName(SHEET_PENDAFTAR);
-  if (!sheet) return { success:false, message:'Sheet tidak ditemukan' };
-
-  // Find row
-  var lastRow = sheet.getLastRow();
-  if (lastRow <= 1) return { success:false, message:'Data kosong' };
-
-  var nums = sheet.getRange(2, COL.NOMOR_PENDAFTARAN+1, lastRow-1, 1).getValues();
-  var rowNum = -1;
-  for (var i=0; i<nums.length; i++) {
-    if (String(nums[i][0]).trim() === nomor) { rowNum = i+2; break; }
-  }
-  if (rowNum < 0) return { success:false, message:'Nomor tidak ditemukan: '+nomor };
-
-  // Verify it's currently "Ditolak"
-  var currentStatus = sheet.getRange(rowNum, COL.STATUS_VERIFIKASI+1).getValue();
-  if (String(currentStatus).trim() !== 'Ditolak') {
-    return { success:false, message:'Perbaikan hanya bisa dilakukan untuk pendaftaran berstatus Ditolak' };
-  }
-
-  // Update data
-  var members = body.members || [];
-  if (members.length > 0) {
-    var lead = members[0];
-    if (lead.nama_lengkap)  sheet.getRange(rowNum, COL.NAMA_LENGKAP+1 ).setValue(lead.nama_lengkap);
-    if (lead.nik)           sheet.getRange(rowNum, COL.NIK+1           ).setValue(lead.nik);
-    if (lead.tempat_lahir)  sheet.getRange(rowNum, COL.TEMPAT_LAHIR+1  ).setValue(lead.tempat_lahir);
-    if (lead.tanggal_lahir) sheet.getRange(rowNum, COL.TANGGAL_LAHIR+1 ).setValue(lead.tanggal_lahir);
-    if (lead.alamat)        sheet.getRange(rowNum, COL.ALAMAT+1         ).setValue(lead.alamat);
-    if (lead.no_hp)         sheet.getRange(rowNum, COL.NO_HP+1          ).setValue(lead.no_hp);
-
-    // Upload new files if provided
-    try {
-      var pesertaFolder = getPesertaFolder_(sheet.getRange(rowNum, COL.CABANG_LOMBA+1).getValue(),
-                                            sheet.getRange(rowNum, COL.KECAMATAN+1).getValue(), nomor);
-      for (var mi=0; mi<members.length; mi++) {
-        var m = members[mi];
-        var prefix = (m.nama_lengkap||'M'+(mi+1)).replace(/\s+/g,'_').substring(0,30)+'_REVISI';
-        if (m.foto) { var fl = uploadFile_(m.foto, pesertaFolder, 'FOTO_'+prefix); if (fl) sheet.getRange(rowNum, COL.NAMA_LENGKAP+1); }
-        if (m.ktp)  { uploadFile_(m.ktp,  pesertaFolder, 'KTP_'+prefix); }
-      }
-      if (body.rekom) {
-        var rekomUrl = uploadFile_(body.rekom, pesertaFolder, 'REKOMENDASI_REVISI');
-        if (rekomUrl) sheet.getRange(rowNum, COL.LINK_REKOM+1).setValue(rekomUrl);
-      }
-    } catch(e) { logWarn('perbaikan','Upload revisi error: '+e.message); }
-
-    // Update anggota_json for team
-    if (members.length > 1) {
-      try {
-        var existingJson = sheet.getRange(rowNum, COL.ANGGOTA_JSON+1).getValue();
-        var existing = existingJson ? JSON.parse(existingJson) : [];
-        members.forEach(function(m, idx) {
-          if (existing[idx]) {
-            if (m.nama_lengkap)  existing[idx].nama_lengkap  = m.nama_lengkap;
-            if (m.nik)           existing[idx].nik            = m.nik;
-            if (m.tempat_lahir)  existing[idx].tempat_lahir   = m.tempat_lahir;
-            if (m.tanggal_lahir) existing[idx].tanggal_lahir  = m.tanggal_lahir;
-            if (m.alamat)        existing[idx].alamat         = m.alamat;
-            if (m.no_hp)         existing[idx].no_hp          = m.no_hp;
-          }
-        });
-        sheet.getRange(rowNum, COL.ANGGOTA_JSON+1).setValue(JSON.stringify(existing));
-      } catch(e2) { logWarn('perbaikan','Anggota JSON update error: '+e2.message); }
-    }
-  }
-
-  // Reset status ke Menunggu
-  sheet.getRange(rowNum, COL.STATUS_VERIFIKASI+1).setValue('Menunggu');
-  sheet.getRange(rowNum, COL.CATATAN+1).setValue('Direvisi oleh peserta pada '+new Date().toLocaleString('id-ID'));
-
-  writeLog_(ss, 'PERBAIKAN', nomor+' status reset ke Menunggu', 'ok');
-  return { success:true, nomor_pendaftaran:nomor, message:'Perbaikan berhasil dikirim. Status direset ke Menunggu.' };
-}
+// ── NOTE: apiPerbaikan_ (endpoint perbaikan data setelah Ditolak) ──
+// Fungsi ini sudah didefinisikan di api.gs (versi lebih lengkap,
+// mendukung array sertifikat, dan sengaja TIDAK mengizinkan NIK
+// diubah lewat form perbaikan). Definisi duplikat yang sebelumnya
+// ada di sini sudah dihapus — dua fungsi dengan nama sama di
+// project Apps Script yang sama akan saling menimpa secara diam-diam
+// dan bisa membuat perilaku jadi tidak konsisten / NIK ikut terubah.

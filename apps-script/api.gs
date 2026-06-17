@@ -51,6 +51,14 @@ function doGet(e) {
  
   logInfo('api', 'doGet', { action: action, hasPostData: !!params.postData });
   var result;
+
+  // ── Payload untuk endpoint Sistem Penilaian (Hakim/Peserta/Nilai) ──
+  // Dikirim sebagai ?action=X&payload=<json> (lihat penilaian.html apiPost).
+  // Ini terpisah dari tunnel ?postData= yang dipakai apiRegister_/maqra.
+  var penilaianPayload = {};
+  if (params.payload) {
+    try { penilaianPayload = JSON.parse(params.payload); } catch (ePayload) { penilaianPayload = {}; }
+  }
  
   try {
     // ── JSONP-POST tunnel ─────────────────────────────────
@@ -87,6 +95,24 @@ function doGet(e) {
  
         // ── NEW: Maqra (admin, token validated inside) ───
         case 'getMaqraAdmin' : result = apiGetMaqraAdmin_(params);          break;
+
+        // ── Sistem Penilaian (Dewan Hakim / Peserta / Nilai) ──
+        // NOTE: fungsi-fungsi ini didefinisikan di penilaian.gs.
+        // Action "write" (save*/delete*) membaca dari penilaianPayload
+        // (?payload=<json>); action "read" (get*) membaca dari params langsung.
+        case 'saveHakim'        : result = _runPenilaian_(function(){ return saveHakim(penilaianPayload); });                                   break;
+        case 'getHakim'         : result = _runPenilaian_(function(){ return getHakim(); });                                                    break;
+        case 'deleteHakim'      : result = _runPenilaian_(function(){ return deleteHakim(penilaianPayload.id); });                              break;
+        case 'verifyHakimPin'   : result = _runPenilaian_(function(){ return verifyHakimPin(params.pin); });                                    break;
+        case 'saveParam'        : result = _runPenilaian_(function(){ return saveParam(penilaianPayload.cabang, penilaianPayload.params); });   break;
+        case 'getParam'         : result = _runPenilaian_(function(){ return getParam(params.cabang || null); });                               break;
+        case 'savePeserta'      : result = _runPenilaian_(function(){ return savePeserta(penilaianPayload.cabang, penilaianPayload.peserta); }); break;
+        case 'getPeserta'       : result = _runPenilaian_(function(){ return getPeserta(params.cabang || null); });                             break;
+        case 'deletePeserta'    : result = _runPenilaian_(function(){ return deletePeserta(penilaianPayload.id); });                            break;
+        case 'saveNilai'        : result = _runPenilaian_(function(){ return saveNilai(penilaianPayload.key, penilaianPayload.data); });        break;
+        case 'getNilai'         : result = _runPenilaian_(function(){ return getNilai(params.cabang || null, params.hakimId || null); });       break;
+        case 'getPeringkat'     : result = _runPenilaian_(function(){ return getPeringkat(params.cabang); });                                   break;
+        case 'getPenilaianStats': result = _runPenilaian_(function(){ return getPenilaianStats_(); });                                          break;
  
         default: result = { success:true, message:'MTQ 2026 API aktif', event:EVENT_INFO };
       }
@@ -106,6 +132,19 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
   return jsonResp_(result);
+}
+
+// ── Wrapper khusus action Sistem Penilaian ─────────────────────
+// penilaian.html mengecek field `data.error` (bukan `data.message`)
+// untuk pesan gagal, jadi error di-handle terpisah dari error
+// handler utama di doGet agar kontrak responsnya tetap konsisten.
+function _runPenilaian_(fn) {
+  try {
+    return fn();
+  } catch (errP) {
+    logError('api', 'Sistem Penilaian ERROR: ' + errP.message);
+    return { success:false, error: errP.message };
+  }
 }
 
 function dispatchGet_(params, action) {
