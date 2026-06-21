@@ -100,19 +100,28 @@ function doGet(e) {
         // NOTE: fungsi-fungsi ini didefinisikan di penilaian.gs.
         // Action "write" (save*/delete*) membaca dari penilaianPayload
         // (?payload=<json>); action "read" (get*) membaca dari params langsung.
-        case 'saveHakim'        : result = _runPenilaian_(function(){ return saveHakim(penilaianPayload); });                                   break;
-        case 'getHakim'         : result = _runPenilaian_(function(){ return getHakim(); });                                                    break;
-        case 'deleteHakim'      : result = _runPenilaian_(function(){ return deleteHakim(penilaianPayload.id); });                              break;
+        //
+        // Action yang dipanggil dari panel Admin (admin.html) — butuh token:
+        case 'saveHakim'        : result = _runPenilaianAdmin_(params, function(){ return saveHakim(penilaianPayload); });                                   break;
+        case 'getHakim'         : result = _runPenilaianAdmin_(params, function(){ return getHakim(); });                                                    break;
+        case 'deleteHakim'      : result = _runPenilaianAdmin_(params, function(){ return deleteHakim(penilaianPayload.id); });                              break;
+        case 'updateHakim'      : result = _runPenilaianAdmin_(params, function(){ return updateHakim(penilaianPayload.id, penilaianPayload); });             break;
+        case 'saveParam'        : result = _runPenilaianAdmin_(params, function(){ return saveParam(penilaianPayload.cabang, penilaianPayload.params); });   break;
+        case 'savePeserta'      : result = _runPenilaianAdmin_(params, function(){ return savePeserta(penilaianPayload.cabang, penilaianPayload.peserta); }); break;
+        case 'deletePeserta'    : result = _runPenilaianAdmin_(params, function(){ return deletePeserta(penilaianPayload.id); });                            break;
+        case 'importPesertaFromPendaftaran': result = _runPenilaianAdmin_(params, function(){ return importPesertaFromPendaftaran_(params.cabang, params.status_filter); }); break;
+        case 'setHasilPublikStatus': result = _runPenilaianAdmin_(params, function(){ return apiSetHasilPublikStatus_(penilaianPayload.status); });          break;
+
+        // Action publik — dipanggil dari halaman Login Hakim (penilaian.html)
+        // atau halaman Hasil Penilaian publik (index.html), TANPA token:
         case 'verifyHakimPin'   : result = _runPenilaian_(function(){ return verifyHakimPin(params.pin); });                                    break;
-        case 'saveParam'        : result = _runPenilaian_(function(){ return saveParam(penilaianPayload.cabang, penilaianPayload.params); });   break;
         case 'getParam'         : result = _runPenilaian_(function(){ return getParam(params.cabang || null); });                               break;
-        case 'savePeserta'      : result = _runPenilaian_(function(){ return savePeserta(penilaianPayload.cabang, penilaianPayload.peserta); }); break;
         case 'getPeserta'       : result = _runPenilaian_(function(){ return getPeserta(params.cabang || null); });                             break;
-        case 'deletePeserta'    : result = _runPenilaian_(function(){ return deletePeserta(penilaianPayload.id); });                            break;
         case 'saveNilai'        : result = _runPenilaian_(function(){ return saveNilai(penilaianPayload.key, penilaianPayload.data); });        break;
         case 'getNilai'         : result = _runPenilaian_(function(){ return getNilai(params.cabang || null, params.hakimId || null); });       break;
         case 'getPeringkat'     : result = _runPenilaian_(function(){ return getPeringkat(params.cabang); });                                   break;
         case 'getPenilaianStats': result = _runPenilaian_(function(){ return getPenilaianStats_(); });                                          break;
+        case 'getHasilPublikStatus': result = _runPenilaian_(function(){ return apiGetHasilPublikStatus_(); });                                 break;
  
         default: result = { success:true, message:'MTQ 2026 API aktif', event:EVENT_INFO };
       }
@@ -134,10 +143,10 @@ function doGet(e) {
   return jsonResp_(result);
 }
 
-// ── Wrapper khusus action Sistem Penilaian ─────────────────────
-// penilaian.html mengecek field `data.error` (bukan `data.message`)
-// untuk pesan gagal, jadi error di-handle terpisah dari error
-// handler utama di doGet agar kontrak responsnya tetap konsisten.
+// ── Wrapper khusus action Sistem Penilaian (publik, tanpa token) ──
+// penilaian.html / index.html mengecek field `data.error` (bukan
+// `data.message`) untuk pesan gagal, jadi error di-handle terpisah dari
+// error handler utama di doGet agar kontrak responsnya tetap konsisten.
 function _runPenilaian_(fn) {
   try {
     return fn();
@@ -145,6 +154,101 @@ function _runPenilaian_(fn) {
     logError('api', 'Sistem Penilaian ERROR: ' + errP.message);
     return { success:false, error: errP.message };
   }
+}
+
+// ── Wrapper khusus action Sistem Penilaian milik ADMIN — wajib token valid ──
+// Dipanggil dari panel "Sistem Penilaian" di admin.html (js/admin-penilaian.js).
+function _runPenilaianAdmin_(params, fn) {
+  if (!isTokenValid_(params.token)) {
+    return { success:false, error:'Sesi admin tidak valid. Silakan login ulang.', message:'Sesi admin tidak valid. Silakan login ulang.' };
+  }
+  return _runPenilaian_(fn);
+}
+
+// ── Status buka/tutup "Hasil Penilaian Publik" (ditampilkan di index.html) ──
+// Disimpan lewat getConfig/setConfig (sheet 'Config' milik penilaian.gs),
+// terpisah dari status buka/tutup PENDAFTARAN (PENDAFTARAN_CONFIG di config.gs)
+// dan terpisah dari status buka/tutup MAQRA — masing-masing punya toggle sendiri.
+function apiGetHasilPublikStatus_() {
+  var status = getConfig('HASIL_PUBLIK_STATUS') || 'tutup';
+  return { success:true, status: status, isOpen: status === 'buka' };
+}
+function apiSetHasilPublikStatus_(status) {
+  var v = (status === 'buka') ? 'buka' : 'tutup';
+  setConfig('HASIL_PUBLIK_STATUS', v);
+  return { success:true, status: v, isOpen: v === 'buka' };
+}
+
+// ── Import peserta scoring dari sheet Pendaftar utama ─────────
+// Dipakai admin (via admin.html) untuk menarik peserta yang sudah
+// mendaftar & diverifikasi ke dalam sheet PESERTA penilaian.
+// Peserta dengan status 'Ditolak' atau 'Nonaktif' dilewati.
+// Untuk cabang TIM, setiap anggota tim diimport sebagai baris tersendiri.
+function importPesertaFromPendaftaran_(cabang, statusFilter) {
+  if (!cabang) return { success: false, error: 'Cabang wajib diisi' };
+
+  var ss             = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var pendaftarSheet = ss.getSheetByName(SHEET_PENDAFTAR);
+  if (!pendaftarSheet) return { success: false, error: 'Sheet pendaftar tidak ditemukan' };
+
+  // getSheet adalah fungsi dari penilaian.gs — otomatis create jika belum ada
+  var pesertaSheet = getSheet('Peserta');
+
+  // Ambil existing IDs untuk cegah duplikat
+  var existingRows = pesertaSheet.getDataRange().getValues();
+  var existingIds  = {};
+  existingRows.slice(1).forEach(function(r){ if(r[0]) existingIds[String(r[0])] = true; });
+
+  // Hitung nomor urut awal per cabang (untuk urut setelah yang ada)
+  var currentCount = existingRows.slice(1).filter(function(r){ return r[1] === cabang; }).length;
+
+  var pendaftarRows = pendaftarSheet.getDataRange().getValues();
+  var newRows = [];
+  var skipStatuses = { 'Ditolak':true, 'Nonaktif':true };
+
+  pendaftarRows.slice(1).forEach(function(r) {
+    var rowCabang = String(r[COL.CABANG_LOMBA] || '').trim();
+    var rowNomor  = String(r[COL.NOMOR_PENDAFTARAN] || '').trim();
+    var rowNama   = String(r[COL.NAMA_LENGKAP] || '').trim();
+    var rowKec    = String(r[COL.KECAMATAN] || '').trim();
+    var rowStatus = String(r[COL.STATUS_VERIFIKASI] || '').trim();
+    var rowTipe   = String(r[COL.TIPE_LOMBA] || '').trim();
+
+    if (rowCabang !== cabang) return;
+    if (!rowNomor || !rowNama) return;
+    if (skipStatuses[rowStatus]) return;
+    // Jika statusFilter diberikan, hanya import yang sesuai (mis. 'Diterima')
+    if (statusFilter && rowStatus !== statusFilter) return;
+
+    if (rowTipe === 'tim') {
+      // Import anggota tim: parse dari ANGGOTA_JSON
+      var anggotaJson = String(r[COL.ANGGOTA_JSON] || '[]');
+      var anggota = [];
+      try { anggota = JSON.parse(anggotaJson); } catch(e) { anggota = []; }
+      if (!anggota.length) anggota.push({ nama_lengkap: rowNama, kecamatan: rowKec });
+
+      anggota.forEach(function(a, ai) {
+        var uid = rowNomor + '_m' + ai;
+        if (existingIds[uid]) return;
+        existingIds[uid] = true;
+        currentCount++;
+        newRows.push([uid, cabang, a.nama_lengkap || rowNama, a.kecamatan || rowKec, currentCount, new Date().toISOString()]);
+      });
+    } else {
+      // Individu
+      if (existingIds[rowNomor]) return;
+      existingIds[rowNomor] = true;
+      currentCount++;
+      newRows.push([rowNomor, cabang, rowNama, rowKec, currentCount, new Date().toISOString()]);
+    }
+  });
+
+  if (newRows.length > 0) {
+    pesertaSheet.getRange(pesertaSheet.getLastRow() + 1, 1, newRows.length, 6).setValues(newRows);
+  }
+
+  writeLog_(ss, 'IMPORT_PESERTA', 'Cabang: ' + cabang + ', imported: ' + newRows.length, 'ok');
+  return { success: true, count: newRows.length, cabang: cabang };
 }
 
 function dispatchGet_(params, action) {

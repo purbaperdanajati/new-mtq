@@ -167,6 +167,31 @@ function deleteHakim(id) {
   return { success: true };
 }
 
+function updateHakim(id, data) {
+  if (!id) throw new Error('ID hakim tidak ditemukan');
+  const sh   = getSheet(SHEET.HAKIM);
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] !== id) continue;
+    if (data.nama)   sh.getRange(i+1, 2).setValue(data.nama);
+    if (data.pin) {
+      // Cek duplikat PIN (kecuali pin milik hakim yang sama)
+      for (let j = 1; j < rows.length; j++) {
+        if (j !== i && String(rows[j][2]) === String(data.pin)) {
+          return { success: false, error: 'PIN sudah digunakan hakim lain' };
+        }
+      }
+      sh.getRange(i+1, 3).setValue(data.pin);
+    }
+    if (data.cabang) {
+      const cabangStr = Array.isArray(data.cabang) ? data.cabang.join('|') : data.cabang;
+      sh.getRange(i+1, 4).setValue(cabangStr);
+    }
+    return { success: true };
+  }
+  return { success: false, error: 'Hakim tidak ditemukan' };
+}
+
 function verifyHakimPin(pin) {
   if (!pin) return { success: false, hakim: null };
   const res = getHakim();
@@ -237,26 +262,46 @@ function savePeserta(cabang, peserta) {
 }
 
 function getPeserta(cabang) {
-  const sh = getSheet(SHEET.PESERTA);
-  const rows = sh.getDataRange().getValues();
-  const result = {};
+  // ── Ambil langsung dari SHEET_PENDAFTAR (sheet utama pendaftaran MTQ).
+  // Hanya baris dengan status_verifikasi = 'Terverifikasi' yang masuk.
+  // Tidak lagi membaca dari sheet PESERTA terpisah — admin tidak perlu
+  // import manual; hakim langsung melihat peserta yang sudah diverifikasi.
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sh = ss.getSheetByName(SHEET_PENDAFTAR);
+  if (!sh) return { success: false, error: 'Sheet pendaftar tidak ditemukan' };
 
-  rows.slice(1).filter(r => r[0]).forEach(r => {
-    const cab = r[1];
-    if (cabang && cab !== cabang) return;
-    if (!result[cab]) result[cab] = [];
-    result[cab].push({
-      id         : r[0],
-      cabang     : r[1],
-      nama       : r[2],
-      kecamatan  : r[3],
-      nomor_urut : r[4]
+  var rows    = sh.getDataRange().getValues();
+  var result  = {};  // { [cabang]: [peserta, ...] }
+  var counter = {};  // per-cabang nomor urut
+
+  rows.slice(1).forEach(function(r) {
+    var rowStatus = String(r[COL.STATUS_VERIFIKASI] || '').trim();
+    var rowCabang = String(r[COL.CABANG_LOMBA]      || '').trim();
+    var rowNomor  = String(r[COL.NOMOR_PENDAFTARAN] || '').trim();
+    var rowKec    = String(r[COL.KECAMATAN]         || '').trim();
+    var rowNama   = String(r[COL.NAMA_LENGKAP]      || '').trim();
+    var rowTipe   = String(r[COL.TIPE_LOMBA]        || '').trim().toLowerCase();
+    var rowNamaTim = String(r[COL.NAMA_TIM]         || '').trim();
+
+    if (rowStatus !== 'Terverifikasi') return;   // hanya peserta terverifikasi
+    if (!rowNomor || !rowCabang) return;
+    if (cabang && rowCabang !== cabang) return;  // filter per-cabang jika diminta
+
+    if (!result[rowCabang]) { result[rowCabang] = []; counter[rowCabang] = 0; }
+    counter[rowCabang]++;
+
+    // Untuk tim: gunakan nama_tim jika ada, else nama_lengkap (ketua)
+    var displayNama = (rowTipe === 'tim' && rowNamaTim) ? rowNamaTim : rowNama;
+
+    result[rowCabang].push({
+      id               : rowNomor,
+      cabang           : rowCabang,
+      nama             : displayNama,
+      kecamatan        : rowKec,
+      nomor_urut       : counter[rowCabang],
+      nomor_pendaftaran: rowNomor,
+      tipe_lomba       : rowTipe
     });
-  });
-
-  // Sort by nomor_urut
-  Object.keys(result).forEach(c => {
-    result[c].sort((a, b) => a.nomor_urut - b.nomor_urut);
   });
 
   if (cabang) return { success: true, data: result[cabang] || [] };

@@ -471,9 +471,7 @@
   </div>
 
   <div class="nav-tabs" id="navTabs">
-    <div class="nav-tab" data-view="admin" onclick="switchView('admin')">⚙️ Admin</div>
-    <div class="nav-tab" data-view="login" onclick="switchView('login')">🔑 Login Hakim</div>
-    <div class="nav-tab active" data-view="publik" onclick="switchView('publik')">📊 Nilai Publik</div>
+    <div class="nav-tab active" data-view="login" onclick="switchView('login')">🔑 Login Hakim</div>
   </div>
 
   <div class="nav-right">
@@ -489,226 +487,11 @@
 
 <!-- Mobile menu -->
 <div class="mobile-menu-tabs" id="mobileMenuTabs">
-  <button class="mobile-tab-btn" data-view="admin" onclick="switchView('admin');closeMobileMenu()">⚙️ Admin</button>
-  <button class="mobile-tab-btn" data-view="login" onclick="switchView('login');closeMobileMenu()">🔑 Login Hakim</button>
-  <button class="mobile-tab-btn active" data-view="publik" onclick="switchView('publik');closeMobileMenu()">📊 Nilai Publik</button>
-</div>
-
-<!-- ════════════════════ VIEW: ADMIN ════════════════════ -->
-<div class="view" id="view-admin">
-  <div class="page-wrap">
-
-    <!-- Admin Auth Gate -->
-    <div id="adminGate">
-      <div style="max-width:420px;margin:60px auto 0">
-        <div class="card">
-          <div class="card-head">
-            <div class="card-icon em">🔒</div>
-            <div>
-              <div class="card-title">Login Admin</div>
-              <div class="card-sub">Masukkan PIN admin untuk melanjutkan</div>
-            </div>
-          </div>
-          <div class="card-body">
-            <div class="field-group mb-16">
-              <label class="field-label">PIN Admin <span class="req">*</span></label>
-              <input type="password" class="field-input" id="adminPinInput" placeholder="Masukkan PIN admin" maxlength="20">
-            </div>
-            <button class="btn btn-em" style="width:100%" onclick="adminLogin()">🔓 Masuk Admin</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Admin Dashboard (hidden until login) -->
-    <div id="adminDashboard" class="hidden">
-      <div class="page-head">
-        <h1>Panel Admin Penilaian</h1>
-        <p>Kelola dewan hakim, cabang, dan parameter penilaian MTQ 2026</p>
-      </div>
-
-      <div class="tab-bar">
-        <div class="tab-btn active" onclick="adminTab('hakim')">👤 Dewan Hakim</div>
-        <div class="tab-btn" onclick="adminTab('parameter')">📋 Parameter Penilaian</div>
-        <div class="tab-btn" onclick="adminTab('peserta')">🧑 Data Peserta</div>
-        <div class="tab-btn" onclick="adminTab('rekap')">📊 Rekap Nilai</div>
-      </div>
-
-      <!-- TAB: HAKIM -->
-      <div class="tab-pane active" id="admin-tab-hakim">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" class="admin-grid">
-
-          <!-- Form Tambah Hakim -->
-          <div class="card">
-            <div class="card-head">
-              <div class="card-icon em">➕</div>
-              <div><div class="card-title">Tambah Dewan Hakim</div><div class="card-sub">Hakim dapat menguji lebih dari 1 cabang</div></div>
-            </div>
-            <div class="card-body">
-              <div class="form-row">
-                <div class="field-group">
-                  <label class="field-label">Nama Lengkap <span class="req">*</span></label>
-                  <input type="text" class="field-input" id="hakimNama" placeholder="Drs. H. Ahmad Fauzi">
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="field-group">
-                  <label class="field-label">Cabang yang Dinilai <span class="req">*</span></label>
-                  <select class="field-select" id="hakimCabangSelect">
-                    <option value="">-- Pilih Cabang --</option>
-                  </select>
-                </div>
-              </div>
-              <div id="hakimCabangList" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
-              <button class="btn btn-outline btn-sm mb-16" onclick="hakimAddCabang()">+ Tambah Cabang Lagi</button>
-              <div class="form-row">
-                <div class="field-group">
-                  <label class="field-label">PIN Hakim <span class="req">*</span></label>
-                  <div style="display:flex;gap:8px">
-                    <input type="text" class="field-input mono" id="hakimPin" placeholder="6 digit angka" maxlength="6" inputmode="numeric" style="letter-spacing:4px;font-size:18px;text-align:center">
-                    <button class="btn btn-outline btn-sm" onclick="genPin()">🎲 Acak</button>
-                  </div>
-                  <div class="field-hint">PIN digunakan hakim untuk login di perangkat masing-masing</div>
-                </div>
-              </div>
-              <button class="btn btn-em" style="width:100%" onclick="simpanHakim()">💾 Simpan Dewan Hakim</button>
-            </div>
-          </div>
-
-          <!-- Daftar Hakim -->
-          <div class="card">
-            <div class="card-head">
-              <div class="card-icon em">👥</div>
-              <div><div class="card-title">Daftar Dewan Hakim</div><div class="card-sub" id="hakimCount">0 hakim terdaftar</div></div>
-            </div>
-            <div class="card-body" id="hakimList" style="display:flex;flex-direction:column;gap:10px;max-height:460px;overflow-y:auto">
-              <div class="empty-state"><div class="empty-icon">👤</div><p>Belum ada dewan hakim</p></div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- TAB: PARAMETER -->
-      <div class="tab-pane" id="admin-tab-parameter">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" class="admin-grid">
-
-          <div class="card">
-            <div class="card-head">
-              <div class="card-icon gold">📝</div>
-              <div><div class="card-title">Set Parameter Penilaian</div><div class="card-sub">Setiap cabang bisa punya parameter berbeda. Total bobot = 100%</div></div>
-            </div>
-            <div class="card-body">
-              <div class="form-row">
-                <div class="field-group">
-                  <label class="field-label">Pilih Cabang <span class="req">*</span></label>
-                  <select class="field-select" id="paramCabang" onchange="loadParamForCabang()">
-                    <option value="">-- Pilih Cabang --</option>
-                  </select>
-                </div>
-              </div>
-              <div id="paramExisting" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
-
-              <div class="sec-div"><div class="sec-div-line"></div><div class="sec-div-label">Tambah Parameter</div><div class="sec-div-line"></div></div>
-
-              <div class="form-row cols-2">
-                <div class="field-group">
-                  <label class="field-label">Nama Parameter</label>
-                  <input type="text" class="field-input" id="paramNama" placeholder="cth: Tajwid">
-                </div>
-                <div class="field-group">
-                  <label class="field-label">Bobot (%)</label>
-                  <input type="number" class="field-input" id="paramBobot" placeholder="25" min="1" max="100">
-                </div>
-              </div>
-              <button class="btn btn-gold btn-sm mb-16" onclick="addParam()">+ Tambah Parameter</button>
-
-              <div id="paramBobotTotal" class="alert alert-info mb-16" style="display:none"></div>
-              <button class="btn btn-em" style="width:100%" onclick="simpanParameter()">💾 Simpan Parameter</button>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-head">
-              <div class="card-icon gold">📊</div>
-              <div><div class="card-title">Ringkasan Parameter</div><div class="card-sub">Parameter yang sudah dikonfigurasi per cabang</div></div>
-            </div>
-            <div class="card-body" id="paramSummary" style="max-height:500px;overflow-y:auto">
-              <div class="empty-state"><div class="empty-icon">📋</div><p>Parameter belum dikonfigurasi</p></div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- TAB: PESERTA -->
-      <div class="tab-pane" id="admin-tab-peserta">
-        <div class="card">
-          <div class="card-head">
-            <div class="card-icon sky">🧑</div>
-            <div><div class="card-title">Input / Kelola Peserta</div><div class="card-sub">Data peserta per cabang yang akan dinilai</div></div>
-          </div>
-          <div class="card-body">
-            <div class="alert alert-info mb-24">
-              ℹ️ Peserta diambil dari data pendaftaran. Anda bisa menambah atau mengoreksi nomor urut tampil di sini.
-            </div>
-            <div class="form-row cols-2 mb-16">
-              <div class="field-group">
-                <label class="field-label">Cabang</label>
-                <select class="field-select" id="pesertaCabangFilter" onchange="loadPesertaTable()">
-                  <option value="">-- Semua Cabang --</option>
-                </select>
-              </div>
-              <div class="field-group">
-                <label class="field-label">Tambah Peserta Manual</label>
-                <div style="display:flex;gap:8px">
-                  <input type="text" class="field-input" id="pesertaNamaBaru" placeholder="Nama peserta">
-                  <button class="btn btn-em btn-sm" onclick="tambahPeserta()">+</button>
-                </div>
-              </div>
-            </div>
-            <div class="table-wrap" id="pesertaTableWrap">
-              <div class="empty-state"><div class="empty-icon">🧑</div><p>Pilih cabang untuk melihat peserta</p></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- TAB: REKAP -->
-      <div class="tab-pane" id="admin-tab-rekap">
-        <div class="card">
-          <div class="card-head">
-            <div class="card-icon em">📊</div>
-            <div><div class="card-title">Rekap Nilai Lengkap</div><div class="card-sub">Semua nilai yang sudah disubmit oleh dewan hakim</div></div>
-          </div>
-          <div class="card-body">
-            <div class="form-row cols-2 mb-16">
-              <div class="field-group">
-                <label class="field-label">Filter Cabang</label>
-                <select class="field-select" id="rekapCabangFilter" onchange="loadRekapTable()">
-                  <option value="">-- Semua Cabang --</option>
-                </select>
-              </div>
-              <div class="field-group">
-                <label class="field-label">Filter Hakim</label>
-                <select class="field-select" id="rekapHakimFilter" onchange="loadRekapTable()">
-                  <option value="">-- Semua Hakim --</option>
-                </select>
-              </div>
-            </div>
-            <div class="table-wrap" id="rekapTableWrap">
-              <div class="empty-state"><div class="empty-icon">📊</div><p>Belum ada nilai yang disubmit</p></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div><!-- /adminDashboard -->
-  </div>
+  <button class="mobile-tab-btn active" data-view="login" onclick="switchView('login');closeMobileMenu()">🔑 Login Hakim</button>
 </div>
 
 <!-- ════════════════════ VIEW: LOGIN / HAKIM SCORING ════════════════════ -->
-<div class="view" id="view-login">
+<div class="view active" id="view-login">
 
   <!-- Login screen -->
   <div id="hakimLoginScreen">
@@ -730,6 +513,25 @@
             <input type="tel" class="pin-box" maxlength="1" inputmode="numeric">
             <input type="tel" class="pin-box" maxlength="1" inputmode="numeric">
           </div>
+
+          <!-- Captcha — anti bot/brute-force pada login hakim -->
+          <div class="field-group" style="text-align:left;margin-top:14px">
+            <label class="field-label" style="font-size:12px;color:var(--g500);font-weight:600">Verifikasi — ketik 6 karakter berikut:</label>
+            <div style="display:flex;align-items:center;gap:8px;margin:6px 0 8px">
+              <canvas id="hakimCaptchaCanvas" width="220" height="58"
+                style="border:1.5px solid var(--g200);border-radius:8px;cursor:pointer;display:block;background:#f8fafc"
+                onclick="initHakimCaptcha()" title="Klik untuk ganti captcha"></canvas>
+              <button type="button" onclick="initHakimCaptcha()"
+                style="background:none;border:1.5px solid var(--g200);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:16px;color:var(--g500)"
+                title="Refresh captcha">🔄</button>
+            </div>
+            <input type="text" class="field-input" id="hakimCaptchaAns"
+              placeholder="Ketik 6 karakter" maxlength="6" autocomplete="off" spellcheck="false"
+              style="text-transform:uppercase;letter-spacing:4px;font-size:18px;font-weight:700;text-align:center;font-family:var(--font-mono)"
+              oninput="this.value=this.value.toUpperCase()"
+              onkeydown="if(event.key==='Enter')hakimLogin()">
+          </div>
+
           <button class="btn btn-em btn-lg" style="width:100%;margin-top:8px" id="loginSubmitBtn" onclick="hakimLogin()">🔓 Masuk</button>
           <p style="text-align:center;font-size:12px;color:var(--g400);margin-top:12px">PIN bersifat rahasia. Jangan bagikan ke siapapun.</p>
         </div>
@@ -838,56 +640,6 @@
 
 </div>
 
-<!-- ════════════════════ VIEW: PUBLIK ════════════════════ -->
-<div class="view active" id="view-publik">
-
-  <div class="results-header">
-    <div class="live-badge"><span class="dot"></span> LIVE — Diperbarui Otomatis</div>
-    <h1>📊 Hasil Penilaian MTQ 2026</h1>
-    <p>Musabaqah Tilawatil Qur'an — Kabupaten Indramayu</p>
-  </div>
-
-  <div class="page-wrap">
-
-    <!-- Filter cabang -->
-    <div>
-      <div class="flex-between mb-16" style="flex-wrap:wrap;gap:8px">
-        <div>
-          <div style="font-size:15px;font-weight:700;color:var(--g800)">Peringkat Per Cabang</div>
-          <div style="font-size:12px;color:var(--g500)">Nilai rata-rata dari seluruh dewan hakim yang menilai</div>
-        </div>
-        <button class="btn btn-outline btn-sm" onclick="refreshPublicResults()">🔄 Refresh</button>
-      </div>
-      <div class="cabang-filter" id="publicCabangFilter"></div>
-    </div>
-
-    <!-- Podium top 3 -->
-    <div id="podiumSection" style="margin-top:24px"></div>
-
-    <!-- Full ranking table -->
-    <div class="card" style="margin-top:20px">
-      <div class="card-head">
-        <div class="card-icon em">🏆</div>
-        <div>
-          <div class="card-title">Tabel Peringkat Lengkap</div>
-          <div class="card-sub" id="publicTableSubtitle">-</div>
-        </div>
-      </div>
-      <div class="card-body" style="padding:0">
-        <div class="table-wrap" id="publicResultTable">
-          <div class="empty-state"><div class="empty-icon">📊</div><p>Pilih cabang untuk melihat peringkat</p></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Info transparency -->
-    <div class="alert alert-info" style="margin-top:20px">
-      🔍 <strong>Transparansi Penilaian:</strong> Nilai yang ditampilkan merupakan rata-rata tertimbang dari semua dewan hakim yang menilai. Nama hakim dan detail nilai dapat dilihat dengan mengklik baris peserta.
-    </div>
-
-  </div>
-</div>
-
 <!-- ════════════════════ OVERLAY / LOADING ════════════════════ -->
 <div class="overlay" id="globalOverlay">
   <div class="overlay-box">
@@ -915,14 +667,14 @@
 //            (2) String hardcode di bawah ini
 // Setelah deploy GAS, paste URL di sini:
 const API_URL = (window.MTQ_API_URL || '').trim()
-  || 'https://script.google.com/macros/s/AKfycbwnH9R7OdAkMs0OyfA7yRlIN-eAdFbDi20D9oAe7u-B6upDCF4bDZ7heT4ziiNk12l9/exec';
+  || 'https://script.google.com/macros/s/AKfycbzrAl4qNFj4zetac_iWRtaTv90bPFNyAN690hN4pfpC3plR7ebPdLwk9KqjT7X-fK0/exec';
 
 const ADMIN_PIN = '1234'; // ganti via panel admin setelah login pertama
 
 // ── DEV MODE ──────────────────────────────────────────────────────
 // true  = tampilkan log detail di console + panel logger di layar
 // false = hanya error yang muncul
-const DEV = false;
+const DEV = true;
 
 // ════════════════════════════════════════════════════════════════
 //  LOGGER TERPUSAT
@@ -1026,13 +778,12 @@ const CABANG_LIST = [
 
 // ── State ──────────────────────────────────────────────────────
 let S = {
-  adminLoggedIn: false,
   hakimSession: null,
-  currentView: 'publik',
+  currentView: 'login',
   currentPesertaIdx: 0,
   currentScoringCabang: null,
+  pesertaList: [],          // primary peserta source for current cabang
   tempParams: [],
-  tempHakimCabang: [],
   scores: {},
 };
 
@@ -1049,7 +800,7 @@ function isApiReady() {
 /**
  * JSONP core — inject <script> tag, tunggu callback global, cleanup
  */
-function jsonpRequest(url, prefix, timeoutMs = 10000) {
+function jsonpRequest(url, prefix, timeoutMs = 25000) {
   return new Promise((resolve) => {
     const cbName = prefix + '_' + Date.now() + '_' + (Math.random() * 99999 | 0);
     const script = document.createElement('script');
@@ -1108,9 +859,21 @@ async function apiGet(action, params = {}) {
 
   MTQ_LOG.api(`GET ${action} ✓`, data);
 
-  // Update cache
+  // Update cache — PENTING: getPeserta(cabang) mengembalikan ARRAY langsung.
+  // Kita harus menyimpan sebagai { [cabang]: [...] } agar submitNilai dan localGet
+  // bisa membacanya kembali dengan benar.
   if (action === 'getHakim')   store('hakim',  data.data);
-  if (action === 'getPeserta') store('peserta', data.data);
+  if (action === 'getPeserta') {
+    const reqCabang = params && params.cabang;
+    if (reqCabang && Array.isArray(data.data)) {
+      const cur = load('peserta', {});
+      const obj = Array.isArray(cur) ? {} : cur;   // perbaiki jika tersimpan sebagai array sebelumnya
+      obj[reqCabang] = data.data;
+      store('peserta', obj);
+    } else if (data.data && !Array.isArray(data.data)) {
+      store('peserta', data.data);  // getPeserta() tanpa cabang → sudah object
+    }
+  }
   if (action === 'getParam')   store('params',  data.data);
   if (action === 'getNilai')   { S.scores = data.data || {}; store('nilai', S.scores); }
 
@@ -1362,12 +1125,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   initDarkMode();
   initPinInputs();
+  initHakimCaptcha();
   populateCabangDropdowns();
 
   // Keyboard shortcut: Ctrl+Shift+L buka logger panel
   document.addEventListener('keydown', e => {
     if (e.ctrlKey && e.shiftKey && e.key === 'L') { showLogPanel(); e.preventDefault(); }
-    if (e.ctrlKey && e.shiftKey && e.key === 'A') { switchView('admin'); e.preventDefault(); }
     if (e.key === 'Escape') {
       document.getElementById('confirmModal')?.classList.remove('show');
       hideOverlay();
@@ -1411,11 +1174,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Cek session hakim tersimpan
   const sess = load('hakimSession');
-  if (sess) { S.hakimSession = sess; showHakimSession(sess); }
-
-  // Load awal halaman publik
-  await initPublicView();
-  setInterval(refreshPublicResults, 30000);
+  if (sess) { S.hakimSession = sess; showHakimSession(sess); switchView_scoring(); }
 
   // Auto-buka logger di dev mode
   if (DEV) {
@@ -1446,15 +1205,8 @@ function applyTheme(t) {
 //  NAVIGATION
 // ════════════════════════════════════════════════════════════════
 function populateCabangDropdowns() {
-  ['hakimCabangSelect','paramCabang','pesertaCabangFilter','rekapCabangFilter'].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.innerHTML = '<option value="">-- Pilih Cabang --</option>';
-    CABANG_LIST.forEach(c => {
-      const o = document.createElement('option');
-      o.value = c; o.textContent = c; el.appendChild(o);
-    });
-  });
+  // Cabang dropdowns di view scoring diisi secara dinamis dari data hakim saat login
+  // (lihat switchView_scoring). Tidak ada dropdown statis di halaman ini lagi.
 }
 
 function switchView(view) {
@@ -1465,336 +1217,14 @@ function switchView(view) {
   document.querySelector(`.mobile-tab-btn[data-view="${view}"]`)?.classList.add('active');
   S.currentView = view;
   MTQ_LOG.info('switchView → ' + view);
-  if (view === 'publik') initPublicView();
-  if (view === 'admin' && S.adminLoggedIn) { renderHakimList(); renderParamSummary(); }
   if (view === 'login' && S.hakimSession) switchView_scoring();
 }
 function toggleMobileMenu() { document.getElementById('mainNavbar').classList.toggle('mobile-open'); }
 function closeMobileMenu()  { document.getElementById('mainNavbar').classList.remove('mobile-open'); }
 
 // ════════════════════════════════════════════════════════════════
-//  ADMIN
-// ════════════════════════════════════════════════════════════════
-function adminLogin() {
-  const pin = document.getElementById('adminPinInput').value.trim();
-  if (pin !== ADMIN_PIN) { toast('PIN Salah', 'PIN admin tidak valid', 'error'); return; }
-  S.adminLoggedIn = true;
-  document.getElementById('adminGate').classList.add('hidden');
-  document.getElementById('adminDashboard').classList.remove('hidden');
-  MTQ_LOG.info('Admin login OK');
-  renderHakimList();
-  renderParamSummary();
-  toast('Login Berhasil', 'Selamat datang, Admin', 'success');
-}
+//  HAKIM PIN INPUTS
 
-function adminTab(tab) {
-  document.querySelectorAll('#adminDashboard .tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('#adminDashboard .tab-pane').forEach(p => p.classList.remove('active'));
-  document.querySelector(`#admin-tab-${tab}`)?.classList.add('active');
-  event.target.classList.add('active');
-  if (tab === 'rekap')   { loadRekapTable(); populateRekapFilters(); injectRekapExportBtn(); }
-  if (tab === 'peserta') loadPesertaTable();
-}
-
-// ── Hakim ──────────────────────────────────────────────────────
-function genPin() {
-  document.getElementById('hakimPin').value = String(Math.floor(100000 + Math.random() * 900000));
-}
-function hakimAddCabang() {
-  const val = document.getElementById('hakimCabangSelect').value;
-  if (!val) { toast('', 'Pilih cabang dahulu', 'warning'); return; }
-  if (S.tempHakimCabang.includes(val)) { toast('', 'Cabang sudah ditambahkan', 'warning'); return; }
-  S.tempHakimCabang.push(val);
-  renderHakimCabangChips();
-  document.getElementById('hakimCabangSelect').value = '';
-}
-function renderHakimCabangChips() {
-  document.getElementById('hakimCabangList').innerHTML =
-    S.tempHakimCabang.map((c,i) => `
-      <span style="display:inline-flex;align-items:center;gap:4px;background:var(--em-pale);color:var(--em);border-radius:var(--r-full);padding:4px 10px;font-size:12px;font-weight:700">
-        ${c}
-        <button onclick="S.tempHakimCabang.splice(${i},1);renderHakimCabangChips()" style="color:var(--ruby);font-size:14px;line-height:1;background:none;border:none;cursor:pointer">×</button>
-      </span>`).join('');
-}
-
-async function simpanHakim() {
-  const nama = document.getElementById('hakimNama').value.trim();
-  const pin  = document.getElementById('hakimPin').value.trim();
-  if (!nama) { toast('', 'Nama hakim wajib diisi', 'error'); return; }
-  if (!pin || pin.length < 4) { toast('', 'PIN minimal 4 digit', 'error'); return; }
-
-  // Pastikan ada minimal 1 cabang
-  if (S.tempHakimCabang.length === 0) {
-    const sel = document.getElementById('hakimCabangSelect').value;
-    if (!sel) { toast('', 'Pilih minimal 1 cabang', 'error'); return; }
-    S.tempHakimCabang.push(sel);
-  }
-
-  // Cek duplikat PIN dari cache lokal dulu (cepat)
-  const cached = load('hakim', []);
-  if (cached.some(h => String(h.pin) === pin)) {
-    toast('PIN Duplikat', 'PIN sudah digunakan hakim lain', 'error'); return;
-  }
-
-  const hakim = {
-    id: 'h_' + Date.now(),
-    nama, pin,
-    cabang: [...S.tempHakimCabang],
-    createdAt: new Date().toISOString()
-  };
-
-  showOverlay('Menyimpan hakim...', '');
-  MTQ_LOG.info('Simpan hakim', hakim);
-  const res = await apiPost('saveHakim', hakim);
-  hideOverlay();
-
-  if (res.success) {
-    // Reset form
-    document.getElementById('hakimNama').value = '';
-    document.getElementById('hakimPin').value = '';
-    document.getElementById('hakimCabangSelect').value = '';
-    S.tempHakimCabang = [];
-    renderHakimCabangChips();
-    await renderHakimList();
-    toast('Tersimpan', `${nama} — PIN: ${pin}`, 'success');
-  } else {
-    toast('Gagal', res.error || 'Error saat menyimpan', 'error');
-  }
-}
-
-async function renderHakimList() {
-  const res = await apiGet('getHakim');
-  const list = res.data || [];
-  document.getElementById('hakimCount').textContent = list.length + ' hakim terdaftar';
-  const el = document.getElementById('hakimList');
-  if (!list.length) {
-    el.innerHTML = '<div class="empty-state"><div class="empty-icon">👤</div><p>Belum ada dewan hakim</p></div>';
-    return;
-  }
-  el.innerHTML = list.map(h => `
-    <div class="judge-card">
-      <div class="judge-avatar">${h.nama.charAt(0).toUpperCase()}</div>
-      <div class="judge-info">
-        <div class="judge-name">${h.nama}</div>
-        <div class="judge-cabang">${Array.isArray(h.cabang) ? h.cabang.join(', ') : h.cabang}</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-        <div class="judge-pin">🔑 ${h.pin}</div>
-        <button class="btn btn-danger btn-sm" onclick="hapusHakim('${h.id}')">✕</button>
-      </div>
-    </div>`).join('');
-}
-
-async function hapusHakim(id) {
-  if (!confirm('Hapus dewan hakim ini?')) return;
-  MTQ_LOG.info('Hapus hakim id=' + id);
-  showOverlay('Menghapus...', '');
-  await apiPost('deleteHakim', { id });
-  hideOverlay();
-  await renderHakimList();
-  toast('Dihapus', 'Dewan hakim berhasil dihapus', 'success');
-}
-
-// ── Parameter ──────────────────────────────────────────────────
-async function loadParamForCabang() {
-  const cabang = document.getElementById('paramCabang').value;
-  if (!cabang) { document.getElementById('paramExisting').innerHTML = ''; return; }
-  const res = await apiGet('getParam', { cabang });
-  S.tempParams = Array.isArray(res.data) ? [...res.data] : [];
-  MTQ_LOG.info(`loadParam ${cabang}`, S.tempParams);
-  renderParamChips();
-  updateBobotTotal();
-}
-
-function renderParamChips() {
-  const el = document.getElementById('paramExisting');
-  if (!S.tempParams.length) {
-    el.innerHTML = '<div class="text-sm text-muted">Belum ada parameter. Tambahkan di bawah.</div>';
-    return;
-  }
-  el.innerHTML = S.tempParams.map((p,i) => `
-    <div class="param-chip">
-      <div class="param-chip-name">${p.nama}</div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div class="param-chip-bobot">${p.bobot}%</div>
-        <div class="progress-bobot" style="width:60px"><div class="progress-bobot-fill" style="width:${p.bobot}%"></div></div>
-        <button class="param-chip-del" onclick="removeParam(${i})">✕</button>
-      </div>
-    </div>`).join('');
-}
-
-function addParam() {
-  const nama  = document.getElementById('paramNama').value.trim();
-  const bobot = parseInt(document.getElementById('paramBobot').value);
-  if (!nama) { toast('', 'Nama parameter wajib diisi', 'error'); return; }
-  if (!bobot || bobot < 1 || bobot > 100) { toast('', 'Bobot 1–100', 'error'); return; }
-  const total = S.tempParams.reduce((s,p) => s + p.bobot, 0);
-  if (total + bobot > 100) { toast('', `Total bobot ${total+bobot}% > 100%`, 'error'); return; }
-  S.tempParams.push({ nama, bobot });
-  document.getElementById('paramNama').value = '';
-  document.getElementById('paramBobot').value = '';
-  renderParamChips();
-  updateBobotTotal();
-}
-
-function removeParam(i) {
-  S.tempParams.splice(i, 1);
-  renderParamChips();
-  updateBobotTotal();
-}
-
-function updateBobotTotal() {
-  const total = S.tempParams.reduce((s,p) => s + p.bobot, 0);
-  const el = document.getElementById('paramBobotTotal');
-  el.style.display = S.tempParams.length ? 'flex' : 'none';
-  el.className = 'alert mb-16 ' + (total===100 ? 'alert-success' : total>100 ? 'alert-danger' : 'alert-warn');
-  el.textContent = `Total Bobot: ${total}% ${total===100 ? '✅ Sempurna!' : total>100 ? '❌ Melebihi 100%!' : '⚠️ Belum 100%'}`;
-}
-
-async function simpanParameter() {
-  const cabang = document.getElementById('paramCabang').value;
-  if (!cabang) { toast('', 'Pilih cabang dahulu', 'error'); return; }
-  const total = S.tempParams.reduce((s,p) => s + p.bobot, 0);
-  if (total !== 100) { toast('', `Total bobot ${total}%, harus 100%`, 'error'); return; }
-  if (!S.tempParams.length) { toast('', 'Tambahkan minimal 1 parameter', 'error'); return; }
-
-  MTQ_LOG.info('Simpan parameter', { cabang, params: S.tempParams });
-  showOverlay('Menyimpan parameter...', '');
-  const res = await apiPost('saveParam', { cabang, params: S.tempParams });
-  hideOverlay();
-
-  if (res.success) {
-    await renderParamSummary();
-    toast('Tersimpan', `Parameter ${cabang} OK`, 'success');
-  } else {
-    toast('Gagal', res.error || 'Error menyimpan parameter', 'error');
-  }
-}
-
-async function renderParamSummary() {
-  const res = await apiGet('getParam');
-  const params = res.data || {};
-  const el = document.getElementById('paramSummary');
-  const list = Object.keys(params).filter(c => params[c]?.length);
-  if (!list.length) {
-    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>Parameter belum dikonfigurasi</p></div>';
-    return;
-  }
-  el.innerHTML = list.map(c => `
-    <div style="margin-bottom:16px">
-      <div style="font-size:13px;font-weight:700;color:var(--g800);margin-bottom:6px">${c}</div>
-      ${params[c].map(p => `
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <div style="flex:1;font-size:12px;color:var(--g600)">${p.nama}</div>
-          <div class="progress-bobot" style="width:80px"><div class="progress-bobot-fill" style="width:${p.bobot}%"></div></div>
-          <div style="font-family:var(--font-mono);font-size:11px;color:var(--em);font-weight:700;width:32px;text-align:right">${p.bobot}%</div>
-        </div>`).join('')}
-    </div>`).join('<div class="sec-div"><div class="sec-div-line"></div></div>');
-}
-
-// ── Peserta ────────────────────────────────────────────────────
-async function loadPesertaTable() {
-  const cabang = document.getElementById('pesertaCabangFilter').value;
-  const wrap   = document.getElementById('pesertaTableWrap');
-  if (!cabang) {
-    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">🧑</div><p>Pilih cabang</p></div>';
-    return;
-  }
-  const res  = await apiGet('getPeserta', { cabang });
-  const list = Array.isArray(res.data) ? res.data : (res.data?.[cabang] || []);
-  if (!list.length) {
-    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">🧑</div><p>Belum ada peserta di cabang ini</p></div>';
-    return;
-  }
-  wrap.innerHTML = `<table><thead><tr><th>#</th><th>Nama</th><th>Kecamatan</th><th>Aksi</th></tr></thead><tbody>
-    ${list.map((p,i) => `<tr>
-      <td class="mono">${p.nomor_urut||i+1}</td>
-      <td style="font-weight:600">${p.nama}</td>
-      <td>${p.kecamatan}</td>
-      <td><button class="btn btn-danger btn-sm" onclick="hapusPeserta('${cabang}','${p.id}')">Hapus</button></td>
-    </tr>`).join('')}
-  </tbody></table>`;
-}
-
-async function tambahPeserta() {
-  const cabang = document.getElementById('pesertaCabangFilter').value;
-  const nama   = document.getElementById('pesertaNamaBaru').value.trim();
-  if (!cabang) { toast('', 'Pilih cabang dahulu', 'error'); return; }
-  if (!nama)   { toast('', 'Nama peserta wajib diisi', 'error'); return; }
-
-  const peserta = { id: cabang.replace(/[^a-z0-9]/gi,'_') + '_' + Date.now(), nama, kecamatan: '-', nomor_urut: 0 };
-  MTQ_LOG.info('Tambah peserta', { cabang, peserta });
-  showOverlay('Menambah peserta...', '');
-  const res = await apiPost('savePeserta', { cabang, peserta });
-  hideOverlay();
-
-  if (res.success) {
-    document.getElementById('pesertaNamaBaru').value = '';
-    await loadPesertaTable();
-    toast('Ditambahkan', nama, 'success');
-  }
-}
-
-async function hapusPeserta(cabang, id) {
-  if (!confirm('Hapus peserta ini?')) return;
-  MTQ_LOG.info('Hapus peserta', { cabang, id });
-  showOverlay('Menghapus...', '');
-  await apiPost('deletePeserta', { cabang, id });
-  hideOverlay();
-  await loadPesertaTable();
-}
-
-// ── Rekap ──────────────────────────────────────────────────────
-async function populateRekapFilters() {
-  const res = await apiGet('getHakim');
-  const sel = document.getElementById('rekapHakimFilter');
-  while (sel.options.length > 1) sel.remove(1);
-  (res.data || []).forEach(h => {
-    const o = document.createElement('option'); o.value = h.id; o.textContent = h.nama; sel.appendChild(o);
-  });
-}
-
-async function loadRekapTable() {
-  const cabangF = document.getElementById('rekapCabangFilter').value;
-  const hakimF  = document.getElementById('rekapHakimFilter').value;
-  const wrap    = document.getElementById('rekapTableWrap');
-
-  const res = await apiGet('getNilai', { cabang: cabangF, hakimId: hakimF });
-  S.scores  = res.data || {};
-
-  const rows = Object.values(S.scores).filter(d => {
-    if (cabangF && d.cabang !== cabangF) return false;
-    if (hakimF  && d.hakimId !== hakimF) return false;
-    return true;
-  }).sort((a,b) => b.total - a.total);
-
-  if (!rows.length) {
-    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div><p>Belum ada nilai</p></div>';
-    return;
-  }
-  wrap.innerHTML = `<table><thead><tr><th>Hakim</th><th>Cabang</th><th>Peserta</th><th>Total</th><th>Waktu</th></tr></thead><tbody>
-    ${rows.map(r => `<tr>
-      <td>${r.hakimNama||'-'}</td>
-      <td><span class="badge badge-em">${r.cabang}</span></td>
-      <td style="font-weight:600">${r.pesertaNama||r.pesertaId}</td>
-      <td><span class="score-display" style="font-size:16px;padding:4px 12px">${Number(r.total).toFixed(2)}</span></td>
-      <td class="text-sm text-muted">${r.submittedAt ? new Date(r.submittedAt).toLocaleString('id-ID') : '-'}</td>
-    </tr>`).join('')}
-  </tbody></table>`;
-}
-
-function injectRekapExportBtn() {
-  if (document.getElementById('rekapExportBtn')) return;
-  const head = document.querySelector('#admin-tab-rekap .card-head');
-  if (!head) return;
-  const btn = document.createElement('button');
-  btn.id = 'rekapExportBtn';
-  btn.className = 'btn btn-outline btn-sm';
-  btn.style.marginLeft = 'auto';
-  btn.innerHTML = '⬇️ Export CSV';
-  btn.onclick = exportCSV;
-  head.appendChild(btn);
-}
 
 // ════════════════════════════════════════════════════════════════
 //  HAKIM LOGIN & SCORING
@@ -1826,6 +1256,19 @@ async function hakimLogin() {
   const pin = getPinValue();
   if (pin.length < 4) { toast('', 'Masukkan PIN lengkap', 'warning'); return; }
 
+  // ── Captcha check (anti bot / brute-force) ─────────────────
+  const captchaInput = (document.getElementById('hakimCaptchaAns')?.value || '').trim().toUpperCase();
+  if (!captchaInput) {
+    toast('', 'Masukkan kode verifikasi (captcha)', 'warning');
+    return;
+  }
+  if (captchaInput !== _hakimCaptchaCode) {
+    MTQ_LOG.warn('Hakim login gagal: captcha salah');
+    toast('Captcha Salah', 'Kode verifikasi tidak sesuai, silakan coba lagi', 'error');
+    initHakimCaptcha();
+    return;
+  }
+
   MTQ_LOG.info('Hakim login attempt, pin=' + pin);
   showOverlay('Memverifikasi PIN...', '');
   const res = await apiGet('verifyHakimPin', { pin });
@@ -1840,6 +1283,7 @@ async function hakimLogin() {
   if (!finalHakim) {
     MTQ_LOG.warn('Login gagal: PIN tidak ditemukan');
     toast('PIN Salah', 'Tidak ada hakim dengan PIN tersebut', 'error');
+    initHakimCaptcha(); // captcha baru setiap gagal — cegah brute-force PIN
     return;
   }
 
@@ -1849,6 +1293,57 @@ async function hakimLogin() {
   switchView_scoring();
   MTQ_LOG.info('Hakim login OK', finalHakim);
   toast('Selamat Datang', `Halo, ${finalHakim.nama}!`, 'success');
+}
+
+// ── Captcha login hakim (canvas, anti bot/brute-force) ────────
+let _hakimCaptchaCode = '';
+function initHakimCaptcha() {
+  const canvas = document.getElementById('hakimCaptchaCanvas');
+  if (!canvas) return;
+  const ctx   = canvas.getContext('2d');
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // tanpa karakter ambigu (0,O,1,I,l)
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+  _hakimCaptchaCode = code;
+
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#f8fafc';
+  ctx.fillRect(0, 0, W, H);
+
+  // Garis acak (noise)
+  for (let i = 0; i < 5; i++) {
+    ctx.strokeStyle = `rgba(${Math.random()*120|0},${Math.random()*120|0},${Math.random()*120|0},0.25)`;
+    ctx.beginPath();
+    ctx.moveTo(Math.random() * W, Math.random() * H);
+    ctx.lineTo(Math.random() * W, Math.random() * H);
+    ctx.stroke();
+  }
+  // Titik acak (noise)
+  for (let i = 0; i < 40; i++) {
+    ctx.fillStyle = `rgba(${Math.random()*150|0},${Math.random()*150|0},${Math.random()*150|0},0.3)`;
+    ctx.beginPath();
+    ctx.arc(Math.random() * W, Math.random() * H, 1.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Karakter, dengan rotasi & posisi sedikit acak per huruf
+  const cw = W / code.length;
+  for (let i = 0; i < code.length; i++) {
+    ctx.save();
+    const cx = cw * i + cw / 2 + (Math.random() * 6 - 3);
+    const cy = H / 2 + (Math.random() * 10 - 5);
+    ctx.translate(cx, cy);
+    ctx.rotate((Math.random() * 30 - 15) * Math.PI / 180);
+    ctx.font = `bold ${Math.floor(H * 0.55)}px 'IBM Plex Mono',monospace`;
+    ctx.fillStyle = `rgb(${20+Math.random()*40|0},${60+Math.random()*40|0},${50+Math.random()*30|0})`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(code[i], 0, 0);
+    ctx.restore();
+  }
+
+  const ansEl = document.getElementById('hakimCaptchaAns');
+  if (ansEl) ansEl.value = '';
 }
 
 function showHakimSession(hakim) {
@@ -1891,16 +1386,30 @@ async function loadScoringPeserta() {
   // getPeserta bisa return array (filtered) atau object (all)
   const list = Array.isArray(raw) ? raw : (raw?.[S.currentScoringCabang] || []);
 
-  // Simpan ke cache lokal agar calcTotal bisa akses offline
+  // Simpan ke STATE (primary) dan cache lokal (fallback offline)
+  S.pesertaList = list;
   const all = load('peserta', {});
-  all[S.currentScoringCabang] = list;
-  store('peserta', all);
+  const obj = Array.isArray(all) ? {} : all;
+  obj[S.currentScoringCabang] = list;
+  store('peserta', obj);
 
   if (!list.length) {
-    document.getElementById('currentPesertaName').textContent = 'Tidak ada peserta';
+    document.getElementById('currentPesertaName').textContent = 'Belum ada peserta';
     document.getElementById('pesertaCounter').textContent = '0/0';
-    document.getElementById('paramScoreContainer').innerHTML =
-      '<div class="empty-state"><div class="empty-icon">🧑</div><p>Belum ada peserta terdaftar</p></div>';
+    document.getElementById('paramScoreContainer').innerHTML = `
+      <div style="text-align:center;padding:32px 16px;background:var(--gray-50);border-radius:12px;border:1.5px dashed var(--gray-200)">
+        <div style="font-size:36px;margin-bottom:10px">🧑</div>
+        <div style="font-size:15px;font-weight:700;color:var(--gray-700);margin-bottom:6px">Belum ada peserta untuk cabang ini</div>
+        <div style="font-size:13px;color:var(--gray-500);margin-bottom:16px;line-height:1.6">
+          Admin perlu menambah peserta terlebih dahulu melalui<br>
+          <strong>Admin → Sistem Penilaian → Tab Peserta → Import dari Pendaftaran</strong>
+        </div>
+        <button onclick="loadScoringPeserta()"
+          style="background:var(--emerald);color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer">
+          🔄 Muat Ulang
+        </button>
+      </div>`;
+    document.getElementById('scoreTotalBar').style.display = 'none';
     return;
   }
 
@@ -2031,9 +1540,13 @@ function removeBukti() {
 }
 
 async function submitNilai() {
-  const all  = load('peserta',{});
-  const list = all[S.currentScoringCabang]||[];
-  if (!list.length) { toast('','Tidak ada peserta','error'); return; }
+  // Gunakan S.pesertaList (in-state) sebagai sumber utama — lebih andal dari localStorage
+  // karena tidak terpengaruh format penyimpanan (array vs object key issue).
+  const list = S.pesertaList || (() => {
+    const cached = load('peserta', {});
+    return Array.isArray(cached) ? [] : (cached[S.currentScoringCabang] || []);
+  })();
+  if (!list.length) { toast('','Tidak ada peserta — coba Muat Ulang terlebih dahulu','error'); return; }
 
   const peserta = list[S.currentPesertaIdx];
   const rows    = document.querySelectorAll('.param-score-row');
@@ -2129,6 +1642,7 @@ function logoutHakim() {
   document.getElementById('hakimLoginScreen').classList.remove('hidden');
   document.getElementById('hakimScoringScreen').classList.add('hidden');
   document.querySelectorAll('#pinInputs .pin-box').forEach(b => { b.value=''; b.classList.remove('filled'); });
+  initHakimCaptcha();
   switchView('login');
   toast('Keluar','Sesi hakim diakhiri','info');
 }
@@ -2165,221 +1679,6 @@ function updateProgressBar() {
 // ════════════════════════════════════════════════════════════════
 //  PUBLIC RESULTS
 // ════════════════════════════════════════════════════════════════
-let publicActiveCabang = null;
-
-async function initPublicView() {
-  // Inject stats bar sekali
-  if (!document.getElementById('publicStatsBar')) {
-    const header = document.querySelector('.results-header');
-    if (header) {
-      const bar = document.createElement('div');
-      bar.id = 'publicStatsBar';
-      bar.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;margin-top:16px;position:relative';
-      bar.innerHTML = '<span style="font-size:12px;color:rgba(255,255,255,.5)">Memuat statistik...</span>';
-      header.appendChild(bar);
-    }
-  }
-  // Inject search + export
-  if (!document.getElementById('publicSearchWrap')) {
-    const tableCard = document.querySelector('#publicResultTable')?.closest('.card');
-    if (tableCard) {
-      const sw = document.createElement('div');
-      sw.id = 'publicSearchWrap';
-      sw.style.cssText = 'display:flex;gap:10px;align-items:center;padding:16px 20px;border-bottom:1px solid var(--g200);flex-wrap:wrap';
-      sw.innerHTML = `
-        <input type="search" id="publicSearchInput" placeholder="🔍 Cari peserta / kecamatan..."
-          oninput="filterPublicTable(this.value)"
-          style="flex:1;min-width:200px;padding:9px 14px;border:1.5px solid var(--g200);border-radius:8px;font-size:13px;background:var(--white);color:var(--g800);outline:none"
-          onfocus="this.style.borderColor='var(--em-lt)'" onblur="this.style.borderColor='var(--g200)'">
-        <button class="btn btn-outline btn-sm" onclick="exportRankingCSV()">⬇️ Export CSV</button>`;
-      tableCard.querySelector('.card-head').insertAdjacentElement('afterend', sw);
-    }
-  }
-
-  // Load peserta untuk filter pills
-  const res = await apiGet('getPeserta');
-  const pesertaAll = res.data || {};
-  const active = CABANG_LIST.filter(c => (pesertaAll[c]||[]).length > 0);
-
-  const filterEl = document.getElementById('publicCabangFilter');
-  filterEl.innerHTML = '';
-  active.forEach((c,i) => {
-    const pill = document.createElement('div');
-    pill.className = 'cabang-pill' + (i===0 ? ' active' : '');
-    pill.textContent = c;
-    pill.onclick = () => {
-      document.querySelectorAll('.cabang-pill').forEach(p=>p.classList.remove('active'));
-      pill.classList.add('active');
-      publicActiveCabang = c;
-      renderPublicResults(c, pesertaAll);
-    };
-    filterEl.appendChild(pill);
-  });
-
-  if (active.length) {
-    publicActiveCabang = active[0];
-    renderPublicResults(active[0], pesertaAll);
-  }
-
-  await loadPublicStats();
-}
-
-async function refreshPublicResults() {
-  MTQ_LOG.debug('Auto-refresh public results');
-  await initPublicView();
-}
-
-async function loadPublicStats() {
-  const res = await apiGet('getPenilaianStats');
-  const bar = document.getElementById('publicStatsBar');
-  if (!bar || !res.success) return;
-  bar.innerHTML = `
-    <div class="stat-pill"><span class="stat-num">${res.totalHakim||0}</span><span class="stat-lbl">Dewan Hakim</span></div>
-    <div class="stat-sep">·</div>
-    <div class="stat-pill"><span class="stat-num">${res.totalPeserta||0}</span><span class="stat-lbl">Total Peserta</span></div>
-    <div class="stat-sep">·</div>
-    <div class="stat-pill"><span class="stat-num">${res.totalNilaiSubmit||0}</span><span class="stat-lbl">Nilai Disubmit</span></div>
-    <div class="stat-sep">·</div>
-    <div class="stat-pill"><span class="stat-num">${new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}</span><span class="stat-lbl">Diperbarui</span></div>`;
-}
-
-async function renderPublicResults(cabang, pesertaAllCache) {
-  publicActiveCabang = cabang;
-
-  // Ambil peserta
-  const pRes = pesertaAllCache
-    ? { data: pesertaAllCache }
-    : await apiGet('getPeserta', { cabang });
-  const raw  = pRes.data;
-  const list = Array.isArray(raw) ? raw : (raw?.[cabang]||[]);
-
-  // Ambil nilai
-  const nRes = await apiGet('getNilai', { cabang });
-  const nilaiMap = nRes.data || {};
-  Object.assign(S.scores, nilaiMap);
-
-  const peringkat = buildPeringkat(list, S.scores, cabang);
-  const ranked    = peringkat.data;
-
-  const scored = ranked.filter(p => p.avgTotal !== null).length;
-  document.getElementById('publicTableSubtitle').textContent = `${cabang} — ${scored}/${list.length} peserta dinilai`;
-
-  renderPodium(ranked.filter(p => p.avgTotal !== null));
-  renderRankingTable(ranked, cabang);
-}
-
-function renderPodium(top) {
-  const el = document.getElementById('podiumSection');
-  if (!top.length) { el.innerHTML=''; return; }
-  const top3 = top.slice(0,3);
-  const medals = ['🥇','🥈','🥉'];
-  const cls    = ['podium-1','podium-2','podium-3'];
-  const labels = ['Juara I','Juara II','Juara III'];
-  const order  = top3.length===3 ? [top3[1],top3[0],top3[2]]
-               : top3.length===2 ? [null,top3[0],top3[1]]
-               : [null,top3[0],null];
-  el.innerHTML = `<div class="podium-row">
-    ${order.map(p => {
-      if (!p) return '<div></div>';
-      const r = top3.indexOf(p);
-      return `<div class="podium-card ${cls[r]}">
-        <div class="podium-medal">${medals[r]}</div>
-        <div class="podium-rank">${labels[r]}</div>
-        <div class="podium-name">${p.nama}</div>
-        <div class="podium-kec">${p.kecamatan}</div>
-        <div class="podium-score">${p.avgTotal.toFixed(2)}</div>
-        <div style="font-size:11px;opacity:.6;margin-top:2px">${p.hakimCount} hakim</div>
-      </div>`;
-    }).join('')}
-  </div>`;
-}
-
-function renderRankingTable(ranked, cabang) {
-  const wrap = document.getElementById('publicResultTable');
-  if (!ranked.length) {
-    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">🧑</div><p>Belum ada peserta</p></div>';
-    return;
-  }
-  const safeId = id => id.replace(/[^a-z0-9]/gi,'-');
-  wrap.innerHTML = `<table><thead><tr>
-    <th>Peringkat</th><th>Nama Peserta</th><th>Kecamatan</th><th>Nilai</th><th>Hakim</th><th>Status</th>
-  </tr></thead><tbody>
-  ${ranked.map((p,i) => {
-    const rank = p.avgTotal!==null ? i+1 : '-';
-    const rc   = rank===1?'rank-1':rank===2?'rank-2':rank===3?'rank-3':'';
-    const did  = `dr-${safeId(p.id)}-${safeId(cabang)}`;
-    return `<tr class="${rc}" onclick="toggleDetail('${did}')" style="cursor:pointer">
-      <td class="rank-cell">${rank==='-'?'—':'#'+rank}</td>
-      <td style="font-weight:700">${p.nama}</td>
-      <td>${p.kecamatan}</td>
-      <td>${p.avgTotal!==null ? `<span class="score-display" style="font-size:15px;padding:4px 12px">${p.avgTotal.toFixed(2)}</span>` : '<span class="text-muted">Belum Dinilai</span>'}</td>
-      <td><span class="badge ${p.hakimCount?'badge-em':'badge-gray'}">${p.hakimCount} hakim</span></td>
-      <td><span class="badge ${p.avgTotal!==null?'badge-em':'badge-gray'}">${p.avgTotal!==null?'✅ Dinilai':'⏳ Menunggu'}</span></td>
-    </tr>
-    <tr id="${did}" style="display:none;background:var(--g50)">
-      <td colspan="6" style="padding:12px 20px">
-        ${p.hakimScores.length ? `
-          <div style="font-size:12px;font-weight:700;color:var(--g500);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">Detail Per Hakim</div>
-          ${p.hakimScores.map(hs => `
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap">
-              <div style="font-size:13px;font-weight:700;color:var(--g700);min-width:160px">${hs.hakimNama}</div>
-              ${(hs.params||[]).map(pr=>`<span class="badge badge-sky">${pr.nama}: ${pr.nilai}</span>`).join('')}
-              <span class="badge badge-em">Total: ${Number(hs.total).toFixed(2)}</span>
-              ${hs.catatan?`<span style="font-size:11px;color:var(--g500);font-style:italic">"${hs.catatan}"</span>`:''}
-            </div>`).join('')}` :
-          '<div class="text-sm text-muted">Belum ada nilai dari dewan hakim</div>'}
-      </td>
-    </tr>`;
-  }).join('')}
-  </tbody></table>`;
-}
-
-function toggleDetail(id) {
-  const row = document.getElementById(id);
-  if (row) row.style.display = row.style.display==='none' ? 'table-row' : 'none';
-}
-function filterPublicTable(q) {
-  q = q.toLowerCase().trim();
-  document.querySelectorAll('#publicResultTable tbody tr:not([id^="dr-"])').forEach(tr => {
-    tr.style.display = !q || tr.textContent.toLowerCase().includes(q) ? '' : 'none';
-  });
-}
-
-// ════════════════════════════════════════════════════════════════
-//  EXPORT CSV
-// ════════════════════════════════════════════════════════════════
-function exportCSV() {
-  const rows = [['Cabang','Peserta','Kecamatan','Hakim','Parameter','Nilai','Bobot%','Total','Catatan','Waktu']];
-  Object.values(S.scores).forEach(d => {
-    (d.params||[]).forEach(p => rows.push([
-      d.cabang, d.pesertaNama||'', d.pesertaKecamatan||'', d.hakimNama||'',
-      p.nama, p.nilai, p.bobot, Number(d.total).toFixed(2),
-      d.catatan||'', d.submittedAt ? new Date(d.submittedAt).toLocaleString('id-ID') : ''
-    ]));
-  });
-  downloadCSV(rows, 'rekap_nilai_mtq2026');
-}
-function exportRankingCSV() {
-  if (!publicActiveCabang) { toast('','Pilih cabang dahulu','warning'); return; }
-  const list = (load('peserta',{})[publicActiveCabang]||[]);
-  const ranked = buildPeringkat(list, S.scores, publicActiveCabang).data;
-  const rows = [['Peringkat','Nama','Kecamatan','Nilai Rata-rata','Jumlah Hakim','Cabang']];
-  ranked.forEach((p,i) => rows.push([
-    p.avgTotal!==null?i+1:'-', p.nama, p.kecamatan,
-    p.avgTotal!==null?Number(p.avgTotal).toFixed(2):'-',
-    p.hakimCount, publicActiveCabang
-  ]));
-  downloadCSV(rows, `peringkat_${publicActiveCabang.replace(/[^a-z0-9]/gi,'_')}_mtq2026`);
-}
-function downloadCSV(rows, filename) {
-  const csv  = rows.map(r => r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href=url; a.download=filename+'.csv'; a.click();
-  URL.revokeObjectURL(url);
-  toast('Export OK','File CSV berhasil diunduh','success');
-}
 
 // ════════════════════════════════════════════════════════════════
 //  CONFIRM MODAL

@@ -658,10 +658,13 @@ async function downloadKartuPeserta() {
   const isTeam  = (rec.tipe_lomba || '').toLowerCase() === 'team';
 
   // Bangun daftar member: untuk tim pakai rec.anggota, individu bungkus jadi array 1 item
+  // CATATAN PERBAIKAN: foto disimpan sebagai `link_foto` di anggota_json (lihat api.gs/apiRegister_),
+  // bukan `foto_url`/`foto_drive_url` — sebelumnya field ini selalu kosong sehingga foto tak pernah tampil.
+  const leadFoto = (rec.anggota && rec.anggota[0] && rec.anggota[0].link_foto) || rec.foto_url || rec.foto_drive_url || '';
   const anggota = isTeam && Array.isArray(rec.anggota) && rec.anggota.length
     ? rec.anggota
     : [{ nama_lengkap: rec.nama_lengkap, nik: rec.nik,
-         foto_url: rec.foto_url || rec.foto_drive_url || '',
+         foto_url: leadFoto,
          no_peserta: rec.nomor_pendaftaran }];
 
   showLoading(true, 'Membuat kartu peserta...');
@@ -770,7 +773,7 @@ async function renderKartuCanvas(member, rec, memberIdx, isTeam, CW, CH) {
   // ─────────────────────────────────────────────────────────
   // 4. HEADER BAND
   // ─────────────────────────────────────────────────────────
-  const hdrH = px(28);
+  const hdrH = px(23);
   const hGrad = ctx.createLinearGradient(0, 0, CW, 0);
   hGrad.addColorStop(0, '#047857');
   hGrad.addColorStop(0.5, '#059669');
@@ -803,11 +806,6 @@ async function renderKartuCanvas(member, rec, memberIdx, isTeam, CW, CH) {
   ctx.font      = `${px(3)}px 'Segoe UI',sans-serif`;
   ctx.fillStyle = 'rgba(255,255,255,0.65)';
   ctx.fillText('KABUPATEN INDRAMAYU', CW / 2, px(20.5));
-
-  // Basmalah
-  ctx.font      = `${px(3.4)}px Georgia,serif`;
-  ctx.fillStyle = GOLD;
-  ctx.fillText('بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ', CW / 2, px(25.5));
 
   // ─────────────────────────────────────────────────────────
   // 5. CHIP PERAN (PESERTA / KETUA TIM / ANGGOTA TIM N)
@@ -864,12 +862,12 @@ async function renderKartuCanvas(member, rec, memberIdx, isTeam, CW, CH) {
   ctx.arc(photoCX, photoCY, photoR, 0, Math.PI * 2);
   ctx.clip();
 
-  const fotoSrc  = member.foto_url || member.foto_drive_url || rec.foto_url || '';
-  const fotoReal = gDriveThumbUrl(fotoSrc); // konversi Drive link → thumbnail
+  const fotoSrc  = member.foto_url || member.foto_drive_url || member.link_foto || rec.foto_url || '';
+  const fotoUrls = gDriveThumbUrls(fotoSrc); // beberapa kandidat URL thumbnail → konversi Drive link
   let fotoOk = false;
 
-  if (fotoReal) {
-    const img = await loadImageSafe(fotoReal);
+  for (let fi = 0; fi < fotoUrls.length && !fotoOk; fi++) {
+    const img = await loadImageSafe(fotoUrls[fi]);
     if (img) {
       // Object-fit: cover — center crop
       const ar = img.naturalWidth / img.naturalHeight;
@@ -988,50 +986,82 @@ async function renderKartuCanvas(member, rec, memberIdx, isTeam, CW, CH) {
   return canvas;
 }
 
-/** Gambar satu baris info (label + value) di dalam kartu putih */
+/** Gambar satu baris info (label + value) di dalam kartu putih — anti-overflow */
 function drawKartuRow(ctx, px, cardMargin, cardW, y, accentColor, _icon, label, value) {
   const rowH   = px(9);
   const padL   = px(4);
   const x      = cardMargin;
-  const innerW = cardW;
+  const boxX   = x + px(2);
+  const boxW   = cardW - px(4);
 
   // Subtle row bg
-  roundRect(ctx, x + px(2), y, innerW - px(4), rowH, px(2));
+  roundRect(ctx, boxX, y, boxW, rowH, px(2));
   ctx.fillStyle = 'rgba(5,150,105,0.04)';
   ctx.fill();
 
   // Accent bar kiri
   ctx.fillStyle = accentColor;
-  ctx.fillRect(x + px(2), y, px(1.5), rowH);
+  ctx.fillRect(boxX, y, px(1.5), rowH);
+
+  // ── JARING PENGAMAN: clip semua teks ke kotak baris ini.
+  //    Apapun yang terjadi pada pengukuran font, teks TIDAK BISA
+  //    tergambar keluar dari kotak ini.
+  ctx.save();
+  roundRect(ctx, boxX, y, boxW, rowH, px(2));
+  ctx.clip();
+
+  const textX    = x + padL + px(1.5);
+  const maxTextW = (boxX + boxW) - textX - px(2.5); // margin aman ke tepi kanan
 
   // Label
+  ctx.textAlign = 'left';
   ctx.font      = `500 ${px(2.6)}px 'Segoe UI',sans-serif`;
   ctx.fillStyle = '#9ca3af';
-  ctx.textAlign = 'left';
-  ctx.fillText(label, x + padL + px(1.5), y + px(3.2));
+  ctx.fillText(truncateText(ctx, label, maxTextW), textX, y + px(3.2));
 
-  // Value
-  ctx.font      = `bold ${px(3.8)}px 'Segoe UI',sans-serif`;
+  // Value — coba kecilkan ukuran font dulu agar teks panjang (mis. nama
+  // cabang lomba) tetap terbaca utuh; hanya dipotong jika benar-benar
+  // tidak muat bahkan di ukuran font terkecil.
+  const fitted = fitTextSize(ctx, String(value), maxTextW, 3.8, 2.5, 'bold', "'Segoe UI',sans-serif", px);
   ctx.fillStyle = '#1f2937';
-  ctx.fillText(
-    truncateText(ctx, value, innerW - padL - px(6)),
-    x + padL + px(1.5), y + px(7.2)
-  );
+  ctx.fillText(fitted.text, textX, y + px(7.2));
+
+  ctx.restore();
 }
 
-/** Konversi berbagai format URL Google Drive → URL thumbnail yang bisa dimuat tanpa CORS */
-function gDriveThumbUrl(url) {
-  if (!url) return '';
-  // Sudah berupa URL thumbnail
-  if (url.includes('thumbnail?') || url.includes('export=view')) return url;
-  // https://drive.google.com/file/d/FILE_ID/view
-  let m = url.match(/\/file\/d\/([^\/\?&]+)/);
-  if (m) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w400`;
-  // https://drive.google.com/open?id=FILE_ID
-  m = url.match(/[?&]id=([^&]+)/);
-  if (m) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w400`;
-  // Sudah berupa URL data: atau https biasa
-  return url;
+/** Cari ukuran font (mm-equivalent, via px()) terbesar yang masih muat di maxWidth;
+ *  jika tetap tidak muat di ukuran minimum, potong dengan ellipsis. */
+function fitTextSize(ctx, text, maxWidth, maxPx, minPx, weight, family, pxFn) {
+  let size = maxPx;
+  ctx.font = `${weight} ${pxFn(size)}px ${family}`;
+  while (size > minPx && ctx.measureText(text).width > maxWidth) {
+    size = Math.max(minPx, size - 0.2);
+    ctx.font = `${weight} ${pxFn(size)}px ${family}`;
+  }
+  if (ctx.measureText(text).width <= maxWidth) return { text, size };
+  return { text: truncateText(ctx, text, maxWidth), size };
+}
+
+/** Konversi berbagai format URL Google Drive → daftar kandidat URL thumbnail (dicoba berurutan) */
+function gDriveThumbUrls(url) {
+  if (!url) return [];
+  const out = [];
+  let id = null;
+
+  let m = url.match(/[?&]id=([^&]+)/);
+  if (m) id = m[1];
+  if (!id) { m = url.match(/\/file\/d\/([^\/\?&]+)/); if (m) id = m[1]; }
+
+  if (id) {
+    // drive.google.com/thumbnail biasanya bekerja, tapi kadang gagal CORS untuk canvas.
+    // lh3.googleusercontent.com sering lebih andal untuk drawImage()+toDataURL().
+    out.push(`https://drive.google.com/thumbnail?id=${id}&sz=w800`);
+    out.push(`https://lh3.googleusercontent.com/d/${id}=w800`);
+  } else {
+    // Tidak terdeteksi sebagai link Drive — coba apa adanya (mis. data: URL atau https biasa)
+    out.push(url);
+  }
+  return out;
 }
 
 /** Helper: roundRect polyfill (cek native dulu) */

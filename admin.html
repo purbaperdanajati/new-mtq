@@ -348,6 +348,9 @@
     <div class="sidebar-item" id="nav-maqra" onclick="showPage('maqra')">
       <span class="icon">📖</span> Manajemen Maqra
     </div>
+    <div class="sidebar-item" id="nav-penilaian" onclick="showPage('penilaian')">
+      <span class="icon">⚖️</span> Sistem Penilaian
+    </div>
     <div class="sidebar-label">Aksi</div>
     <div class="sidebar-item" onclick="refreshData()"><span class="icon">🔄</span> Refresh Data</div>
     <div class="sidebar-item" onclick="exportCSV()"><span class="icon">📥</span> Export CSV</div>
@@ -679,6 +682,232 @@
 
     </section>
 
+    <!-- ══ PAGE: SISTEM PENILAIAN ══════════════════════════════ -->
+    <section class="admin-page-section" id="page-penilaian">
+      <div class="page-header">
+        <div>
+          <div class="page-title">⚖️ Sistem Penilaian</div>
+          <div class="page-sub">Kelola dewan hakim, parameter, peserta, dan rekap nilai MTQ 2026</div>
+        </div>
+      </div>
+
+      <!-- Toggle Hasil Publik -->
+      <div class="admin-card" style="margin-bottom:20px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--gray-800);margin-bottom:4px">📊 Hasil Penilaian Publik (di Beranda)</div>
+          <div style="font-size:12px;color:var(--gray-500)">Kontrol apakah peringkat peserta ditampilkan untuk umum di halaman index.html</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
+          <span id="pnPublikStatusChip"
+            style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:999px;background:#fee2e2;color:#991b1b">
+            🔒 Ditutup
+          </span>
+          <button id="pnPublikToggleBtn"
+            style="border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;background:var(--emerald);color:#fff">
+            🔓 Buka Hasil Publik
+          </button>
+        </div>
+      </div>
+
+      <!-- Tab bar Penilaian -->
+      <div style="display:flex;gap:2px;background:var(--gray-100);border-radius:12px;padding:4px;margin-bottom:24px;flex-wrap:wrap">
+        <button class="pn-tab-btn" data-tab="hakim"
+          onclick="pnAdminTab('hakim')"
+          style="padding:10px 16px;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;flex:1;text-align:center;transition:all .2s;background:var(--white);color:var(--emerald);box-shadow:0 2px 8px rgba(0,0,0,.08)">
+          👤 Dewan Hakim
+        </button>
+        <button class="pn-tab-btn" data-tab="parameter"
+          onclick="pnAdminTab('parameter')"
+          style="padding:10px 16px;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;flex:1;text-align:center;transition:all .2s;background:transparent;color:var(--gray-500)">
+          📋 Parameter
+        </button>
+        <button class="pn-tab-btn" data-tab="peserta"
+          onclick="pnAdminTab('peserta')"
+          style="padding:10px 16px;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;flex:1;text-align:center;transition:all .2s;background:transparent;color:var(--gray-500)">
+          🧑 Peserta
+        </button>
+        <button class="pn-tab-btn" data-tab="rekap"
+          onclick="pnAdminTab('rekap')"
+          style="padding:10px 16px;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;flex:1;text-align:center;transition:all .2s;background:transparent;color:var(--gray-500)">
+          📊 Rekap Nilai
+        </button>
+      </div>
+
+      <!-- TAB: HAKIM -->
+      <div class="pn-tab-pane" id="pn-tab-hakim" style="display:block">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+          <div class="admin-card">
+            <div class="admin-card-header"><h2>➕ Tambah Dewan Hakim</h2></div>
+            <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">
+              <div>
+                <label class="field-label">Nama Lengkap <span class="req">*</span></label>
+                <input type="text" class="field-input" id="pnHakimNama" placeholder="Drs. H. Ahmad Fauzi, M.Ag">
+              </div>
+              <div>
+                <label class="field-label">Cabang yang Dinilai <span class="req">*</span></label>
+                <select class="field-select" id="pnHakimCabangSelect">
+                  <option value="">-- Pilih Cabang --</option>
+                </select>
+              </div>
+              <div id="pnHakimCabangList" style="display:flex;flex-wrap:wrap;gap:6px;min-height:28px"></div>
+              <button class="btn btn-outline" style="font-size:13px" onclick="pnHakimAddCabang()">+ Tambah Cabang Lagi</button>
+              <div>
+                <label class="field-label">PIN Hakim <span class="req">*</span></label>
+                <div style="display:flex;gap:8px">
+                  <input type="text" class="field-input" id="pnHakimPin" placeholder="6 digit" maxlength="6" inputmode="numeric"
+                    style="letter-spacing:4px;font-size:18px;text-align:center;font-family:monospace">
+                  <button class="btn btn-outline" style="font-size:13px" onclick="pnGenPin()">🎲 Acak</button>
+                </div>
+                <div style="font-size:11px;color:var(--gray-400);margin-top:4px">PIN digunakan hakim untuk login di penilaian.html</div>
+              </div>
+              <button class="btn btn-emerald" onclick="pnSimpanHakim()">💾 Simpan Dewan Hakim</button>
+            </div>
+          </div>
+
+          <div class="admin-card">
+            <div class="admin-card-header">
+              <h2>👥 Daftar Dewan Hakim</h2>
+              <span id="pnHakimCacheTs" style="font-size:11px;color:var(--gray-400);margin-right:auto"></span><span class="badge" id="pnHakimCount" style="font-size:12px">0 hakim</span>
+              <button onclick="pnAdminTab('hakim',true)" title="Muat ulang" style="background:var(--gray-100);color:var(--gray-600);border:1.5px solid var(--gray-200);border-radius:8px;padding:5px 10px;font-size:13px;cursor:pointer">🔄</button>
+            </div>
+            <div style="padding:10px 16px 0">
+              <input type="search" placeholder="🔍 Filter nama / cabang..."
+                oninput="pnFilterHakim(this.value)"
+                style="width:100%;padding:8px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:13px;background:var(--white);color:var(--gray-800);outline:none;box-sizing:border-box">
+            </div>
+            <div id="pnHakimList" style="padding:12px 16px;display:flex;flex-direction:column;gap:10px;max-height:440px;overflow-y:auto">
+              <div style="text-align:center;padding:40px;color:var(--gray-400)"><div style="font-size:32px">👤</div><p>Belum ada dewan hakim</p></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- TAB: PARAMETER -->
+      <div class="pn-tab-pane" id="pn-tab-parameter" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+          <div class="admin-card">
+            <div class="admin-card-header"><h2>📝 Set Parameter Penilaian</h2></div>
+            <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">
+              <div>
+                <label class="field-label">Pilih Cabang <span class="req">*</span></label>
+                <select class="field-select" id="pnParamCabang" onchange="pnLoadParamForCabang()">
+                  <option value="">-- Pilih Cabang --</option>
+                </select>
+              </div>
+              <div id="pnParamExisting" style="display:flex;flex-direction:column;gap:8px">
+                <p style="color:var(--gray-400);font-size:13px">Pilih cabang untuk melihat parameter</p>
+              </div>
+              <hr style="border:none;border-top:1px solid var(--gray-200)">
+              <div style="display:grid;grid-template-columns:1fr 100px;gap:8px">
+                <div>
+                  <label class="field-label">Nama Parameter</label>
+                  <input type="text" class="field-input" id="pnParamNama" placeholder="cth: Tajwid, Fashohah...">
+                </div>
+                <div>
+                  <label class="field-label">Bobot (%)</label>
+                  <input type="number" class="field-input" id="pnParamBobot" placeholder="25" min="1" max="100">
+                </div>
+              </div>
+              <button class="btn btn-outline" style="font-size:13px" onclick="pnAddParam()">+ Tambah Parameter</button>
+              <button class="btn btn-emerald" onclick="pnSimpanParameter()">💾 Simpan Parameter</button>
+            </div>
+          </div>
+
+          <div class="admin-card">
+            <div class="admin-card">
+            <div class="admin-card-header" style="flex-wrap:wrap;gap:8px">
+              <h2>📊 Ringkasan Parameter</h2>
+              <span id="pnParamCacheTs" style="font-size:11px;color:var(--gray-400);margin-right:auto"></span>
+              <button onclick="pnAdminTab('parameter',true)" title="Muat ulang" style="background:var(--gray-100);color:var(--gray-600);border:1.5px solid var(--gray-200);border-radius:8px;padding:5px 10px;font-size:13px;cursor:pointer">🔄</button>
+            </div>
+            <!-- Search filter untuk ringkasan parameter -->
+            <div style="padding:8px 16px 0">
+              <input type="search" id="pnParamSearch" placeholder="🔍 Filter cabang..." oninput="pnFilterParamSummary(this.value)"
+                style="width:100%;padding:8px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:13px;background:var(--white);color:var(--gray-800);outline:none;box-sizing:border-box">
+            </div>
+            <div id="pnParamSummary" style="padding:12px 16px;max-height:520px;overflow-y:auto">
+              <div style="text-align:center;padding:32px;color:var(--gray-400)"><div style="font-size:28px">📋</div><p>Parameter belum dikonfigurasi</p></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- TAB: PESERTA -->
+      <div class="pn-tab-pane" id="pn-tab-peserta" style="display:none">
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h2>🧑 Peserta Terverifikasi</h2>
+              <span id="pnPesertaCacheTs" style="font-size:11px;color:var(--gray-400);margin-right:auto"></span>
+              <button onclick="pnAdminTab('peserta',true)" title="Muat ulang" style="background:var(--gray-100);color:var(--gray-600);border:1.5px solid var(--gray-200);border-radius:8px;padding:5px 10px;font-size:13px;cursor:pointer">🔄</button>
+          </div>
+          <div style="padding:16px 20px">
+            <!-- Info bar -->
+            <div style="background:var(--emerald-xs);border:1.5px solid var(--emerald-light);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px">
+              <span style="font-size:20px;flex-shrink:0">📥</span>
+              <div>
+                <div style="font-size:13px;font-weight:700;color:var(--emerald)">Peserta Otomatis dari Data Pendaftaran</div>
+                <div style="font-size:12px;color:var(--gray-600);margin-top:2px">Tabel di bawah menampilkan peserta yang sudah berstatus <strong>Terverifikasi</strong> di sheet Pendaftaran. Tidak perlu import manual — data selalu up-to-date.</div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+              <div>
+                <label class="field-label">Filter Cabang</label>
+                <select class="field-select" id="pnPesertaCabangFilter" onchange="pnLoadPesertaTable()">
+                  <option value="">-- Semua Cabang --</option>
+                </select>
+              </div>
+              <div>
+                <label class="field-label">Tambah Peserta Manual <span style="font-weight:400;color:var(--gray-400);font-size:11px">(override darurat)</span></label>
+                <div style="display:flex;gap:8px">
+                  <input type="text" class="field-input" id="pnPesertaNamaBaru" placeholder="Nama peserta">
+                  <button class="btn btn-emerald" style="font-size:13px" onclick="pnTambahPeserta()">+ Tambah</button>
+                </div>
+              </div>
+            </div>
+            <div id="pnPesertaTableWrap" class="table-wrap">
+              <div style="text-align:center;padding:40px;color:var(--gray-400)"><div style="font-size:32px">🧑</div><p>Pilih cabang untuk melihat peserta</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: REKAP -->
+      <div class="pn-tab-pane" id="pn-tab-rekap" style="display:none">
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <h2>📊 Rekap Nilai Lengkap</h2>
+            <span id="pnRekapCacheTs" style="font-size:11px;color:var(--gray-400)"></span>
+            <button onclick="pnAdminTab('rekap',true)" title="Muat ulang" style="background:var(--gray-100);color:var(--gray-600);border:1.5px solid var(--gray-200);border-radius:8px;padding:5px 10px;font-size:13px;cursor:pointer">🔄</button>
+            <button id="pnRekapExportBtn" class="btn btn-outline" style="font-size:13px;margin-left:auto" onclick="pnExportRekapCSV()">⬇️ Export CSV</button>
+          </div>
+          <div style="padding:16px 20px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+              <div>
+                <label class="field-label">Filter Cabang</label>
+                <select class="field-select" id="pnRekapCabangFilter" onchange="pnLoadRekapTable()">
+                  <option value="">-- Semua Cabang --</option>
+                </select>
+              </div>
+              <div>
+                <label class="field-label">Filter Hakim</label>
+                <select class="field-select" id="pnRekapHakimFilter" onchange="pnLoadRekapTable()">
+                  <option value="">-- Semua Hakim --</option>
+                </select>
+              </div>
+            </div>
+            <div id="pnRekapTableWrap" class="table-wrap">
+              <div style="text-align:center;padding:40px;color:var(--gray-400)"><div style="font-size:32px">📊</div><p>Belum ada nilai yang disubmit</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
   </main>
 </div>
 
@@ -995,6 +1224,7 @@ function showPage(name) {
   document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
   document.getElementById('nav-'+name)?.classList.add('active');
   if (name === 'stats') renderStats();
+  if (name === 'penilaian') initPenilaianPage();
 }
 
 // ── Load All ──────────────────────────────────────────────────
@@ -1490,6 +1720,10 @@ function buildPesertaSection(r, nomor, anggota, isTeam, cabangConfig) {
   if (!isTeam) {
     // ── Individu: single member, use main row data + anggota[0] for files ─
     const a = anggota[0] || {};
+    const fotoUrl = esc(a.link_foto       || '');
+    const ktpUrl  = esc(a.link_ktp        || '');
+    const sertUrl = esc(a.link_sertifikat || '');
+    const nameEsc = esc(r.nama_lengkap    || '-');
     return `<div class="modal-section">
       <div class="modal-section-title">👤 Data Peserta</div>
       <div class="detail-grid">
@@ -1509,6 +1743,14 @@ function buildPesertaSection(r, nomor, anggota, isTeam, cabangConfig) {
         ${ef('No. Rekening',  r.nomor_rekening, 'nomor_rekening',nomor)}
         ${ef('Nama Rekening', r.nama_rekening,  'nama_rekening', nomor)}
         ${ef('Alamat',        r.alamat,         'alamat',        nomor, true)}
+        <div class="detail-field full">
+          <div class="lbl">Dokumen</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
+            ${fotoUrl?`<button class="doc-link" onclick="openDocPreview('${fotoUrl}','Foto - ${nameEsc}')">📸 Foto</button>`:'<span class="no-doc">Belum ada foto</span>'}
+            ${ktpUrl ?`<button class="doc-link" onclick="openDocPreview('${ktpUrl}', 'KTP - ${nameEsc}')">🪪 KTP/KK</button>`:'<span class="no-doc">Belum ada KTP</span>'}
+            ${sertUrl?`<button class="doc-link" onclick="openDocPreview('${sertUrl}','Sertifikat - ${nameEsc}')">🏅 Sertifikat</button>`:''}
+          </div>
+        </div>
       </div>
     </div>`;
   }
@@ -1684,6 +1926,20 @@ window.addEventListener('resize', () => {
 
   <!-- ══ Manajemen Maqra — dimuat setelah admin login ══ -->
   <script src="js/admin-maqra.js"></script>
+  <script src="js/admin-penilaian.js"></script>
+  <style>
+    /* Sistem Penilaian tab buttons */
+    .pn-tab-btn        { transition: background .2s, color .2s, box-shadow .2s; }
+    .pn-tab-btn.active { background:var(--white) !important; color:var(--emerald) !important; box-shadow:0 2px 8px rgba(0,0,0,.08) !important; }
+
+    /* Tab panes — hidden by default; pnAdminTab() sets style.display directly */
+    .pn-tab-pane        { display:none !important; }
+    .pn-tab-pane.active { display:block !important; }
+
+    @media(max-width:768px) {
+      #page-penilaian [style*="grid-template-columns:1fr 1fr"] { grid-template-columns:1fr !important; }
+    }
+  </style>
   <script>
   // ── Tab switcher untuk sub-tab Maqra ─────────────────────────
   function switchMaqraTab(id) {

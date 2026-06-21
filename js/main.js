@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadStats();
   loadRegStatus();   // FIX #12 — status pendaftaran di beranda
   setEventInfo();
+  if (typeof initHasilPenilaian === 'function') initHasilPenilaian();
 });
 
 // ── Navbar ───────────────────────────────────
