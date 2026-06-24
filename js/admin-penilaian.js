@@ -601,7 +601,7 @@ async function pnLoadPesertaTable(forceRefresh) {
     if (tsEl) tsEl.textContent = 'cache ' + pnCacheTs(cacheKey);
   } else {
     wrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--gray-400);font-size:13px">Memuat...</div>';
-    const res = await pnGet('getPeserta');  // ambil semua cabang sekaligus
+    const res = await pnGet('getPeserta', { adminView: 'true' });  // admin: semua status (kecuali Ditolak/Nonaktif)
     allData = (res && res.data) || {};
     if (res && res.success) pnSetCache(cacheKey, allData);
     var tsEl2 = document.getElementById('pnPesertaCacheTs');
@@ -701,7 +701,7 @@ async function pnPopulateRekapFilters(forceRefresh) {
   var promises = [];
   if (!hakimData)   promises.push(pnGet('getHakim').then(function(r){ if(r&&r.success){ pnSetCache('hakim',r.data); } return r; }));
   else              promises.push(Promise.resolve({ success:true, data: hakimData }));
-  if (!pesertaData) promises.push(pnGet('getPeserta').then(function(r){ if(r&&r.success){ pnSetCache('peserta',r.data); } return r; }));
+  if (!pesertaData) promises.push(pnGet('getPeserta', { adminView: 'true' }).then(function(r){ if(r&&r.success){ pnSetCache('peserta',r.data); } return r; }));
   else              promises.push(Promise.resolve({ success:true, data: pesertaData }));
 
   var results   = await Promise.all(promises);
@@ -744,7 +744,7 @@ async function pnLoadRekapTable(forceRefresh) {
     var params = {};
     var r = await Promise.all([
       pnGet('getNilai', params),
-      pnGet('getPeserta'),
+      pnGet('getPeserta', { adminView: 'true' }),
       pnGet('getHakim'),
     ]);
     rekap = { nilaiMap: (r[0]&&r[0].data)||{}, pesertaAll: (r[1]&&r[1].data)||{}, hakimList: (r[2]&&r[2].data)||[] };

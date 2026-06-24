@@ -192,6 +192,25 @@ function updateHakim(id, data) {
   return { success: false, error: 'Hakim tidak ditemukan' };
 }
 
+// ── getHakimPublic_ — public (tanpa token, tanpa PIN) ────────
+// Dipanggil oleh penilaian.html saat restore sesi dari localStorage
+// untuk menyegarkan data cabang jika admin sudah memperbarui hakim.
+function getHakimPublic_(id) {
+  if (!id) return { success: false, error: 'ID hakim tidak diisi' };
+  const sh   = getSheet(SHEET.HAKIM);
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) !== String(id)) continue;
+    const cabs = String(rows[i][3] || '').split('|').filter(Boolean);
+    // Kembalikan data hakim TANPA pin (aman untuk akses publik)
+    return {
+      success : true,
+      hakim   : { id: rows[i][0], nama: rows[i][1], cabang: cabs, createdAt: rows[i][4] }
+    };
+  }
+  return { success: false, error: 'Hakim tidak ditemukan' };
+}
+
 function verifyHakimPin(pin) {
   if (!pin) return { success: false, hakim: null };
   const res = getHakim();
@@ -261,36 +280,37 @@ function savePeserta(cabang, peserta) {
   return { success: true, id, nomor_urut: nomorUrut };
 }
 
-function getPeserta(cabang) {
-  // ── Ambil langsung dari SHEET_PENDAFTAR (sheet utama pendaftaran MTQ).
-  // Hanya baris dengan status_verifikasi = 'Terverifikasi' yang masuk.
-  // Tidak lagi membaca dari sheet PESERTA terpisah — admin tidak perlu
-  // import manual; hakim langsung melihat peserta yang sudah diverifikasi.
+function getPeserta(cabang, adminView) {
+  // ── Ambil langsung dari SHEET_PENDAFTAR.
+  // adminView=true  → admin panel: semua peserta KECUALI Ditolak/Nonaktif
+  // adminView=false → scoring hakim: hanya status 'Terverifikasi'
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   var sh = ss.getSheetByName(SHEET_PENDAFTAR);
   if (!sh) return { success: false, error: 'Sheet pendaftar tidak ditemukan' };
 
   var rows    = sh.getDataRange().getValues();
-  var result  = {};  // { [cabang]: [peserta, ...] }
-  var counter = {};  // per-cabang nomor urut
+  var result  = {};
+  var counter = {};
 
   rows.slice(1).forEach(function(r) {
-    var rowStatus = String(r[COL.STATUS_VERIFIKASI] || '').trim();
-    var rowCabang = String(r[COL.CABANG_LOMBA]      || '').trim();
-    var rowNomor  = String(r[COL.NOMOR_PENDAFTARAN] || '').trim();
-    var rowKec    = String(r[COL.KECAMATAN]         || '').trim();
-    var rowNama   = String(r[COL.NAMA_LENGKAP]      || '').trim();
-    var rowTipe   = String(r[COL.TIPE_LOMBA]        || '').trim().toLowerCase();
-    var rowNamaTim = String(r[COL.NAMA_TIM]         || '').trim();
+    var rowStatus  = String(r[COL.STATUS_VERIFIKASI] || '').trim();
+    var rowCabang  = String(r[COL.CABANG_LOMBA]      || '').trim();
+    var rowNomor   = String(r[COL.NOMOR_PENDAFTARAN] || '').trim();
+    var rowKec     = String(r[COL.KECAMATAN]         || '').trim();
+    var rowNama    = String(r[COL.NAMA_LENGKAP]      || '').trim();
+    var rowTipe    = String(r[COL.TIPE_LOMBA]        || '').trim().toLowerCase();
+    var rowNamaTim = String(r[COL.NAMA_TIM]          || '').trim();
 
-    if (rowStatus !== 'Terverifikasi') return;   // hanya peserta terverifikasi
+    // Filter status
+    if (!adminView && rowStatus !== 'Terverifikasi') return;
+    if (rowStatus === 'Ditolak' || rowStatus === 'Nonaktif') return;
+
     if (!rowNomor || !rowCabang) return;
-    if (cabang && rowCabang !== cabang) return;  // filter per-cabang jika diminta
+    if (cabang && rowCabang !== cabang) return;
 
     if (!result[rowCabang]) { result[rowCabang] = []; counter[rowCabang] = 0; }
     counter[rowCabang]++;
 
-    // Untuk tim: gunakan nama_tim jika ada, else nama_lengkap (ketua)
     var displayNama = (rowTipe === 'tim' && rowNamaTim) ? rowNamaTim : rowNama;
 
     result[rowCabang].push({
@@ -300,7 +320,8 @@ function getPeserta(cabang) {
       kecamatan        : rowKec,
       nomor_urut       : counter[rowCabang],
       nomor_pendaftaran: rowNomor,
-      tipe_lomba       : rowTipe
+      tipe_lomba       : rowTipe,
+      status           : rowStatus
     });
   });
 

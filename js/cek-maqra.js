@@ -946,9 +946,8 @@ async function renderKartuCanvas(member, rec, memberIdx, isTeam, CW, CH) {
   const rowStart = divY + px(5);
   const ROW_H    = px(10);
 
-  drawKartuRow(ctx, px, cardMargin, cardW, rowStart,        GOLD,    '🏆', 'CABANG LOMBA', cabang);
+  drawKartuRow(ctx, px, cardMargin, cardW, rowStart,        GOLD,      '🏆', 'CABANG LOMBA', cabang);
   drawKartuRow(ctx, px, cardMargin, cardW, rowStart + ROW_H, '#059669', '📍', 'KECAMATAN',  kec);
-  drawKartuRow(ctx, px, cardMargin, cardW, rowStart + ROW_H*2, '#1d4ed8', '🪪', 'NO. PESERTA', noReg);
 
   // ─────────────────────────────────────────────────────────
   // 8. FOOTER BAND

@@ -8,7 +8,7 @@ const MTQ_CONFIG = {
 
   // ── Google Apps Script Web App URL ──────────────────────────
   // Setelah deploy di Apps Script, paste URL-nya di sini
-  API_URL: 'https://script.google.com/macros/s/AKfycbzrAl4qNFj4zetac_iWRtaTv90bPFNyAN690hN4pfpC3plR7ebPdLwk9KqjT7X-fK0/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbxk972V5Kf61HQeF3kUHK8z1HpZqUQwte5NQXWALIPpwu1UicGCyBeT_BNg_sK_9Tjt/exec',
 
   // ── Fallback (akan ditimpa nilai dari API saat getConfig) ───
   PENDAFTARAN_BUKA : '2026-06-01T00:00:00',

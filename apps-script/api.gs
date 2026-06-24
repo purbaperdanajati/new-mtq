@@ -115,8 +115,13 @@ function doGet(e) {
         // Action publik — dipanggil dari halaman Login Hakim (penilaian.html)
         // atau halaman Hasil Penilaian publik (index.html), TANPA token:
         case 'verifyHakimPin'   : result = _runPenilaian_(function(){ return verifyHakimPin(params.pin); });                                    break;
+        // getHakimPublic: segar-kan data hakim (cabang, nama) by ID tanpa PIN.
+        // Dipanggil saat restore sesi di penilaian.html agar cabang selalu up-to-date.
+        case 'getHakimPublic'   : result = _runPenilaian_(function(){ return getHakimPublic_(params.id); });                                    break;
         case 'getParam'         : result = _runPenilaian_(function(){ return getParam(params.cabang || null); });                               break;
-        case 'getPeserta'       : result = _runPenilaian_(function(){ return getPeserta(params.cabang || null); });                             break;
+        // adminView='true' → admin panel: tampilkan semua peserta (skip Terverifikasi filter)
+        // adminView tidak ada / 'false' → scoring hakim: hanya Terverifikasi
+        case 'getPeserta'       : result = _runPenilaian_(function(){ return getPeserta(params.cabang || null, params.adminView === 'true'); });  break;
         case 'saveNilai'        : result = _runPenilaian_(function(){ return saveNilai(penilaianPayload.key, penilaianPayload.data); });        break;
         case 'getNilai'         : result = _runPenilaian_(function(){ return getNilai(params.cabang || null, params.hakimId || null); });       break;
         case 'getPeringkat'     : result = _runPenilaian_(function(){ return getPeringkat(params.cabang); });                                   break;

@@ -456,7 +456,31 @@
       height:6px; border-radius:3px; background:var(--g200); margin-top:4px; overflow:hidden;
     }
     .progress-bobot-fill { height:100%; border-radius:3px; background:linear-gradient(90deg,var(--em),var(--em-lt)); transition:width .4s ease }
+
+    /* ── buktiZone states ─── */
+    #buktiZone.dp-disabled { opacity:.45; pointer-events:none; cursor:not-allowed; }
+    #buktiBadge {
+      display:none; margin-top:10px; padding:10px 14px;
+      background:var(--g50); border:1.5px solid var(--g200); border-radius:10px;
+      font-size:13px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    }
+    #buktiBadge.locked { background:rgba(5,150,105,.07); border-color:var(--em-lt); }
+    #buktiBadge .bukti-info { flex:1; min-width:0; overflow:hidden; }
+    #buktiBadge .bukti-fn { font-weight:700; color:var(--g800); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    #buktiBadge .bukti-sub { font-size:11px; color:var(--g400); margin-top:2px; }
+    #buktiBadge .bukti-view-btn {
+      background:var(--em); color:#fff; border:none; border-radius:8px;
+      padding:7px 14px; font-size:12px; font-weight:700; cursor:pointer;
+      display:flex; align-items:center; gap:5px; white-space:nowrap; flex-shrink:0;
+    }
+    #buktiBadge .bukti-view-btn:hover { opacity:.88; }
+    #buktiBadge .bukti-lock { font-size:18px; flex-shrink:0; }
   </style>
+  <!-- DocumentPreviewer — untuk pratinjau file bukti penilaian -->
+  <link rel="stylesheet" href="js/document-previewer.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="js/document-previewer.config.js"></script>
+  <script src="js/document-previewer.js"></script>
 </head>
 <body>
 
@@ -626,6 +650,8 @@
               </div>
               <button class="btn btn-danger btn-sm" onclick="removeBukti()">✕</button>
             </div>
+            <!-- Ditampilkan ketika nilai sudah disubmit — upload baru diblokir -->
+            <div id="buktiBadge"></div>
           </div>
 
           <button class="btn btn-em btn-lg" style="width:100%" id="submitNilaiBtn" onclick="submitNilai()">
@@ -667,14 +693,14 @@
 //            (2) String hardcode di bawah ini
 // Setelah deploy GAS, paste URL di sini:
 const API_URL = (window.MTQ_API_URL || '').trim()
-  || 'https://script.google.com/macros/s/AKfycbzrAl4qNFj4zetac_iWRtaTv90bPFNyAN690hN4pfpC3plR7ebPdLwk9KqjT7X-fK0/exec';
+  || 'https://script.google.com/macros/s/AKfycbxk972V5Kf61HQeF3kUHK8z1HpZqUQwte5NQXWALIPpwu1UicGCyBeT_BNg_sK_9Tjt/exec';
 
 const ADMIN_PIN = '1234'; // ganti via panel admin setelah login pertama
 
 // ── DEV MODE ──────────────────────────────────────────────────────
 // true  = tampilkan log detail di console + panel logger di layar
 // false = hanya error yang muncul
-const DEV = true;
+const DEV = false;
 
 // ════════════════════════════════════════════════════════════════
 //  LOGGER TERPUSAT
@@ -786,6 +812,76 @@ let S = {
   tempParams: [],
   scores: {},
 };
+
+// ── DocumentPreviewer (pratinjau bukti penilaian) ─────────────
+let dpInstance = null;   // inisialisasi di DOMContentLoaded setelah scripts loaded
+
+// ── Bukti Zone Helpers ────────────────────────────────────────
+/**
+ * Kunci / buka buktiZone berdasarkan apakah nilai sudah disubmit.
+ * @param {boolean} locked  - true → disable upload, tampilkan badge bukti
+ * @param {string}  scoreKey - kunci score saat ini (untuk ambil preview dari localStorage)
+ * @param {object}  buktiMeta - { name, size } dari data score yang ada
+ */
+function setBuktiZoneLocked(locked, scoreKey, buktiMeta) {
+  const zone   = document.getElementById('buktiZone');
+  const input  = document.getElementById('buktiInput');
+  const badge  = document.getElementById('buktiBadge');
+
+  if (locked) {
+    zone.classList.add('dp-disabled');
+    input.disabled = true;
+    removeBukti();
+
+    // Cek apakah ada preview ter-cache di localStorage (disimpan setelah submit)
+    let cached = null;
+    try {
+      const raw = scoreKey ? localStorage.getItem('mtq_bukti_' + scoreKey) : null;
+      cached = raw ? JSON.parse(raw) : null;
+    } catch(e) { cached = null; }
+
+    badge.className = 'locked';
+    badge.style.display = 'flex';
+
+    if (cached && cached.dataUrl) {
+      // Ada preview tersimpan → tampilkan tombol Lihat
+      badge.innerHTML =
+        '<span class="bukti-lock">📷</span>'
+        + '<div class="bukti-info">'
+        +   '<div class="bukti-fn">' + (cached.name || 'Bukti Penilaian') + '</div>'
+        +   '<div class="bukti-sub">Bukti dukung tersimpan · klik untuk pratinjau</div>'
+        + '</div>'
+        + '<button class="bukti-view-btn" id="buktiViewBtn">👁 Lihat</button>';
+
+      const btn = document.getElementById('buktiViewBtn');
+      if (btn) btn.onclick = function() {
+        if (dpInstance) dpInstance.openDirect(cached.dataUrl, cached.name || 'Bukti Penilaian');
+        else window.open(cached.dataUrl, '_blank');
+      };
+    } else if (buktiMeta && buktiMeta.name) {
+      // Tidak ada preview cache, tapi ada nama file dari sheet
+      badge.innerHTML =
+        '<span class="bukti-lock">📎</span>'
+        + '<div class="bukti-info">'
+        +   '<div class="bukti-fn">' + buktiMeta.name + '</div>'
+        +   '<div class="bukti-sub">Bukti telah disubmit (pratinjau tidak tersedia)</div>'
+        + '</div>';
+    } else {
+      badge.innerHTML =
+        '<span class="bukti-lock">🔒</span>'
+        + '<div class="bukti-info">'
+        +   '<div class="bukti-fn">Nilai sudah disubmit</div>'
+        +   '<div class="bukti-sub">Tidak ada bukti dukung</div>'
+        + '</div>';
+    }
+  } else {
+    // Buka kembali
+    zone.classList.remove('dp-disabled');
+    input.disabled = false;
+    badge.style.display = 'none';
+    badge.innerHTML = '';
+  }
+}
 
 // ════════════════════════════════════════════════════════════════
 //  API LAYER — JSONP, zero fetch(), zero CORS
@@ -1172,9 +1268,39 @@ document.addEventListener('DOMContentLoaded', async () => {
   `;
   document.head.appendChild(style);
 
-  // Cek session hakim tersimpan
+  // Inisialisasi DocumentPreviewer
+  if (typeof DocumentPreviewer !== 'undefined') {
+    try {
+      dpInstance = new DocumentPreviewer(typeof MY_DP_CONFIG !== 'undefined' ? MY_DP_CONFIG : {});
+      dpInstance.mount('body');
+      MTQ_LOG.info('DocumentPreviewer initialized');
+    } catch(e) { MTQ_LOG.warn('DocumentPreviewer init failed', e.message); }
+  }
+
+  // Restore sesi hakim dari localStorage, lalu refresh cabang dari API
+  // agar perubahan yang dibuat admin di admin.html segera terefleksi
   const sess = load('hakimSession');
-  if (sess) { S.hakimSession = sess; showHakimSession(sess); switchView_scoring(); }
+  if (sess) {
+    S.hakimSession = sess;
+    showHakimSession(sess);
+    // Refresh data hakim (termasuk cabang) dari server — tanpa memblokir UI
+    apiGet('getHakimPublic', { id: sess.id }).then(function(res) {
+      if (res && res.success && res.hakim) {
+        const fresh = res.hakim;
+        const cabangChanged = JSON.stringify((sess.cabang||[]).slice().sort()) !==
+                              JSON.stringify((fresh.cabang||[]).slice().sort());
+        S.hakimSession = fresh;
+        store('hakimSession', fresh);
+        showHakimSession(fresh);
+        if (cabangChanged) {
+          MTQ_LOG.info('Cabang hakim diperbarui', fresh.cabang);
+        }
+        switchView_scoring();
+      } else {
+        switchView_scoring();
+      }
+    }).catch(function() { switchView_scoring(); });
+  }
 
   // Auto-buka logger di dev mode
   if (DEV) {
@@ -1445,6 +1571,8 @@ async function loadScoringPeserta() {
     document.getElementById('catatanHakim').disabled = true;
     renderParamScores(existing.params, true);
     document.getElementById('scoreTotalNum').textContent = Number(existing.total).toFixed(2);
+    // Kunci buktiZone — tampilkan badge dengan link preview jika ada
+    setBuktiZoneLocked(true, scoreKey, existing.bukti);
     return;
   }
 
@@ -1454,6 +1582,8 @@ async function loadScoringPeserta() {
   document.getElementById('catatanHakim').disabled = false;
   document.getElementById('catatanHakim').value = '';
   removeBukti();
+  // Buka kembali buktiZone untuk input baru
+  setBuktiZoneLocked(false, null, null);
   renderParamScores(null, false);
 }
 
@@ -1619,6 +1749,29 @@ async function submitNilai() {
       }
 
       toast('✅ Nilai Tersimpan!', `${peserta.nama} — ${total.toFixed(2)}`, 'success');
+
+      // ── Simpan thumbnail bukti ke localStorage untuk pratinjau pasca-submit ──
+      // (berlaku untuk sesi ini dan setelah page-refresh, sampai localStorage dibersihkan)
+      if (buktiData && buktiData.base64 && buktiData.type.startsWith('image/')) {
+        compressBuktiThumbnail(buktiData).then(function(dataUrl) {
+          if (!dataUrl) return;
+          try {
+            localStorage.setItem(
+              'mtq_bukti_' + scoreKey,
+              JSON.stringify({ name: buktiData.name, type: buktiData.type, dataUrl: dataUrl })
+            );
+          } catch(e) { /* localStorage penuh — skip */ }
+        });
+      } else if (buktiData && buktiData.name) {
+        // PDF / file lain: simpan metadata saja (tidak bisa preview)
+        try {
+          localStorage.setItem(
+            'mtq_bukti_' + scoreKey,
+            JSON.stringify({ name: buktiData.name, type: buktiData.type || 'application/pdf', dataUrl: null })
+          );
+        } catch(e) {}
+      }
+
       loadScoringPeserta();
       updateProgressBar();
 
@@ -1630,6 +1783,37 @@ async function submitNilai() {
       if (nextIdx !== -1) setTimeout(() => { S.currentPesertaIdx = nextIdx; loadScoringPeserta(); }, 1400);
     }
   );
+}
+
+// ── Kompres gambar bukti menjadi thumbnail kecil (<150KB) ────
+// Dipakai untuk menyimpan pratinjau di localStorage setelah submit.
+function compressBuktiThumbnail(buktiData) {
+  return new Promise(function(resolve) {
+    if (!buktiData || !buktiData.base64 || !buktiData.type.startsWith('image/')) {
+      resolve(null); return;
+    }
+    try {
+      var img = new Image();
+      img.onload = function() {
+        var canvas = document.createElement('canvas');
+        var maxW = 900, maxH = 900;
+        var w = img.width, h = img.height;
+        if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+        if (h > maxH) { w = Math.round(w * maxH / h); h = maxH; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        var q = 0.82, dataUrl;
+        // Kurangi kualitas sampai <150 KB
+        do {
+          dataUrl = canvas.toDataURL('image/jpeg', q);
+          q = Math.max(0.2, q - 0.12);
+        } while (dataUrl.length > 150 * 1024 * 1.37 && q > 0.2);
+        resolve(dataUrl);
+      };
+      img.onerror = function() { resolve(null); };
+      img.src = 'data:' + buktiData.type + ';base64,' + buktiData.base64;
+    } catch(e) { resolve(null); }
+  });
 }
 
 function logoutHakim() {
