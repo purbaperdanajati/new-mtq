@@ -290,7 +290,7 @@
     </div>
     <button class="btn btn-emerald" style="width:100%;margin-top:12px" onclick="doLogin()">Masuk →</button>
     <div class="login-err" id="loginErr" style="display:none">❌ <span id="loginErrMsg">Password atau captcha salah</span></div>
-    <button type="button" style="width:100%;margin-top:8px;padding:8px;font-size:12px;background:none;border:1px solid var(--gray-200);border-radius:8px;cursor:pointer;color:var(--gray-500)" onclick="testConnection()">🔌 Uji Koneksi Server</button>
+    <!-- <button type="button" style="width:100%;margin-top:8px;padding:8px;font-size:12px;background:none;border:1px solid var(--gray-200);border-radius:8px;cursor:pointer;color:var(--gray-500)" onclick="testConnection()">🔌 Uji Koneksi Server</button> -->
 
     <!-- Panduan deployment — hanya muncul saat JSONP gagal -->
     <div id="deployGuide" style="display:none;margin-top:16px;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:14px;font-size:12px;text-align:left">
@@ -342,14 +342,14 @@
       <span class="icon">👥</span> Daftar Peserta
       <span class="sidebar-badge" id="badgePending">0</span>
     </div>
-    <div class="sidebar-item" id="nav-stats" onclick="showPage('stats')">
-      <span class="icon">📊</span> Statistik
-    </div>
     <div class="sidebar-item" id="nav-maqra" onclick="showPage('maqra')">
       <span class="icon">📖</span> Manajemen Maqra
     </div>
     <div class="sidebar-item" id="nav-penilaian" onclick="showPage('penilaian')">
       <span class="icon">⚖️</span> Sistem Penilaian
+    </div>
+    <div class="sidebar-item" id="nav-stats" onclick="showPage('stats')">
+      <span class="icon">📊</span> Statistik
     </div>
     <div class="sidebar-label">Aksi</div>
     <div class="sidebar-item" onclick="refreshData()"><span class="icon">🔄</span> Refresh Data</div>
