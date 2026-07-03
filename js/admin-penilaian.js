@@ -164,13 +164,75 @@ function pnAdminTab(tab, forceRefresh) {
   _pnCurrentTab = tab;
   forceRefresh  = !!forceRefresh;
 
+  console.group('[PN] pnAdminTab \u2192 ' + tab + (forceRefresh ? ' (force)' : ''));
+
+  // ── 0. Re-aktifkan #page-penilaian setiap kali sub-tab diklik ──────────
+  // Root cause "visible:false": browser tidak mem-parse !important dari
+  // setAttribute('style','display:block!important') — harus gunakan API
+  // yang benar: style.setProperty('display','block','important').
+  document.querySelectorAll('.admin-page-section').forEach(function(s) {
+    s.classList.remove('active');
+    s.style.removeProperty('display');
+  });
+  var pageSection = document.getElementById('page-penilaian');
+  if (pageSection) {
+    pageSection.classList.add('active');
+    pageSection.style.setProperty('display', 'block', 'important');
+
+    // Juga paksa semua leluhur menjadi visible — ini menangkap kasus
+    // di mana <main>, .main-content, #adminWrap, atau wrapper lain
+    // masih display:none karena transisi login atau sebab lain
+    var ancestor = pageSection.parentElement;
+    while (ancestor && ancestor !== document.documentElement) {
+      var cs = window.getComputedStyle(ancestor);
+      if (cs.display === 'none') {
+        ancestor.style.setProperty('display', 'block', 'important');
+        console.warn('[PN] Force-show hidden ancestor:', ancestor.tagName + (ancestor.id ? '#'+ancestor.id : ''));
+      }
+      ancestor = ancestor.parentElement;
+    }
+  }
+
+  // Sidebar
+  document.querySelectorAll('.sidebar-item').forEach(function(s) { s.classList.remove('active'); });
+  var navItem = document.getElementById('nav-penilaian');
+  if (navItem) navItem.classList.add('active');
+
+  // ── 1. Pane visibility via setProperty (bukan setAttribute) ───────────
   document.querySelectorAll('#page-penilaian .pn-tab-pane').forEach(function(p) {
-    p.style.display = 'none';
+    p.style.setProperty('display', 'none', 'important');
     p.classList.remove('active');
   });
   var pane = document.getElementById('pn-tab-' + tab);
-  if (pane) { pane.style.display = 'block'; pane.classList.add('active'); }
+  if (pane) {
+    pane.style.setProperty('display', 'block', 'important');
+    pane.classList.add('active');
+    void pane.offsetHeight;  // paksa reflow
+    var computed = window.getComputedStyle(pane).display;
+    var visible  = pane.offsetParent !== null;
+    console.log('[PN] Pane #pn-tab-' + tab
+      + ' computed.display:' + computed
+      + ' visible:' + visible);
 
+    // Jika masih tidak terlihat, log SELURUH rantai leluhur untuk temukan biang kerok
+    if (!visible) {
+      console.warn('[PN] MASIH hidden. Tracing ancestor chain:');
+      var el = pane.parentElement;
+      while (el && el !== document.body) {
+        var cs = window.getComputedStyle(el);
+        console.log('  ancestor:', el.tagName + (el.id?'#'+el.id:'') + (el.className?' .'+el.className.split(' ').join('.'):''),
+          '| display:', cs.display,
+          '| visibility:', cs.visibility,
+          '| classList:', el.classList.toString(),
+          '| inline.display:', el.style.display);
+        el = el.parentElement;
+      }
+    }
+  } else {
+    console.error('[PN] Pane #pn-tab-' + tab + ' NOT FOUND');
+  }
+
+  // ── 2. Button active state ────────────────────────────────
   document.querySelectorAll('#page-penilaian .pn-tab-btn').forEach(function(b) {
     var active = b.getAttribute('data-tab') === tab;
     b.style.background = active ? 'var(--white)'   : 'transparent';
@@ -179,10 +241,39 @@ function pnAdminTab(tab, forceRefresh) {
     b.style.fontWeight = active ? '700' : '600';
   });
 
-  if (tab === 'rekap')     { pnLoadRekapTable(forceRefresh); pnPopulateRekapFilters(forceRefresh); }
-  if (tab === 'peserta')   pnLoadPesertaTable(forceRefresh);
-  if (tab === 'hakim')     pnRenderHakimList(forceRefresh);
-  if (tab === 'parameter') pnRenderParamSummary(forceRefresh);
+  // ── 3. Load tab data ──────────────────────────────────────
+  if (tab === 'rekap') {
+    _pnShowWrap('pnRekapTableWrap', '\u23F3 Memuat data nilai...');
+    try { pnLoadRekapTable(forceRefresh).catch(function(e){ console.error('[PN] rekap error:', e); _pnShowWrapErr('pnRekapTableWrap', e); }); } catch(e) { _pnShowWrapErr('pnRekapTableWrap', e); }
+    try { pnPopulateRekapFilters(forceRefresh).catch(function(){}); } catch(e) {}
+  }
+  if (tab === 'peserta') {
+    _pnShowWrap('pnPesertaTableWrap', '\u23F3 Memuat data peserta...');
+    try { pnLoadPesertaTable(forceRefresh).catch(function(e){ console.error('[PN] peserta error:', e); _pnShowWrapErr('pnPesertaTableWrap', e); }); } catch(e) { _pnShowWrapErr('pnPesertaTableWrap', e); }
+  }
+  if (tab === 'hakim')     { try { pnRenderHakimList(forceRefresh).catch(function(){}); } catch(e) {} }
+  if (tab === 'parameter') { try { pnRenderParamSummary(forceRefresh).catch(function(){}); } catch(e) {} }
+
+  console.groupEnd();
+}
+
+// Tampilkan placeholder segera (sebelum async selesai)
+function _pnShowWrap(id, msg) {
+  var el = document.getElementById(id);
+  if (el) el.innerHTML = '<div style="text-align:center;padding:32px 16px;color:var(--gray-500)">'
+    + '<div style="font-size:24px;margin-bottom:8px">⏳</div>'
+    + '<div style="font-size:13px;font-weight:600">' + msg + '</div>'
+    + '<div style="font-size:12px;color:var(--gray-400);margin-top:4px">Menghubungi server, mohon tunggu...</div>'
+    + '</div>';
+}
+// Tampilkan error di dalam wrap
+function _pnShowWrapErr(id, err) {
+  var el = document.getElementById(id);
+  if (el) el.innerHTML = '<div style="text-align:center;padding:32px 16px;color:#dc2626">'
+    + '<div style="font-size:24px;margin-bottom:8px">⚠️</div>'
+    + '<div style="font-size:13px;font-weight:600">Gagal memuat data</div>'
+    + '<div style="font-size:12px;color:var(--gray-400);margin-top:4px">' + (err && err.message ? err.message : 'Coba klik 🔄 Refresh') + '</div>'
+    + '</div>';
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -588,66 +679,94 @@ async function pnEditParamForCabang(cabang) {
 //  PESERTA
 // ════════════════════════════════════════════════════════════════
 async function pnLoadPesertaTable(forceRefresh) {
-  const cabang = document.getElementById('pnPesertaCabangFilter').value;
-  const wrap   = document.getElementById('pnPesertaTableWrap');
-  const cacheKey = 'peserta';
+  var cabang  = (document.getElementById('pnPesertaCabangFilter')?.value) || '';
+  var wrap    = document.getElementById('pnPesertaTableWrap');
 
-  var cachedData = pnGetCache(cacheKey);
-  var allData;
+  console.group('[PN] pnLoadPesertaTable cabang="' + cabang + '" force=' + !!forceRefresh);
+  console.log('[PN] wrap element:', wrap ? 'found' : 'NULL — berhenti');
+  if (!wrap) { console.groupEnd(); return; }
 
-  if (!forceRefresh && cachedData) {
-    allData = cachedData.data;
-    var tsEl = document.getElementById('pnPesertaCacheTs');
-    if (tsEl) tsEl.textContent = 'cache ' + pnCacheTs(cacheKey);
-  } else {
-    wrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--gray-400);font-size:13px">Memuat...</div>';
-    const res = await pnGet('getPeserta', { adminView: 'true' });  // admin: semua status (kecuali Ditolak/Nonaktif)
-    allData = (res && res.data) || {};
-    if (res && res.success) pnSetCache(cacheKey, allData);
-    var tsEl2 = document.getElementById('pnPesertaCacheTs');
-    if (tsEl2) tsEl2.textContent = 'diperbarui ' + pnCacheTs(cacheKey);
+  var cacheKey = 'peserta';
+
+  try {
+    var cachedData = pnGetCache(cacheKey);
+    console.log('[PN] cache hit:', !!cachedData, cachedData ? '(' + pnCacheTs(cacheKey) + ')' : '');
+
+    var allData;
+
+    if (!forceRefresh && cachedData) {
+      allData = cachedData.data;
+      var tsEl = document.getElementById('pnPesertaCacheTs');
+      if (tsEl) tsEl.textContent = 'cache ' + pnCacheTs(cacheKey);
+      console.log('[PN] menggunakan cache peserta, keys:', Object.keys(allData || {}).length);
+    } else {
+      wrap.innerHTML = '<div style="text-align:center;padding:28px;color:var(--gray-500);font-size:13px"><div style="font-size:24px;margin-bottom:8px">⏳</div><div>Memuat data peserta...</div></div>';
+      console.log('[PN] memanggil pnGet(getPeserta, {adminView:true})...');
+      var res = await pnGet('getPeserta', { adminView: 'true' });
+      console.log('[PN] pnGet getPeserta response:', JSON.stringify(res).slice(0,200));
+      if (!res || !res.success) {
+        var errMsg = (res && res.error) ? res.error : 'Timeout/no_response — coba klik 🔄 Refresh';
+        console.error('[PN] getPeserta gagal:', errMsg);
+        wrap.innerHTML = '<div style="text-align:center;padding:32px;color:#dc2626"><div style="font-size:28px">⚠️</div><p style="font-weight:600;margin:8px 0">Gagal memuat peserta</p><p style="font-size:12px;color:var(--gray-400)">' + errMsg + '</p><p style="font-size:12px;margin-top:8px">Pastikan GAS sudah di-deploy ulang, lalu klik 🔄 Refresh</p></div>';
+        console.groupEnd(); return;
+      }
+      allData = res.data || {};
+      pnSetCache(cacheKey, allData);
+      var tsEl2 = document.getElementById('pnPesertaCacheTs');
+      if (tsEl2) tsEl2.textContent = 'diperbarui ' + pnCacheTs(cacheKey);
+      console.log('[PN] peserta data type:', Array.isArray(allData) ? 'array' : 'object', 'keys:', Array.isArray(allData) ? allData.length : Object.keys(allData).length);
+    }
+
+    var list;
+    if (cabang) {
+      list = Array.isArray(allData) ? allData : (allData[cabang] || []);
+    } else {
+      list = Array.isArray(allData) ? allData : Object.values(allData).flat();
+    }
+    console.log('[PN] peserta list.length:', list.length, '(cabang filter: "' + cabang + '")');
+
+    if (!list.length) {
+      var note = cabang
+        ? 'Tidak ada peserta untuk cabang "' + cabang + '".'
+        : 'Tidak ada data peserta. Pastikan ada pendaftar & GAS sudah di-deploy ulang dengan kode terbaru.';
+      wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-500)">'
+        + '<div style="font-size:32px">🧑</div>'
+        + '<p style="margin:8px 0 4px;font-weight:600;color:var(--gray-700)">Data Kosong</p>'
+        + '<p style="font-size:12px;color:var(--gray-400);margin:0 0 4px">' + note + '</p>'
+        + '<p style="font-size:12px;color:var(--gray-400)">Gunakan tombol 🔄 Refresh untuk memuat ulang.</p>'
+        + '</div>';
+      console.groupEnd(); return;
+    }
+
+    wrap.innerHTML = '<table class="data-table" style="width:100%">'
+      + '<thead><tr><th style="width:40px">#</th><th>Nama / Tim</th><th>Kecamatan</th><th>Cabang</th><th>No. Pendaftaran</th><th>Status</th></tr></thead>'
+      + '<tbody>'
+      + list.map(function(p, idx) {
+          var cabangVal  = p.cabang || cabang || '—';
+          var isVerif    = p.status === 'Terverifikasi';
+          var statusChip = isVerif
+            ? '<span style="font-size:11px;background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:999px;font-weight:600">✅ Terverifikasi</span>'
+            : '<span style="font-size:11px;background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:999px;font-weight:600">' + (p.status || 'Menunggu') + '</span>';
+          return '<tr>'
+            + '<td style="font-weight:700;color:var(--emerald)">' + (p.nomor_urut || idx+1) + '</td>'
+            + '<td style="font-weight:600;color:var(--gray-900)">' + (p.nama || '—') + '</td>'
+            + '<td style="color:var(--gray-600)">' + (p.kecamatan || '—') + '</td>'
+            + '<td style="font-size:12px;color:var(--gray-600)">' + cabangVal + '</td>'
+            + '<td style="font-family:monospace;font-size:12px;color:var(--gray-500)">' + (p.nomor_pendaftaran || p.id || '—') + '</td>'
+            + '<td>' + statusChip + '</td>'
+            + '</tr>';
+        }).join('')
+      + '</tbody></table>'
+      + '<div style="padding:10px 14px;font-size:12px;color:var(--gray-400);border-top:1px solid var(--gray-100)">👥 ' + list.length + ' peserta' + (cabang ? ' — ' + cabang : '') + '</div>';
+
+    console.log('[PN] tabel peserta berhasil dirender, rows:', list.length);
+
+  } catch(err) {
+    console.error('[PN] pnLoadPesertaTable ERROR:', err);
+    if (wrap) wrap.innerHTML = '<div style="text-align:center;padding:32px;color:#dc2626"><div style="font-size:28px">❌</div><p style="font-weight:600;margin:8px 0">Error</p><p style="font-size:12px;color:var(--gray-400)">' + (err && err.message ? err.message : String(err)) + '</p><p style="font-size:12px;margin-top:8px">Lihat console browser (F12) untuk detail.</p></div>';
   }
 
-  // Filter per-cabang (client-side dari cache)
-  var list;
-  if (cabang) {
-    list = Array.isArray(allData) ? allData : (allData[cabang] || []);
-  } else {
-    list = Array.isArray(allData) ? allData : Object.values(allData).flat();
-  }
-
-  if (!list.length) {
-    wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-400)">'
-      + '<div style="font-size:32px">🧑</div>'
-      + '<p style="margin:8px 0 4px;font-weight:600">' + (cabang ? 'Belum ada peserta terverifikasi untuk cabang ini' : 'Pilih cabang untuk melihat peserta') + '</p>'
-      + '<p style="font-size:12px;color:var(--gray-400)">Peserta ditampilkan otomatis dari data pendaftaran berstatus <strong>Terverifikasi</strong>.</p>'
-      + '</div>';
-    return;
-  }
-
-  wrap.innerHTML = '<table class="data-table" style="width:100%">'
-    + '<thead><tr>'
-    + '<th style="width:40px">#</th>'
-    + '<th>Nama / Tim</th>'
-    + '<th>Kecamatan</th>'
-    + '<th>Cabang</th>'
-    + '<th>No. Pendaftaran</th>'
-    + '</tr></thead>'
-    + '<tbody>'
-    + list.map(function(p, idx) {
-        var cabangVal = p.cabang || cabang || '—';
-        return '<tr>'
-          + '<td style="font-weight:700;color:var(--emerald)">' + (p.nomor_urut || idx + 1) + '</td>'
-          + '<td style="font-weight:600;color:var(--gray-900)">' + p.nama + '</td>'
-          + '<td style="color:var(--gray-600)">' + (p.kecamatan || '—') + '</td>'
-          + '<td style="font-size:12px;color:var(--gray-600)">' + cabangVal + '</td>'
-          + '<td style="font-family:monospace;font-size:12px;color:var(--gray-500)">' + (p.nomor_pendaftaran || p.id || '—') + '</td>'
-          + '</tr>';
-      }).join('')
-    + '</tbody></table>'
-    + '<div style="padding:10px 14px;font-size:12px;color:var(--gray-400);border-top:1px solid var(--gray-100)">'
-    + '✅ ' + list.length + ' peserta terverifikasi' + (cabang ? ' — ' + cabang : '') + '. Data dari sheet Pendaftaran (status Terverifikasi).'
-    + '</div>';
+  console.groupEnd();
 }
 
 async function pnTambahPeserta() {
@@ -736,61 +855,93 @@ async function pnLoadRekapTable(forceRefresh) {
   var hakimId = document.getElementById('pnRekapHakimFilter')?.value   || null;
   var wrap    = document.getElementById('pnRekapTableWrap');
 
-  // Cache rekap keseluruhan (nilaiMap + pesertaAll + hakimList)
-  var rekap = !forceRefresh && pnGetCache('rekap') ? pnGetCache('rekap').data : null;
+  console.group('[PN] pnLoadRekapTable cabang="' + cabang + '" hakimId="' + hakimId + '" force=' + !!forceRefresh);
+  console.log('[PN] wrap element:', wrap ? 'found' : 'NULL — berhenti');
+  if (!wrap) { console.groupEnd(); return; }
 
-  if (!rekap) {
-    wrap.innerHTML = '<div style="text-align:center;padding:32px;color:var(--gray-400)">Memuat...</div>';
-    var params = {};
-    var r = await Promise.all([
-      pnGet('getNilai', params),
-      pnGet('getPeserta', { adminView: 'true' }),
-      pnGet('getHakim'),
-    ]);
-    rekap = { nilaiMap: (r[0]&&r[0].data)||{}, pesertaAll: (r[1]&&r[1].data)||{}, hakimList: (r[2]&&r[2].data)||[] };
-    pnSetCache('rekap', rekap);
-    // Juga update sub-caches
-    if (r[1]&&r[1].success) pnSetCache('peserta', rekap.pesertaAll);
-    if (r[2]&&r[2].success) pnSetCache('hakim',   rekap.hakimList);
-    var tsEl = document.getElementById('pnRekapCacheTs');
-    if (tsEl) tsEl.textContent = 'diperbarui ' + pnCacheTs('rekap');
-  } else {
-    var tsEl2 = document.getElementById('pnRekapCacheTs');
-    if (tsEl2) tsEl2.textContent = 'cache ' + pnCacheTs('rekap');
+  try {
+    var rekap = !forceRefresh && pnGetCache('rekap') ? pnGetCache('rekap').data : null;
+    console.log('[PN] rekap cache hit:', !!rekap);
+
+    if (!rekap) {
+      wrap.innerHTML = '<div style="text-align:center;padding:28px;color:var(--gray-500);font-size:13px"><div style="font-size:24px;margin-bottom:8px">⏳</div><div>Memuat rekap nilai...</div></div>';
+      console.log('[PN] memanggil 3 pnGet paralel (getNilai, getPeserta, getHakim)...');
+      var r = await Promise.all([
+        pnGet('getNilai', {}),
+        pnGet('getPeserta', { adminView: 'true' }),
+        pnGet('getHakim'),
+      ]);
+      console.log('[PN] getNilai success:', !!(r[0]&&r[0].success), 'data keys:', r[0]&&r[0].data ? Object.keys(r[0].data).length : 0);
+      console.log('[PN] getPeserta success:', !!(r[1]&&r[1].success), 'type:', r[1]&&r[1].data ? (Array.isArray(r[1].data)?'array':'object') : 'null');
+      console.log('[PN] getHakim success:', !!(r[2]&&r[2].success), 'count:', r[2]&&r[2].data ? r[2].data.length : 0);
+      rekap = {
+        nilaiMap  : (r[0] && r[0].data) || {},
+        pesertaAll: (r[1] && r[1].data) || {},
+        hakimList : (r[2] && r[2].data) || []
+      };
+      pnSetCache('rekap', rekap);
+      if (r[1] && r[1].success) pnSetCache('peserta', rekap.pesertaAll);
+      if (r[2] && r[2].success) pnSetCache('hakim',   rekap.hakimList);
+      var tsEl = document.getElementById('pnRekapCacheTs');
+      if (tsEl) tsEl.textContent = 'diperbarui ' + pnCacheTs('rekap');
+    } else {
+      var tsEl2 = document.getElementById('pnRekapCacheTs');
+      if (tsEl2) tsEl2.textContent = 'cache ' + pnCacheTs('rekap');
+    }
+
+    var allRows = Object.values(rekap.nilaiMap || {});
+    console.log('[PN] nilaiMap total rows sebelum filter:', allRows.length);
+    var rows = allRows.filter(function(d) {
+      if (cabang  && d.cabang  !== cabang)  return false;
+      if (hakimId && d.hakimId !== hakimId) return false;
+      return true;
+    });
+    console.log('[PN] rows setelah filter:', rows.length);
+
+    if (!rows.length) {
+      wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-500)">'
+        + '<div style="font-size:32px">📊</div>'
+        + '<p style="font-weight:600;color:var(--gray-700);margin:8px 0 4px">Belum ada nilai yang disubmit</p>'
+        + '<p style="font-size:12px;color:var(--gray-400);margin:0">Hakim perlu login di <strong>penilaian.html</strong> dan submit nilai untuk cabang yang ditugaskan.</p>'
+        + '<p style="font-size:12px;color:var(--gray-400);margin:4px 0 0">Setelah submit, klik 🔄 Refresh untuk melihat data terbaru.</p>'
+        + '</div>';
+      console.groupEnd(); return;
+    }
+
+    document.getElementById('pnRekapExportBtn')?.removeAttribute('disabled');
+
+    wrap.innerHTML = '<table class="data-table" style="width:100%;font-size:13px">'
+      + '<thead><tr><th>Peserta</th><th>Cabang</th><th>Hakim</th><th>Total</th><th>Parameter</th><th>Catatan</th><th>Waktu</th></tr></thead>'
+      + '<tbody>'
+      + rows.map(function(d) {
+          var paramStr = (d.params || []).map(function(p){ return p.nama + ': <strong>' + p.nilai + '</strong>'; }).join(' · ');
+          var waktu    = d.submittedAt ? new Date(d.submittedAt).toLocaleString('id-ID') : '—';
+          return '<tr>'
+            + '<td style="font-weight:700">' + (d.pesertaNama||'—') + '<br><span style="font-size:11px;color:var(--gray-400)">' + (d.pesertaKecamatan||'') + '</span></td>'
+            + '<td style="font-size:12px">' + (d.cabang||'—') + '</td>'
+            + '<td>' + (d.hakimNama||'—') + '</td>'
+            + '<td><strong style="color:var(--emerald);font-size:15px">' + Number(d.total||0).toFixed(2) + '</strong></td>'
+            + '<td style="font-size:12px">' + paramStr + '</td>'
+            + '<td style="font-size:12px;color:var(--gray-500);font-style:italic">' + (d.catatan||'—') + '</td>'
+            + '<td style="font-size:11px;color:var(--gray-400)">' + waktu + '</td>'
+            + '</tr>';
+        }).join('')
+      + '</tbody></table>';
+
+    console.log('[PN] rekap tabel berhasil dirender, rows:', rows.length);
+
+  } catch(err) {
+    console.error('[PN] pnLoadRekapTable ERROR:', err);
+    if (wrap) wrap.innerHTML = '<div style="text-align:center;padding:32px;color:#dc2626">'
+      + '<div style="font-size:28px">❌</div>'
+      + '<p style="font-weight:600;margin:8px 0">Error memuat rekap</p>'
+      + '<p style="font-size:12px;color:var(--gray-400)">' + (err && err.message ? err.message : String(err)) + '</p>'
+      + '<p style="font-size:12px;margin-top:8px">Lihat console browser (F12) untuk detail error.</p>'
+      + '</div>';
   }
 
-  var rows = Object.values(rekap.nilaiMap).filter(function(d) {
-    if (cabang  && d.cabang  !== cabang)  return false;
-    if (hakimId && d.hakimId !== hakimId) return false;
-    return true;
-  });
-
-  if (!rows.length) {
-    wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-400)"><div style="font-size:32px">📊</div><p>Belum ada nilai yang disubmit</p></div>';
-    return;
-  }
-
-  document.getElementById('pnRekapExportBtn')?.removeAttribute('disabled');
-
-  wrap.innerHTML = '<table class="data-table" style="width:100%;font-size:13px">'
-    + '<thead><tr><th>Peserta</th><th>Cabang</th><th>Hakim</th><th>Total</th><th>Parameter</th><th>Catatan</th><th>Waktu</th></tr></thead>'
-    + '<tbody>'
-    + rows.map(function(d) {
-        var params = (d.params || []).map(function(p){ return p.nama + ': <strong>' + p.nilai + '</strong>'; }).join(' · ');
-        var waktu  = d.submittedAt ? new Date(d.submittedAt).toLocaleString('id-ID') : '—';
-        return '<tr>'
-          + '<td style="font-weight:700">' + (d.pesertaNama||'—') + '<br><span style="font-size:11px;color:var(--gray-400)">' + (d.pesertaKecamatan||'') + '</span></td>'
-          + '<td style="font-size:12px">' + (d.cabang||'—') + '</td>'
-          + '<td>' + (d.hakimNama||'—') + '</td>'
-          + '<td><strong style="color:var(--emerald);font-size:15px">' + Number(d.total||0).toFixed(2) + '</strong></td>'
-          + '<td style="font-size:12px">' + params + '</td>'
-          + '<td style="font-size:12px;color:var(--gray-500);font-style:italic">' + (d.catatan||'—') + '</td>'
-          + '<td style="font-size:11px;color:var(--gray-400)">' + waktu + '</td>'
-          + '</tr>';
-      }).join('')
-    + '</tbody></table>';
+  console.groupEnd();
 }
-
 function pnExportRekapCSV() {
   const rows  = [['Cabang','Peserta','Kecamatan','Hakim','Parameter','Nilai','Bobot%','Total','Catatan','Waktu']];
   document.querySelectorAll('#pnRekapTableWrap tbody tr').forEach(tr => {

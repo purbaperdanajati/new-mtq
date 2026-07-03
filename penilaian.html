@@ -476,8 +476,64 @@
     #buktiBadge .bukti-view-btn:hover { opacity:.88; }
     #buktiBadge .bukti-lock { font-size:18px; flex-shrink:0; }
   </style>
-  <!-- DocumentPreviewer — untuk pratinjau file bukti penilaian -->
-  <link rel="stylesheet" href="js/document-previewer.css">
+  <!-- DocumentPreviewer — CSS di-inline agar tidak gagal 404 saat buka via file:// -->
+  <style>
+    /* document-previewer.css v1.1 — inlined */
+    :root{--dp-bg:#111318;--dp-surface:#1c1f26;--dp-border:rgba(255,255,255,0.08);--dp-text:#f1f5f9;--dp-text-muted:rgba(255,255,255,0.45);--dp-accent:#3b82f6;--dp-accent-2:#22c55e;--dp-radius:10px;--dp-header-h:58px;--dp-footer-h:58px;--dp-width:58%}
+    @keyframes dp-slide-in{from{transform:translateX(100%);opacity:.6}to{transform:translateX(0);opacity:1}}
+    @keyframes dp-spin{to{transform:rotate(360deg)}}
+    @keyframes dp-fade-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .dp-modal{display:none;position:fixed;z-index:9000;top:0;right:0;width:var(--dp-width);height:100%;background:var(--dp-bg);font-family:-apple-system,'Segoe UI','Inter',sans-serif;box-sizing:border-box;box-shadow:-8px 0 40px rgba(0,0,0,0.5)}
+    .dp-modal.show{display:block;animation:dp-slide-in .25s cubic-bezier(0.25,0.46,0.45,0.94)}
+    @media(max-width:768px){.dp-modal{width:100%}}
+    .dp-header{position:fixed;top:0;right:0;width:var(--dp-width);height:var(--dp-header-h);display:flex;align-items:center;justify-content:space-between;padding:0 16px 0 18px;background:var(--dp-surface);border-bottom:1px solid var(--dp-border);z-index:9001;box-sizing:border-box;gap:12px}
+    @media(max-width:768px){.dp-header{width:100%}}
+    .dp-header-left{display:flex;align-items:center;gap:11px;min-width:0;flex:1}
+    .dp-file-icon{width:34px;height:34px;border-radius:8px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.25);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+    .dp-title{font-size:.88em;font-weight:600;color:var(--dp-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+    .dp-subtitle{font-size:.73em;color:var(--dp-text-muted);margin-top:1px;white-space:nowrap}
+    .dp-header-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+    .dp-page-indicator{display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.08);border:1px solid var(--dp-border);border-radius:6px;padding:3px 10px;font-size:.78em;font-weight:600;color:var(--dp-text);font-variant-numeric:tabular-nums}
+    .dp-page-sep{color:var(--dp-text-muted);font-weight:400}
+    .dp-close{width:32px;height:32px;flex-shrink:0;background:rgba(255,255,255,.07);border:1px solid var(--dp-border);border-radius:8px;color:var(--dp-text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s,transform .2s}
+    .dp-close:hover{background:rgba(239,68,68,.2);border-color:rgba(239,68,68,.4);color:#fca5a5;transform:rotate(90deg)}
+    .dp-container{position:fixed;top:var(--dp-header-h);right:0;width:var(--dp-width);height:calc(100vh - var(--dp-header-h) - var(--dp-footer-h));overflow:hidden;background:var(--dp-bg);cursor:grab;z-index:9000;box-sizing:border-box}
+    @media(max-width:768px){.dp-container{width:100%}}
+    .dp-container:active{cursor:grabbing}
+    .dp-container *{-webkit-user-drag:none;user-select:none}
+    .dp-modal #dp-viewer{display:flex;flex-direction:column;align-items:center;transform-origin:center top;padding:24px 20px;min-height:100%;width:100%;background:transparent;gap:16px}
+    .dp-modal #dp-viewer canvas{display:block;margin:0 auto;max-width:90%;background:#fff!important;box-shadow:0 2px 20px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.06);border-radius:4px}
+    .dp-modal #dp-viewer img{pointer-events:none;-webkit-user-drag:none;border-radius:6px;box-shadow:0 4px 32px rgba(0,0,0,.6)}
+    .dp-loading{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--dp-text);z-index:10;text-align:center;padding:24px 32px;pointer-events:none;animation:dp-fade-in .25s ease}
+    .dp-spinner-wrap{width:48px;height:48px;background:rgba(255,255,255,.06);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:4px}
+    .dp-spinner{width:28px;height:28px;border:3px solid rgba(255,255,255,.12);border-top-color:var(--dp-accent);border-radius:50%;animation:dp-spin .7s linear infinite}
+    .dp-loading-title{font-size:.88em;font-weight:600;color:var(--dp-text);margin:0}
+    .dp-loading-sub{font-size:.78em;color:var(--dp-text-muted);margin:0}
+    .dp-error-icon{font-size:2em;margin-bottom:4px}
+    .dp-error-title{font-size:.9em;font-weight:600;color:#fca5a5;margin:0}
+    .dp-error-msg{font-size:.78em;color:var(--dp-text-muted);margin:0;max-width:240px;line-height:1.5}
+    .dp-error-btn{pointer-events:all;margin-top:6px;padding:8px 20px;background:var(--dp-accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.83em;font-weight:600;font-family:inherit;transition:opacity .2s,transform .15s;display:flex;align-items:center;gap:6px}
+    .dp-error-btn:hover{opacity:.88;transform:translateY(-1px)}
+    .dp-controls{position:fixed;bottom:0;right:0;width:var(--dp-width);height:var(--dp-footer-h);padding:0 14px;display:flex;align-items:center;justify-content:center;gap:4px;background:var(--dp-surface);border-top:1px solid var(--dp-border);z-index:9001;box-sizing:border-box}
+    @media(max-width:768px){.dp-controls{width:100%;gap:3px;padding:0 10px}}
+    .dp-controls-group{display:flex;align-items:center;gap:2px}
+    .dp-divider{width:1px;height:22px;background:var(--dp-border);margin:0 6px;flex-shrink:0}
+    .dp-btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;height:34px;padding:0 10px;border-radius:8px;border:1px solid transparent;background:transparent;color:var(--dp-text-muted);cursor:pointer;font-family:inherit;font-size:.78em;font-weight:600;white-space:nowrap;transition:background .15s,color .15s,border-color .15s,transform .12s}
+    .dp-btn:hover{background:rgba(255,255,255,.08);border-color:var(--dp-border);color:var(--dp-text)}
+    .dp-btn:active{transform:scale(.95)}
+    .dp-btn-icon{width:34px;padding:0}
+    .dp-zoom-label{font-size:.78em;font-weight:700;color:var(--dp-text);min-width:38px;text-align:center;font-variant-numeric:tabular-nums;letter-spacing:-.2px}
+    .dp-btn-accent{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.25);color:#4ade80;padding:0 14px;gap:6px}
+    .dp-btn-accent:hover{background:rgba(34,197,94,.22);border-color:rgba(34,197,94,.45);color:#86efac}
+    .dp-scrollbar{position:absolute;z-index:20;border-radius:4px;opacity:0;transition:opacity .2s ease;pointer-events:all}
+    .dp-container:hover .dp-scrollbar,.dp-scrollbar.active{opacity:1}
+    .dp-scrollbar-v{top:0;right:3px;width:8px;height:100%;display:flex;flex-direction:column}
+    .dp-scrollbar-h{bottom:3px;left:0;height:8px;width:100%;display:flex;flex-direction:row}
+    .dp-scrollbar-thumb{position:absolute;background:rgba(255,255,255,.22);border-radius:4px;cursor:pointer;transition:background .15s ease;min-height:32px;min-width:32px}
+    .dp-scrollbar-thumb:hover,.dp-scrollbar-thumb.dragging{background:rgba(255,255,255,.45)}
+    .dp-scrollbar-v .dp-scrollbar-thumb{left:0;right:0;width:100%}
+    .dp-scrollbar-h .dp-scrollbar-thumb{top:0;bottom:0;height:100%}
+  </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="js/document-previewer.config.js"></script>
   <script src="js/document-previewer.js"></script>
@@ -627,6 +683,9 @@
             <div class="score-total-num" id="scoreTotalNum">0.00</div>
           </div>
 
+          <!-- ── scoringFooter — hidden when params not configured ── -->
+          <div id="scoringFooter">
+
           <!-- Catatan -->
           <div class="field-group mb-24">
             <label class="field-label">Catatan Hakim (opsional)</label>
@@ -658,6 +717,8 @@
             ✅ Submit Nilai
           </button>
           <p style="text-align:center;font-size:11px;color:var(--ruby);margin-top:8px">Nilai yang sudah disubmit tidak dapat diubah kembali.</p>
+
+          </div><!-- /scoringFooter -->
         </div>
       </div>
 
@@ -700,7 +761,7 @@ const ADMIN_PIN = '1234'; // ganti via panel admin setelah login pertama
 // ── DEV MODE ──────────────────────────────────────────────────────
 // true  = tampilkan log detail di console + panel logger di layar
 // false = hanya error yang muncul
-const DEV = false;
+const DEV = true;
 
 // ════════════════════════════════════════════════════════════════
 //  LOGGER TERPUSAT
@@ -817,69 +878,81 @@ let S = {
 let dpInstance = null;   // inisialisasi di DOMContentLoaded setelah scripts loaded
 
 // ── Bukti Zone Helpers ────────────────────────────────────────
-/**
- * Kunci / buka buktiZone berdasarkan apakah nilai sudah disubmit.
- * @param {boolean} locked  - true → disable upload, tampilkan badge bukti
- * @param {string}  scoreKey - kunci score saat ini (untuk ambil preview dari localStorage)
- * @param {object}  buktiMeta - { name, size } dari data score yang ada
- */
+// Map dataUrl aktif agar onclick handler bisa mengaksesnya tanpa inline attr
+const _buktiPreviewMap = {};
+
 function setBuktiZoneLocked(locked, scoreKey, buktiMeta) {
   const zone   = document.getElementById('buktiZone');
   const input  = document.getElementById('buktiInput');
   const badge  = document.getElementById('buktiBadge');
 
   if (locked) {
-    zone.classList.add('dp-disabled');
-    input.disabled = true;
+    if (zone)  zone.classList.add('dp-disabled');
+    if (input) input.disabled = true;
     removeBukti();
 
-    // Cek apakah ada preview ter-cache di localStorage (disimpan setelah submit)
     let cached = null;
     try {
       const raw = scoreKey ? localStorage.getItem('mtq_bukti_' + scoreKey) : null;
       cached = raw ? JSON.parse(raw) : null;
     } catch(e) { cached = null; }
 
+    if (!badge) return;
     badge.className = 'locked';
     badge.style.display = 'flex';
 
     if (cached && cached.dataUrl) {
-      // Ada preview tersimpan → tampilkan tombol Lihat
+      const mapKey = 'bukti_' + (scoreKey || Date.now());
+      _buktiPreviewMap[mapKey] = { dataUrl: cached.dataUrl, name: cached.name || 'Bukti Penilaian' };
+
       badge.innerHTML =
-        '<span class="bukti-lock">📷</span>'
+        '<span class="bukti-lock">\u{1F4F7}</span>'
         + '<div class="bukti-info">'
         +   '<div class="bukti-fn">' + (cached.name || 'Bukti Penilaian') + '</div>'
-        +   '<div class="bukti-sub">Bukti dukung tersimpan · klik untuk pratinjau</div>'
+        +   '<div class="bukti-sub">Bukti tersimpan — klik Lihat untuk pratinjau</div>'
         + '</div>'
-        + '<button class="bukti-view-btn" id="buktiViewBtn">👁 Lihat</button>';
+        + '<button class="bukti-view-btn" id="buktiViewBtn">\u{1F441} Lihat</button>';
 
       const btn = document.getElementById('buktiViewBtn');
       if (btn) btn.onclick = function() {
-        if (dpInstance) dpInstance.openDirect(cached.dataUrl, cached.name || 'Bukti Penilaian');
-        else window.open(cached.dataUrl, '_blank');
+        const entry = _buktiPreviewMap[mapKey];
+        if (!entry) return;
+        // Coba DocumentPreviewer dulu
+        if (dpInstance && typeof dpInstance.openDirect === 'function') {
+          try { dpInstance.openDirect(entry.dataUrl, entry.name); return; } catch(e) {}
+        }
+        // Fallback: buka via blob URL di tab baru
+        try {
+          const arr  = entry.dataUrl.split(',');
+          const mime = (arr[0].match(/:(.*?);/) || ['','image/jpeg'])[1];
+          const bstr = atob(arr[1]);
+          const u8   = new Uint8Array(bstr.length);
+          for (let i = 0; i < bstr.length; i++) u8[i] = bstr.charCodeAt(i);
+          const url  = URL.createObjectURL(new Blob([u8], { type: mime }));
+          const win  = window.open(url, '_blank');
+          if (!win) window.location.href = url;
+          setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+        } catch(e2) { window.open(entry.dataUrl, '_blank'); }
       };
     } else if (buktiMeta && buktiMeta.name) {
-      // Tidak ada preview cache, tapi ada nama file dari sheet
       badge.innerHTML =
-        '<span class="bukti-lock">📎</span>'
+        '<span class="bukti-lock">\u{1F4CE}</span>'
         + '<div class="bukti-info">'
         +   '<div class="bukti-fn">' + buktiMeta.name + '</div>'
-        +   '<div class="bukti-sub">Bukti telah disubmit (pratinjau tidak tersedia)</div>'
+        +   '<div class="bukti-sub">Bukti telah disubmit (pratinjau tidak tersedia di sesi ini)</div>'
         + '</div>';
     } else {
       badge.innerHTML =
-        '<span class="bukti-lock">🔒</span>'
+        '<span class="bukti-lock">\u{1F512}</span>'
         + '<div class="bukti-info">'
         +   '<div class="bukti-fn">Nilai sudah disubmit</div>'
         +   '<div class="bukti-sub">Tidak ada bukti dukung</div>'
         + '</div>';
     }
   } else {
-    // Buka kembali
-    zone.classList.remove('dp-disabled');
-    input.disabled = false;
-    badge.style.display = 'none';
-    badge.innerHTML = '';
+    if (zone)  zone.classList.remove('dp-disabled');
+    if (input) input.disabled = false;
+    if (badge) { badge.style.display = 'none'; badge.innerHTML = ''; }
   }
 }
 
@@ -1022,6 +1095,14 @@ async function apiPost(action, payload = {}) {
 function localGet(action, params) {
   switch (action) {
     case 'getHakim':   return { success: true, source: 'local', data: load('hakim', []) };
+    case 'getHakimPublic': {
+      // Fallback: cari hakim by ID dari cache lokal
+      const id  = params.id;
+      const all = load('hakim', []);
+      const h   = all.find(function(x){ return String(x.id) === String(id); });
+      if (h) { const { pin: _p, ...safe } = h; return { success: true, source: 'local', hakim: safe }; }
+      return { success: false, source: 'local', error: 'Hakim tidak ditemukan di cache' };
+    }
     case 'getPeserta': return { success: true, source: 'local', data: load('peserta', {}) };
     case 'getParam':   return { success: true, source: 'local', data: load('params', {}) };
     case 'getNilai':   return { success: true, source: 'local', data: load('nilai', {}) };
@@ -1536,6 +1617,7 @@ async function loadScoringPeserta() {
         </button>
       </div>`;
     document.getElementById('scoreTotalBar').style.display = 'none';
+    toggleScoringFooter(false);   // sembunyikan Catatan, Bukti, Submit — tidak ada peserta untuk dinilai
     return;
   }
 
@@ -1587,16 +1669,26 @@ async function loadScoringPeserta() {
   renderParamScores(null, false);
 }
 
+// ── Tampilkan / sembunyikan area Catatan, Bukti, Submit ──────
+// Disembunyikan ketika parameter belum dikonfigurasi agar hakim
+// tidak bisa submit nilai kosong / null.
+function toggleScoringFooter(show) {
+  var footer = document.getElementById('scoringFooter');
+  if (footer) footer.style.display = show ? '' : 'none';
+}
+
 async function renderParamScores(existingVals, readonly) {
   const res = await apiGet('getParam', { cabang: S.currentScoringCabang });
   const cabangParams = Array.isArray(res.data) ? res.data : (res.data?.[S.currentScoringCabang] || []);
   const el = document.getElementById('paramScoreContainer');
 
   if (!cabangParams.length) {
-    el.innerHTML = '<div class="alert alert-warn">⚠️ Parameter belum dikonfigurasi. Hubungi admin.</div>';
+    el.innerHTML = '<div class="alert alert-warn">⚠️ Parameter belum dikonfigurasi. Hubungi admin untuk mengatur parameter penilaian cabang ini.</div>';
     document.getElementById('scoreTotalBar').style.display = 'none';
+    toggleScoringFooter(false);   // sembunyikan Catatan, Bukti, Submit
     return;
   }
+  toggleScoringFooter(true);      // tampilkan kembali setelah parameter siap
   document.getElementById('scoreTotalBar').style.display = 'flex';
   el.innerHTML = cabangParams.map((p,i) => {
     const val = existingVals ? (existingVals[i]?.nilai || 0) : 0;
@@ -1751,19 +1843,23 @@ async function submitNilai() {
       toast('✅ Nilai Tersimpan!', `${peserta.nama} — ${total.toFixed(2)}`, 'success');
 
       // ── Simpan thumbnail bukti ke localStorage untuk pratinjau pasca-submit ──
-      // (berlaku untuk sesi ini dan setelah page-refresh, sampai localStorage dibersihkan)
+      // PENTING: di-AWAIT (bukan fire-and-forget) agar localStorage.setItem
+      // selesai SEBELUM loadScoringPeserta() dipanggil di bawah — loadScoringPeserta
+      // langsung memanggil setBuktiZoneLocked() yang membaca localStorage; tanpa
+      // await, baris itu akan membaca data yang belum tersimpan (race condition),
+      // sehingga tombol preview tampak "tidak tersedia" walau bukti sebenarnya ada.
       if (buktiData && buktiData.base64 && buktiData.type.startsWith('image/')) {
-        compressBuktiThumbnail(buktiData).then(function(dataUrl) {
-          if (!dataUrl) return;
-          try {
+        try {
+          const dataUrl = await compressBuktiThumbnail(buktiData);
+          if (dataUrl) {
             localStorage.setItem(
               'mtq_bukti_' + scoreKey,
               JSON.stringify({ name: buktiData.name, type: buktiData.type, dataUrl: dataUrl })
             );
-          } catch(e) { /* localStorage penuh — skip */ }
-        });
+          }
+        } catch(e) { MTQ_LOG.warn('Gagal menyimpan thumbnail bukti', e); }
       } else if (buktiData && buktiData.name) {
-        // PDF / file lain: simpan metadata saja (tidak bisa preview)
+        // PDF / file lain: simpan metadata saja (tidak bisa preview inline)
         try {
           localStorage.setItem(
             'mtq_bukti_' + scoreKey,
