@@ -76,9 +76,9 @@ function initSheetHeaders(sh, name) {
 // ── Setup awal (jalankan sekali manual) ──────────────────────
 function setup() {
   Object.values(SHEET).forEach(name => getSheet(name));
-  // Seed config default
-  setConfig('PENDAFTARAN_BUKA', '2026-06-01T00:00:00');
-  setConfig('PENDAFTARAN_TUTUP', '2026-07-31T23:59:59');
+  // Seed config default — sesuai Juknis MTQ ke-56: pendaftaran online 21 s.d. 28 Juli 2026
+  setConfig('PENDAFTARAN_BUKA', '2026-07-21T00:00:00');
+  setConfig('PENDAFTARAN_TUTUP', '2026-07-28T23:59:59');
   Logger.log('Setup selesai!');
 }
 
@@ -465,8 +465,8 @@ function getPenilaianStats_() {
   const totalNilai   = Math.max(0, nilaiSh.getLastRow() - 1);
 
   const now   = new Date();
-  const buka  = new Date(getConfig('PENDAFTARAN_BUKA')  || '2026-06-01');
-  const tutup = new Date(getConfig('PENDAFTARAN_TUTUP') || '2026-07-31');
+  const buka  = new Date(getConfig('PENDAFTARAN_BUKA')  || '2026-07-21');
+  const tutup = new Date(getConfig('PENDAFTARAN_TUTUP') || '2026-07-28');
   const isOpen = now >= buka && now < tutup;
   const status = now < buka ? 'belum_buka' : isOpen ? 'buka' : 'tutup';
 

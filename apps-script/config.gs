@@ -25,10 +25,11 @@ var SHEET_PENDAFTAR = 'PENDAFTAR';
 var SHEET_LOG       = 'LOG';
 
 // ── 4. Konfigurasi Pendaftaran ────────────────────────────────
+// Sesuai Juknis MTQ ke-56 Kab. Indramayu: pendaftaran online 21 s.d. 28 Juli 2026
 var PENDAFTARAN_CONFIG = {
-  BUKA           : '2026-06-01T00:00:00',
-  TUTUP          : '2026-07-31T23:59:59',
-  AGE_CUTOFF_DATE: '2026-07-01',
+  BUKA           : '2026-07-21T00:00:00',
+  TUTUP          : '2026-07-28T23:59:59',
+  AGE_CUTOFF_DATE: '2026-11-01',   // Juknis: usia dihitung per 1 November 2026 — sudah benar
   // OVERRIDE: null=auto | true=paksa buka | false=paksa tutup
   OVERRIDE       : null
 };
@@ -36,8 +37,8 @@ var PENDAFTARAN_CONFIG = {
 // ── 5. Info Event ─────────────────────────────────────────────
 var EVENT_INFO = {
   nama   : 'MTQ Kabupaten Indramayu Tahun 2026',
-  tanggal: '15 Agustus 2026',
-  lokasi : 'GOR Kabupaten Indramayu',
+  tanggal: '-',
+  lokasi : '-',
   tema   : "Dengan Al-Qur'an Membangun Generasi Emas"
 };
 
@@ -104,52 +105,33 @@ var DEFAULT_CONFIG_DATA = [
   ['Tilawah Dewasa Putra', 'individu','L', 0, 40,11,29, 31,'Aktif'],
   ['Tilawah Dewasa Putri', 'individu','P', 0, 40,11,29, 31,'Aktif'],
 
-  // Qiraat
+  // Qira'at
   ["Qira'at Mujawwad Putra", 'individu','L', 0, 40,11,29, 31,'Aktif'],
   ["Qira'at Mujawwad Putri", 'individu','P', 0, 40,11,29, 31,'Aktif'],
 
   // Hafalan
-  ['Hafalan 1 Juz Putra', 'individu','L', 0, 15,11,29, 31,'Aktif'],
-  ['Hafalan 1 Juz Putri', 'individu','P', 0, 15,11,29, 31,'Aktif'],
+  ['Hafalan 1 Juz dan Tilawah Putra', 'individu','L', 0, 15,11,29, 31,'Aktif'],
+  ['Hafalan 1 Juz dan Tilawah Putri', 'individu','P', 0, 15,11,29, 31,'Aktif'],
 
-  ['Hafalan 5 Juz Putra', 'individu','L', 0, 20,11,29, 31,'Aktif'],
-  ['Hafalan 5 Juz Putri', 'individu','P', 0, 20,11,29, 31,'Aktif'],
+  ['Hafalan 5 Juz dan Tilawah Putra', 'individu','L', 0, 20,11,29, 31,'Aktif'],
+  ['Hafalan 5 Juz dan Tilawah Putri', 'individu','P', 0, 20,11,29, 31,'Aktif'],
 
   ['Hafalan 10 Juz Putra', 'individu','L', 0, 20,11,29, 31,'Aktif'],
   ['Hafalan 10 Juz Putri', 'individu','P', 0, 20,11,29, 31,'Aktif'],
 
-  ['Hafalan 20 Juz Putra', 'individu','L', 0, 22,11,29, 31,'Aktif'],
-  ['Hafalan 20 Juz Putri', 'individu','P', 0, 22,11,29, 31,'Aktif'],
-
-  ['Hafalan 30 Juz Putra', 'individu','L', 0, 22,11,29, 31,'Aktif'],
-  ['Hafalan 30 Juz Putri', 'individu','P', 0, 22,11,29, 31,'Aktif'],
-
   // Tafsir
-  ['Tafsir Arab Putra', 'individu','L', 0, 22,11,29, 31,'Aktif'],
-  ['Tafsir Arab Putri', 'individu','P', 0, 22,11,29, 31,'Aktif'],
-
-  ['Tafsir Indonesia Putra', 'individu','L', 0, 34,11,29, 31,'Aktif'],
-  ['Tafsir Indonesia Putri', 'individu','P', 0, 34,11,29, 31,'Aktif'],
-
-  ['Tafsir Inggris Putra', 'individu','L', 0, 34,11,29, 31,'Aktif'],
-  ['Tafsir Inggris Putri', 'individu','P', 0, 34,11,29, 31,'Aktif'],
+  ['Tafsir Bahasa Indonesia Putra', 'individu','L', 0, 34,11,29, 31,'Aktif'],
+  ['Tafsir Bahasa Indonesia Putri', 'individu','P', 0, 34,11,29, 31,'Aktif'],
 
   // Kaligrafi
   ['Kaligrafi Naskah Putra', 'individu','L', 0, 34,11,29, 31,'Aktif'],
   ['Kaligrafi Naskah Putri', 'individu','P', 0, 34,11,29, 31,'Aktif'],
 
-  ['Kaligrafi Hiasan Putra', 'individu','L', 0, 34,11,29, 31,'Aktif'],
-  ['Kaligrafi Hiasan Putri', 'individu','P', 0, 34,11,29, 31,'Aktif'],
+  ['Kaligrafi Hiasan Mushaf Putra', 'individu','L', 0, 34,11,29, 31,'Aktif'],
+  ['Kaligrafi Hiasan Mushaf Putri', 'individu','P', 0, 34,11,29, 31,'Aktif'],
 
   ['Kaligrafi Dekorasi Putra', 'individu','L', 0, 34,11,29, 31,'Aktif'],
   ['Kaligrafi Dekorasi Putri', 'individu','P', 0, 34,11,29, 31,'Aktif'],
-
-  ['Kaligrafi Kontemporer Putra', 'individu','L', 0, 34,11,29, 31,'Aktif'],
-  ['Kaligrafi Kontemporer Putri', 'individu','P', 0, 34,11,29, 31,'Aktif'],
-
-  // KTIQ
-  ['KTIQ Putra', 'individu','L', 0, 24,11,29, 31,'Aktif'],
-  ['KTIQ Putri', 'individu','P', 0, 24,11,29, 31,'Aktif'],
 
   // Fahm Al Qur'an (Tim)
   ["Fahm Al Qur'an Putra", 'team','L', 0, 18,11,29, 31,'Aktif'],

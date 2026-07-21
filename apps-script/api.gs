@@ -4,33 +4,26 @@
 // ============================================================
 
 var CABANG_PREFIX = [
-  { key:"Tartil Al Qur'an",         prefix:'TA' },
+  { key:"Tartil Al Qur'an",             prefix:'TA' },
 
-  { key:'Tilawah Anak-anak',        prefix:'TLA' },
-  { key:'Tilawah Remaja',           prefix:'TLR' },
-  { key:'Tilawah Dewasa',           prefix:'TLD' },
+  { key:'Tilawah Anak-anak',            prefix:'TLA' },
+  { key:'Tilawah Remaja',               prefix:'TLR' },
+  { key:'Tilawah Dewasa',               prefix:'TLD' },
 
-  { key:"Qira'at Mujawwad",         prefix:'QM' },
+  { key:"Qira'at Mujawwad",             prefix:'QM' },
 
-  { key:'Hafalan 1 Juz',            prefix:'H1J' },
-  { key:'Hafalan 5 Juz',            prefix:'H5J' },
-  { key:'Hafalan 10 Juz',           prefix:'H10J' },
-  { key:'Hafalan 20 Juz',           prefix:'H20J' },
-  { key:'Hafalan 30 Juz',           prefix:'H30J' },
+  { key:'Hafalan 1 Juz dan Tilawah',    prefix:'H1J' },
+  { key:'Hafalan 5 Juz dan Tilawah',    prefix:'H5J' },
+  { key:'Hafalan 10 Juz',               prefix:'H10J' },
 
-  { key:'Tafsir Arab',              prefix:'TFA' },
-  { key:'Tafsir Indonesia',         prefix:'TFI' },
-  { key:'Tafsir Inggris',           prefix:'TFE' },
+  { key:'Tafsir Bahasa Indonesia',      prefix:'TFI' },
 
-  { key:'Kaligrafi Naskah',         prefix:'KN' },
-  { key:'Kaligrafi Hiasan',         prefix:'KH' },
-  { key:'Kaligrafi Dekorasi',       prefix:'KD' },
-  { key:'Kaligrafi Kontemporer',    prefix:'KK' },
+  { key:'Kaligrafi Naskah',             prefix:'KN' },
+  { key:'Kaligrafi Hiasan Mushaf',      prefix:'KHM' },
+  { key:'Kaligrafi Dekorasi',           prefix:'KD' },
 
-  { key:'KTIQ',                     prefix:'KTIQ' },
-
-  { key:"Fahm Al Qur'an",           prefix:'FAQ' },
-  { key:"Syarh Al Qur'an",          prefix:'SAQ' },
+  { key:"Fahm Al Qur'an",               prefix:'FAQ' },
+  { key:"Syarh Al Qur'an",              prefix:'SAQ' },
 ];
 
 function getCabangPrefix_(cabangLomba) {

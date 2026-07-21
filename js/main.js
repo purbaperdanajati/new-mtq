@@ -6,8 +6,9 @@
 // API_URL dibaca dari js/config.js (window.MTQ_API_URL) — jangan ubah di sini
 const CONFIG = {
   get API_URL() { return window.MTQ_API_URL || ''; },
-  EVENT_DATE: '2026-08-15T08:00:00',  // Tanggal pelaksanaan MTQ
-  EVENT_LOCATION: 'GOR Singalodra Kabupaten Indramayu',
+  EVENT_DATE: '2026-08-05T08:00:00',        // Tanggal MULAI pelaksanaan (dipakai countdown) — sesuai Juknis: 5–7 Agustus 2026
+  EVENT_DATE_DISPLAY: '5–7 Agustus 2026',   // Teks tampilan rentang tanggal pelaksanaan
+  EVENT_LOCATION: 'Kecamatan Jatibarang',   // Sesuai Juknis MTQ ke-56 Kab. Indramayu
   EVENT_THEME: 'Dengan Al-Qur\'an Membangun Generasi Emas',
 };
 
@@ -264,7 +265,7 @@ function setEventInfo() {
   const themeEls = document.querySelectorAll('[data-info="theme"]');
   const dateEls = document.querySelectorAll('[data-info="date"]');
 
-  const dateStr = new Date(CONFIG.EVENT_DATE).toLocaleDateString('id-ID', {
+  const dateStr = CONFIG.EVENT_DATE_DISPLAY || new Date(CONFIG.EVENT_DATE).toLocaleDateString('id-ID', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   });
 

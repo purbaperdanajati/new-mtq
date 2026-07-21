@@ -8,16 +8,17 @@ const MTQ_CONFIG = {
 
   // ── Google Apps Script Web App URL ──────────────────────────
   // Setelah deploy di Apps Script, paste URL-nya di sini
-  API_URL: 'https://script.google.com/macros/s/AKfycbxk972V5Kf61HQeF3kUHK8z1HpZqUQwte5NQXWALIPpwu1UicGCyBeT_BNg_sK_9Tjt/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbzQNS6G6nl-Y3x9HvHf05pfNhvkNccORm_RZXU8nwN_-RAWDZ8ENtjOBWiticpAjtIs/exec',
 
   // ── Fallback (akan ditimpa nilai dari API saat getConfig) ───
-  PENDAFTARAN_BUKA : '2026-06-01T00:00:00',
-  PENDAFTARAN_TUTUP: '2026-07-31T23:59:59',
-  AGE_CUTOFF_DATE  : '2026-07-01',       // Hitung umur per tanggal ini
+  // Sesuai Juknis MTQ ke-56 Kab. Indramayu: pendaftaran online 21 s.d. 28 Juli 2026
+  PENDAFTARAN_BUKA : '2026-07-21T00:00:00',
+  PENDAFTARAN_TUTUP: '2026-07-28T23:59:59',
+  AGE_CUTOFF_DATE  : '2026-11-01',       // Hitung umur per tanggal ini (Juknis: per 1 November 2026) — sudah benar
 
   // ── Info Event ───────────────────────────────────────────────
-  EVENT_DATE    : '2026-08-15T08:00:00',
-  EVENT_LOCATION: 'GOR Kabupaten Indramayu',
+  EVENT_DATE    : '-',
+  EVENT_LOCATION: '-',
   EVENT_THEME   : "Dengan Al-Qur'an Membangun Generasi Emas",
   EVENT_TITLE   : 'MTQ Kabupaten Indramayu Tahun 2026',
 
