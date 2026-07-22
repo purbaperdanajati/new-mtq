@@ -39,8 +39,7 @@ const SHEET = {
   HAKIM    : 'Hakim',
   PESERTA  : 'Peserta',
   PARAMETER: 'Parameter',
-  NILAI    : 'Nilai',
-  CONFIG   : 'Config'
+  NILAI    : 'Nilai'
 };
 
 // ── Inisialisasi spreadsheet & sheet ─────────────────────────
@@ -63,8 +62,7 @@ function initSheetHeaders(sh, name) {
     [SHEET.HAKIM]:     ['id','nama','pin','cabang','createdAt'],
     [SHEET.PESERTA]:   ['id','cabang','nama','kecamatan','nomor_urut','createdAt'],
     [SHEET.PARAMETER]: ['cabang','params_json','updatedAt'],
-    [SHEET.NILAI]:     ['key','hakimId','hakimNama','pesertaId','pesertaNama','pesertaKecamatan','cabang','params_json','total','catatan','buktiName','buktiSize','submittedAt'],
-    [SHEET.CONFIG]:    ['key','value','updatedAt']
+    [SHEET.NILAI]:     ['key','hakimId','hakimNama','pesertaId','pesertaNama','pesertaKecamatan','cabang','params_json','total','catatan','buktiName','buktiSize','submittedAt']
   };
   if (headers[name]) {
     sh.getRange(1, 1, 1, headers[name].length).setValues([headers[name]]);
@@ -76,33 +74,14 @@ function initSheetHeaders(sh, name) {
 // ── Setup awal (jalankan sekali manual) ──────────────────────
 function setup() {
   Object.values(SHEET).forEach(name => getSheet(name));
-  // Seed config default — sesuai Juknis MTQ ke-56: pendaftaran online 21 s.d. 28 Juli 2026
-  setConfig('PENDAFTARAN_BUKA', '2026-07-21T00:00:00');
-  setConfig('PENDAFTARAN_TUTUP', '2026-07-28T23:59:59');
-  Logger.log('Setup selesai!');
+  Logger.log('Setup selesai! (Tanggal pendaftaran dibaca dari PENDAFTARAN_CONFIG di config.gs — satu sumber, tidak perlu di-seed lagi di sini.)');
 }
 
-// ── CONFIG helpers ────────────────────────────────────────────
-function getConfig(key) {
-  const sh = getSheet(SHEET.CONFIG);
-  const data = sh.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === key) return data[i][1];
-  }
-  return null;
-}
-
-function setConfig(key, value) {
-  const sh = getSheet(SHEET.CONFIG);
-  const data = sh.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === key) {
-      sh.getRange(i + 1, 2, 1, 2).setValues([[value, new Date().toISOString()]]);
-      return;
-    }
-  }
-  sh.appendRow([key, value, new Date().toISOString()]);
-}
+// ── CONFIG ────────────────────────────────────────────────────
+// Tanggal buka/tutup pendaftaran & cutoff usia SEKARANG baca langsung
+// dari PENDAFTARAN_CONFIG (didefinisikan sekali di config.gs — satu
+// project Apps Script berbagi scope global yang sama, jadi bisa
+// dipakai langsung tanpa perlu sheet "Config" terpisah di sini lagi).
 
 // ════════════════════════════════════════════════════════════════
 //  CATATAN: doGet / doPost / router action sudah dipindahkan ke
@@ -465,8 +444,8 @@ function getPenilaianStats_() {
   const totalNilai   = Math.max(0, nilaiSh.getLastRow() - 1);
 
   const now   = new Date();
-  const buka  = new Date(getConfig('PENDAFTARAN_BUKA')  || '2026-07-21');
-  const tutup = new Date(getConfig('PENDAFTARAN_TUTUP') || '2026-07-28');
+  const buka  = new Date(PENDAFTARAN_CONFIG.BUKA);
+  const tutup = new Date(PENDAFTARAN_CONFIG.TUTUP);
   const isOpen = now >= buka && now < tutup;
   const status = now < buka ? 'belum_buka' : isOpen ? 'buka' : 'tutup';
 
@@ -477,8 +456,8 @@ function getPenilaianStats_() {
     totalNilaiSubmit   : totalNilai,
     isOpen,
     status,
-    buka               : getConfig('PENDAFTARAN_BUKA'),
-    tutup              : getConfig('PENDAFTARAN_TUTUP')
+    buka               : PENDAFTARAN_CONFIG.BUKA,
+    tutup              : PENDAFTARAN_CONFIG.TUTUP
   };
 }
 

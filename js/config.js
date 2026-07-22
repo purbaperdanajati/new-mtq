@@ -1,31 +1,118 @@
 // ============================================================
 //  MTQ 2026 — js/config.js
-//  SATU SUMBER KONFIGURASI FRONTEND
-//  Hanya edit file ini untuk mengubah URL API & semua setting
+//  ═══════════════════════════════════════════════════════════
+//  SATU-SATUNYA SUMBER KONFIGURASI FRONTEND.
+//  Semua file lain (daftar.js, main.js, admin-maqra.js,
+//  admin-penilaian.js, penilaian.js/.html, index.html,
+//  cek-maqra.js, maqra.js) WAJIB baca nilai dari MTQ_CONFIG —
+//  JANGAN hardcode ulang cabang, umur cutoff, tanggal
+//  buka/tutup pendaftaran, atau API_URL di file lain.
+//
+//  Untuk update tahunan/perubahan Juknis: HANYA file ini yang
+//  perlu diedit. Nilai cabang/tanggal di sini adalah fallback —
+//  akan ditimpa nilai live dari backend saat apiGetConfig_()
+//  berhasil dipanggil (lihat MTQ_CONFIG.applyServerConfig).
 // ============================================================
 
 const MTQ_CONFIG = {
 
-  // ── Google Apps Script Web App URL ──────────────────────────
-  // Setelah deploy di Apps Script, paste URL-nya di sini
-  API_URL: 'https://script.google.com/macros/s/AKfycbzQNS6G6nl-Y3x9HvHf05pfNhvkNccORm_RZXU8nwN_-RAWDZ8ENtjOBWiticpAjtIs/exec',
+  // ── Google Apps Script Web App URL — SATU-SATUNYA tempat edit ──
+  API_URL: 'https://script.google.com/macros/s/AKfycbz-RU7v61uETntx67gKY8puSASKOotCcXJdDQlWimwXUMBXIeWoQSbwB1rxqiHg8f0I/exec',
 
-  // ── Fallback (akan ditimpa nilai dari API saat getConfig) ───
-  // Sesuai Juknis MTQ ke-56 Kab. Indramayu: pendaftaran online 21 s.d. 28 Juli 2026
+  // ── Tanggal pendaftaran & cutoff umur ────────────────────────
+  // Fallback bila API tidak terjangkau — akan ditimpa nilai live
+  // dari backend (config.gs → PENDAFTARAN_CONFIG) saat getConfig berhasil.
+  // Sesuai Juknis MTQ ke-56 Kab. Indramayu: pendaftaran online 21 s.d. 28 Juli 2026,
+  // usia dihitung per 1 November 2026.
   PENDAFTARAN_BUKA : '2026-07-21T00:00:00',
   PENDAFTARAN_TUTUP: '2026-07-28T23:59:59',
-  AGE_CUTOFF_DATE  : '2026-11-01',       // Hitung umur per tanggal ini (Juknis: per 1 November 2026) — sudah benar
+  AGE_CUTOFF_DATE  : '2026-11-01',
 
   // ── Info Event ───────────────────────────────────────────────
-  EVENT_DATE    : '-',
-  EVENT_LOCATION: '-',
-  EVENT_THEME   : "Dengan Al-Qur'an Membangun Generasi Emas",
-  EVENT_TITLE   : 'MTQ Kabupaten Indramayu Tahun 2026',
+  EVENT_DATE_START  : '2026-08-05T08:00:00',   // Untuk countdown (tanggal mulai)
+  EVENT_DATE_DISPLAY: '5–7 Agustus 2026',      // Untuk tampilan (rentang tanggal)
+  EVENT_LOCATION    : 'Kecamatan Jatibarang',
+  EVENT_THEME       : "Dengan Al-Qur'an Membangun Generasi Emas",
+  EVENT_TITLE       : 'MTQ ke-56 Kabupaten Indramayu Tahun 2026',
+
+  // ── Cabang & Golongan Musabaqah ──────────────────────────────
+  // SATU-SATUNYA daftar cabang untuk SELURUH sistem: form pendaftaran,
+  // manajemen maqra, sistem penilaian, dan hasil publik semua baca dari
+  // sini (langsung, atau lewat MTQ_CONFIG.CABANG_LIST di bawah).
+  // Fallback bila API gagal — sesuai Juknis MTQ ke-56 (14 golongan × 2 gender).
+  CABANG_CONFIG_FALLBACK: [
+    { cabang_lomba:"Tartil Al Qur'an Putra", tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:12, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+    { cabang_lomba:"Tartil Al Qur'an Putri", tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:12, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+    { cabang_lomba:'Tilawah Anak-anak Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:14, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+    { cabang_lomba:'Tilawah Anak-anak Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:14, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+    { cabang_lomba:'Tilawah Remaja Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:24, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+    { cabang_lomba:'Tilawah Remaja Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:24, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+    { cabang_lomba:'Tilawah Dewasa Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:40, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+    { cabang_lomba:'Tilawah Dewasa Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:40, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+    { cabang_lomba:"Qira'at Mujawwad Putra", tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:40, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+    { cabang_lomba:"Qira'at Mujawwad Putri", tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:40, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+    { cabang_lomba:'Hafalan 1 Juz dan Tilawah Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:15, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+    { cabang_lomba:'Hafalan 1 Juz dan Tilawah Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:15, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+    { cabang_lomba:'Hafalan 5 Juz dan Tilawah Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:20, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+    { cabang_lomba:'Hafalan 5 Juz dan Tilawah Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:20, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+    { cabang_lomba:'Hafalan 10 Juz Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:20, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+    { cabang_lomba:'Hafalan 10 Juz Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:20, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+    { cabang_lomba:'Tafsir Bahasa Indonesia Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+    { cabang_lomba:'Tafsir Bahasa Indonesia Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+    { cabang_lomba:'Kaligrafi Naskah Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+    { cabang_lomba:'Kaligrafi Naskah Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+    { cabang_lomba:'Kaligrafi Hiasan Mushaf Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+    { cabang_lomba:'Kaligrafi Hiasan Mushaf Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+    { cabang_lomba:'Kaligrafi Dekorasi Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+    { cabang_lomba:'Kaligrafi Dekorasi Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+    { cabang_lomba:"Fahm Al Qur'an Putra", tipe:'team', gender:'L', umur_min:0, umur_max_tahun:18, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+    { cabang_lomba:"Fahm Al Qur'an Putri", tipe:'team', gender:'P', umur_min:0, umur_max_tahun:18, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+
+    { cabang_lomba:"Syarh Al Qur'an Putra", tipe:'team', gender:'L', umur_min:0, umur_max_tahun:18, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
+    { cabang_lomba:"Syarh Al Qur'an Putri", tipe:'team', gender:'P', umur_min:0, umur_max_tahun:18, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' }
+  ],
 
   // ── Developer Mode ───────────────────────────────────────────
   // true  = tampilkan tombol Random Fill (untuk testing)
   // false = sembunyikan (untuk produksi)
   DEV_MODE: true,
+};
+
+// ── Turunan otomatis: nama cabang saja (untuk dropdown/filter) ──
+// Dipakai admin-maqra.js, admin-penilaian.js, penilaian.js/.html,
+// index.html (Hasil Penilaian Publik) — jangan tulis ulang array
+// nama cabang di file-file itu, cukup baca MTQ_CONFIG.CABANG_LIST.
+MTQ_CONFIG.CABANG_LIST = MTQ_CONFIG.CABANG_CONFIG_FALLBACK.map(c => c.cabang_lomba);
+
+// ── Terapkan hasil apiGetConfig_() dari server ke MTQ_CONFIG ──
+// Panggil ini di callback getConfig tiap file (daftar.js, admin-maqra.js,
+// dst) supaya SEMUA file otomatis memakai data live yang sama begitu
+// salah satu berhasil memuatnya — bukan cuma file yang memanggil API.
+// `data` = hasil JSON dari action=getConfig (lihat apiGetConfig_ di api.gs).
+MTQ_CONFIG.applyServerConfig = function(data) {
+  if (!data || !data.success) return false;
+  if (Array.isArray(data.config) && data.config.length) {
+    MTQ_CONFIG.CABANG_CONFIG_FALLBACK = data.config;
+    MTQ_CONFIG.CABANG_LIST = data.config.map(c => c.cabang_lomba);
+  }
+  if (data.registrationConfig) {
+    if (data.registrationConfig.buka)          MTQ_CONFIG.PENDAFTARAN_BUKA  = data.registrationConfig.buka;
+    if (data.registrationConfig.tutup)         MTQ_CONFIG.PENDAFTARAN_TUTUP = data.registrationConfig.tutup;
+    if (data.registrationConfig.ageCutoffDate) MTQ_CONFIG.AGE_CUTOFF_DATE   = data.registrationConfig.ageCutoffDate;
+  }
+  return true;
 };
 
 // ── Logger terpusat ──────────────────────────────────────────
@@ -122,5 +209,6 @@ function getRegStatus() {
 }
 
 // ── Satu-satunya sumber API_URL untuk semua file ──────────────
-// main.js, daftar.js, admin.html semuanya baca dari sini
+// main.js, daftar.js, admin.html, admin-maqra.js, admin-penilaian.js,
+// penilaian.js/.html, cek-maqra.js, maqra.js — semuanya baca dari sini.
 window.MTQ_API_URL = MTQ_CONFIG.API_URL;

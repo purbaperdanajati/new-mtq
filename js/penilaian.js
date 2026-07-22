@@ -21,22 +21,9 @@ function load(key, def = null) {
 }
 
 // ── Initial seed data ─────────────────────────────────────────
-const CABANG_LIST = [
-  "Tartil Al Qur'an Putra", "Tartil Al Qur'an Putri",
-  "Tilawah Anak-anak Putra", "Tilawah Anak-anak Putri",
-  "Tilawah Remaja Putra", "Tilawah Remaja Putri",
-  "Tilawah Dewasa Putra", "Tilawah Dewasa Putri",
-  "Qira'at Mujawwad Putra", "Qira'at Mujawwad Putri",
-  "Hafalan 1 Juz dan Tilawah Putra", "Hafalan 1 Juz dan Tilawah Putri",
-  "Hafalan 5 Juz dan Tilawah Putra", "Hafalan 5 Juz dan Tilawah Putri",
-  "Hafalan 10 Juz Putra", "Hafalan 10 Juz Putri",
-  "Tafsir Bahasa Indonesia Putra", "Tafsir Bahasa Indonesia Putri",
-  "Kaligrafi Naskah Putra", "Kaligrafi Naskah Putri",
-  "Kaligrafi Hiasan Mushaf Putra", "Kaligrafi Hiasan Mushaf Putri",
-  "Kaligrafi Dekorasi Putra", "Kaligrafi Dekorasi Putri",
-  "Fahm Al Qur'an Putra", "Fahm Al Qur'an Putri",
-  "Syarh Al Qur'an Putra", "Syarh Al Qur'an Putri"
-];
+// Cabang list: SATU SUMBER di js/config.js → MTQ_CONFIG.CABANG_LIST
+// (jangan hardcode array cabang lagi di sini — edit config.js saja)
+const CABANG_LIST = MTQ_CONFIG.CABANG_LIST;
 
 // Seed default parameters if not set
 if (!load('params')) {

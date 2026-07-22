@@ -534,6 +534,7 @@
     .dp-scrollbar-v .dp-scrollbar-thumb{left:0;right:0;width:100%}
     .dp-scrollbar-h .dp-scrollbar-thumb{top:0;bottom:0;height:100%}
   </style>
+  <script src="js/config.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="js/document-previewer.config.js"></script>
   <script src="js/document-previewer.js"></script>
@@ -750,11 +751,8 @@
 // ════════════════════════════════════════════════════════════════
 
 // ── CONFIG ───────────────────────────────────────────────────────
-// Prioritas: (1) window.MTQ_API_URL dari config.js
-//            (2) String hardcode di bawah ini
-// Setelah deploy GAS, paste URL di sini:
-const API_URL = (window.MTQ_API_URL || '').trim()
-  || 'https://script.google.com/macros/s/AKfycbzQNS6G6nl-Y3x9HvHf05pfNhvkNccORm_RZXU8nwN_-RAWDZ8ENtjOBWiticpAjtIs/exec';
+// SATU SUMBER: js/config.js (window.MTQ_API_URL) — jangan hardcode di sini.
+const API_URL = (window.MTQ_API_URL || '').trim();
 
 const ADMIN_PIN = '1234'; // ganti via panel admin setelah login pertama
 
@@ -843,49 +841,9 @@ function clearCache(key) {
 }
 
 // ── Cabang list (master) ──────────────────────────────────────
-const CABANG_LIST = [
-  "Tartil Al Qur'an Putra",
-  "Tartil Al Qur'an Putri",
-
-  "Tilawah Anak-anak Putra",
-  "Tilawah Anak-anak Putri",
-
-  "Tilawah Remaja Putra",
-  "Tilawah Remaja Putri",
-
-  "Tilawah Dewasa Putra",
-  "Tilawah Dewasa Putri",
-
-  "Qira'at Mujawwad Putra",
-  "Qira'at Mujawwad Putri",
-
-  "Hafalan 1 Juz dan Tilawah Putra",
-  "Hafalan 1 Juz dan Tilawah Putri",
-
-  "Hafalan 5 Juz dan Tilawah Putra",
-  "Hafalan 5 Juz dan Tilawah Putri",
-
-  "Hafalan 10 Juz Putra",
-  "Hafalan 10 Juz Putri",
-
-  "Tafsir Bahasa Indonesia Putra",
-  "Tafsir Bahasa Indonesia Putri",
-
-  "Kaligrafi Naskah Putra",
-  "Kaligrafi Naskah Putri",
-
-  "Kaligrafi Hiasan Mushaf Putra",
-  "Kaligrafi Hiasan Mushaf Putri",
-
-  "Kaligrafi Dekorasi Putra",
-  "Kaligrafi Dekorasi Putri",
-
-  "Fahm Al Qur'an Putra",
-  "Fahm Al Qur'an Putri",
-
-  "Syarh Al Qur'an Putra",
-  "Syarh Al Qur'an Putri"
-];
+// Cabang list: SATU SUMBER di js/config.js → MTQ_CONFIG.CABANG_LIST
+// (jangan hardcode array cabang lagi di sini — edit config.js saja)
+const CABANG_LIST = MTQ_CONFIG.CABANG_LIST;
 
 // ── State ──────────────────────────────────────────────────────
 let S = {
@@ -1290,7 +1248,7 @@ async function testApiConnection() {
   showLogPanel();
   if (!isApiReady()) {
     MTQ_LOG.warn('API_URL kosong — tidak bisa test');
-    toast('API Belum Dikonfigurasi', 'Isi API_URL di penilaian.html baris 8', 'warning');
+    toast('API Belum Dikonfigurasi', 'Isi API_URL di js/config.js', 'warning');
     return;
   }
   showOverlay('Testing koneksi API...', 'Menghubungi Google Apps Script');

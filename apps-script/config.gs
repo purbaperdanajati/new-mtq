@@ -36,9 +36,9 @@ var PENDAFTARAN_CONFIG = {
 
 // ── 5. Info Event ─────────────────────────────────────────────
 var EVENT_INFO = {
-  nama   : 'MTQ Kabupaten Indramayu Tahun 2026',
-  tanggal: '-',
-  lokasi : '-',
+  nama   : 'MTQ ke-56 Kabupaten Indramayu Tahun 2026',
+  tanggal: '5–7 Agustus 2026',
+  lokasi : 'Kecamatan Jatibarang',
   tema   : "Dengan Al-Qur'an Membangun Generasi Emas"
 };
 

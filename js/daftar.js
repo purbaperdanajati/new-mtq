@@ -6,7 +6,7 @@
 
 // API_URL: satu sumber dari js/config.js (window.MTQ_API_URL) — jangan ubah di sini
 const API_URL = window.MTQ_API_URL || '';
-let AGE_CUTOFF = '2026-11-01';   // tanggal hitungan umur — sesuai Juknis (per 1 November 2026); ditimpa oleh nilai server di loadConfig() bila tersedia
+let AGE_CUTOFF = MTQ_CONFIG.AGE_CUTOFF_DATE;   // sesuai Juknis; ditimpa nilai server di loadConfig() bila tersedia
 
 // ── State ─────────────────────────────────────────────────────
 let state = {
@@ -23,50 +23,8 @@ let state = {
   formData: {},
 };
 
-// ── Fallback config ───────────────────────────────────────────
-const FALLBACK_CONFIG = [
-  { cabang_lomba:"Tartil Al Qur'an Putra", tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:12, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:"Tartil Al Qur'an Putri", tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:12, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-
-  { cabang_lomba:'Tilawah Anak-anak Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:14, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Tilawah Anak-anak Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:14, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-
-  { cabang_lomba:'Tilawah Remaja Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:24, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Tilawah Remaja Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:24, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-
-  { cabang_lomba:'Tilawah Dewasa Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:40, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Tilawah Dewasa Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:40, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-
-  { cabang_lomba:"Qira'at Mujawwad Putra", tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:40, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:"Qira'at Mujawwad Putri", tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:40, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-
-  { cabang_lomba:'Hafalan 1 Juz dan Tilawah Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:15, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Hafalan 1 Juz dan Tilawah Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:15, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-
-  { cabang_lomba:'Hafalan 5 Juz dan Tilawah Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:20, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Hafalan 5 Juz dan Tilawah Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:20, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-
-  { cabang_lomba:'Hafalan 10 Juz Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:20, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Hafalan 10 Juz Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:20, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-
-  { cabang_lomba:'Tafsir Bahasa Indonesia Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Tafsir Bahasa Indonesia Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-
-  { cabang_lomba:'Kaligrafi Naskah Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Kaligrafi Naskah Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-
-  { cabang_lomba:'Kaligrafi Hiasan Mushaf Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Kaligrafi Hiasan Mushaf Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-
-  { cabang_lomba:'Kaligrafi Dekorasi Putra', tipe:'individu', gender:'L', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:'Kaligrafi Dekorasi Putri', tipe:'individu', gender:'P', umur_min:0, umur_max_tahun:34, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-
-  { cabang_lomba:"Fahm Al Qur'an Putra", tipe:'team', gender:'L', umur_min:0, umur_max_tahun:18, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:"Fahm Al Qur'an Putri", tipe:'team', gender:'P', umur_min:0, umur_max_tahun:18, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-
-  { cabang_lomba:"Syarh Al Qur'an Putra", tipe:'team', gender:'L', umur_min:0, umur_max_tahun:18, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
-  { cabang_lomba:"Syarh Al Qur'an Putri", tipe:'team', gender:'P', umur_min:0, umur_max_tahun:18, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' }
-];
+// Fallback config: SATU SUMBER di js/config.js → MTQ_CONFIG.CABANG_CONFIG_FALLBACK
+// (jangan hardcode array cabang lagi di sini — edit config.js saja)
 
 // ══════════════════════════════════════════════════════════════
 // AGE UTILITIES  (presisi hari, bukan hanya tahun)
@@ -228,13 +186,15 @@ function loadConfig() {
       state.config = data.config;
       log.info(`loadConfig ✓ — ${data.config.length} cabang dimuat dari API`);
 
-      // Gunakan ageCutoffDate dari server jika tersedia — sebelumnya hanya
-      // disimpan ke window._ageCutoff dan TIDAK PERNAH dipakai kalkulasi umur.
-      if (data.registrationConfig?.ageCutoffDate) {
-        AGE_CUTOFF = data.registrationConfig.ageCutoffDate;
-        window._ageCutoff = AGE_CUTOFF;
-        log.info('AGE_CUTOFF dari server (dipakai untuk kalkulasi):', AGE_CUTOFF);
-      }
+      // Sebarkan hasil server ke MTQ_CONFIG (satu tempat bersama di config.js)
+      // supaya file lain yang baca MTQ_CONFIG di halaman yang sama ikut ter-update.
+      MTQ_CONFIG.applyServerConfig(data);
+
+      // Sinkronkan AGE_CUTOFF lokal dari MTQ_CONFIG — sebelumnya nilai server
+      // hanya disimpan ke window._ageCutoff dan TIDAK PERNAH dipakai kalkulasi umur.
+      AGE_CUTOFF = MTQ_CONFIG.AGE_CUTOFF_DATE;
+      window._ageCutoff = AGE_CUTOFF;
+      log.info('AGE_CUTOFF dari server (dipakai untuk kalkulasi):', AGE_CUTOFF);
 
       // Tampilkan warning jika pendaftaran belum/sudah tutup
       if (data.registrationConfig && !data.registrationConfig.isOpen) {
@@ -246,8 +206,8 @@ function loadConfig() {
         log.warn('Pendaftaran status:', status, msg);
       }
     } else {
-      state.config = FALLBACK_CONFIG;
-      log.warn('loadConfig — API gagal/kosong, memakai FALLBACK_CONFIG');
+      state.config = MTQ_CONFIG.CABANG_CONFIG_FALLBACK;
+      log.warn('loadConfig — API gagal/kosong, memakai MTQ_CONFIG.CABANG_CONFIG_FALLBACK');
       showToast('Info', 'Menggunakan data cabang lomba default (koneksi API gagal).', 'warning');
     }
     populateCabang(sel);

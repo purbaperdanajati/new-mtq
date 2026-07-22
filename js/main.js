@@ -3,13 +3,15 @@
 // ============================================
 
 // ── Config ──────────────────────────────────
-// API_URL dibaca dari js/config.js (window.MTQ_API_URL) — jangan ubah di sini
+// SATU SUMBER: js/config.js (MTQ_CONFIG) — jangan hardcode ulang di sini.
+// Getter dipakai supaya selalu baca nilai MTQ_CONFIG terbaru (termasuk
+// setelah ditimpa data live dari server oleh file lain di halaman yang sama).
 const CONFIG = {
   get API_URL() { return window.MTQ_API_URL || ''; },
-  EVENT_DATE: '2026-08-05T08:00:00',        // Tanggal MULAI pelaksanaan (dipakai countdown) — sesuai Juknis: 5–7 Agustus 2026
-  EVENT_DATE_DISPLAY: '5–7 Agustus 2026',   // Teks tampilan rentang tanggal pelaksanaan
-  EVENT_LOCATION: 'Kecamatan Jatibarang',   // Sesuai Juknis MTQ ke-56 Kab. Indramayu
-  EVENT_THEME: 'Dengan Al-Qur\'an Membangun Generasi Emas',
+  get EVENT_DATE() { return MTQ_CONFIG.EVENT_DATE_START; },
+  get EVENT_DATE_DISPLAY() { return MTQ_CONFIG.EVENT_DATE_DISPLAY; },
+  get EVENT_LOCATION() { return MTQ_CONFIG.EVENT_LOCATION; },
+  get EVENT_THEME() { return MTQ_CONFIG.EVENT_THEME; },
 };
 
 // ── On DOM Ready ─────────────────────────────
