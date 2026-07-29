@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cek Status & Ambil Maqra – MTQ 2026</title>
   <link rel="stylesheet" href="css/style.css">
+  <!-- FIX #2: DocumentPreviewer — preview dokumen existing (foto/KTP/rekom) -->
+  <link rel="stylesheet" href="js/document-previewer.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>">
   <style>
     :root{
@@ -178,15 +180,30 @@
     .two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     @media(max-width:540px){.two-col{grid-template-columns:1fr}}
 
-    /* Upload zone mini */
-    .upload-zone-sm{border:2px dashed var(--g200);border-radius:var(--r-sm);padding:14px;text-align:center;cursor:pointer;transition:all .2s;background:var(--white);position:relative}
-    .upload-zone-sm:hover{border-color:var(--em);background:var(--em-xs)}
-    .upload-zone-sm input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-    .uz-icon{font-size:22px;margin-bottom:3px}.uz-label{font-size:12px;font-weight:600;color:var(--g600)}.uz-hint{font-size:11px;color:var(--g400)}
-    .upload-preview-sm{display:none;align-items:center;gap:8px;padding:9px 12px;background:var(--em-xs);border:1px solid var(--em-light);border-radius:var(--r-sm);margin-top:6px}
-    .upload-preview-sm.show{display:flex}
-    .upload-preview-sm .file-name{font-size:12px;font-weight:600;color:var(--em);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .upload-preview-sm .remove-btn{background:none;border:none;cursor:pointer;color:var(--g400);font-size:14px;flex-shrink:0}
+    /* ── FIX (v2): "Tap untuk ganti" — dokumen existing jadi thumbnail asli, ──
+       tap langsung buka file picker (gaya WhatsApp/Instagram ganti foto
+       profil), bukan lagi kotak upload kosong atau kartu info + 2 tombol
+       terpisah (Lihat/Ganti) seperti sebelumnya. */
+    .uz-wrap{margin-bottom:4px}
+    .uz-photo{position:relative;width:100%;height:118px;border-radius:var(--r-md);overflow:hidden;cursor:pointer;background:var(--g100);border:1.5px solid var(--g200);transition:border-color .2s}
+    .uz-photo:hover{border-color:var(--em)}
+    .uz-photo img{width:100%;height:100%;object-fit:cover;display:block}
+    .uz-photo-overlay{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 6px;background:linear-gradient(0deg,rgba(0,0,0,.62),rgba(0,0,0,0));color:#fff;font-size:11.5px;font-weight:700;pointer-events:none}
+    .uz-photo.empty{background:var(--em-xs);border-style:dashed;border-color:var(--em-light)}
+    .uz-photo.empty .uz-photo-overlay{position:static;background:none;color:var(--em);flex-direction:column;height:100%;padding:12px}
+    .uz-photo.empty .uz-photo-overlay span:first-child{font-size:22px}
+    .uz-photo.thumb-fail{background:var(--g100)}
+    .uz-photo.has-new{border-color:var(--em);border-width:2px}
+    .uz-photo.has-new .uz-photo-overlay{background:linear-gradient(0deg,rgba(5,150,105,.8),rgba(5,150,105,0))}
+    .uz-zoom-btn{position:absolute;top:6px;right:6px;width:27px;height:27px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s;z-index:2}
+    .uz-zoom-btn:hover{background:rgba(0,0,0,.75)}
+    .uz-caption{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;font-size:11.5px}
+    .uz-caption-label{font-weight:700;color:var(--g700)}
+    .uz-caption-status{color:var(--g500);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:58%;text-align:right}
+    .uz-undo-btn{display:none;margin-top:3px;background:none;border:none;color:var(--em);font-size:11px;font-weight:700;cursor:pointer;padding:0;text-decoration:underline}
+
+    /* ── FIX #1: hint syarat usia cabang di form perbaikan ── */
+    .age-rule-hint{display:flex;align-items:center;gap:6px;background:var(--gold-p);border:1px solid #fde68a;border-radius:var(--r-sm);padding:6px 10px;font-size:11.5px;font-weight:600;color:var(--gold);margin-top:6px}
 
     /* Confetti */
     .confetti-container{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:400;overflow:hidden}
@@ -334,6 +351,13 @@
   })();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<!-- FIX #2: DocumentPreviewer — preview dokumen existing (foto/KTP/rekom).
+     Pastikan 3 file ini ada di path yang sama dengan yang dipakai admin panel. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="js/document-previewer.js"></script>
+<script src="js/document-previewer.config.js"></script>
+
 <script src="js/cek-maqra.js"></script>
 </body>
 </html>

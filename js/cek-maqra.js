@@ -7,6 +7,20 @@
 //  ✅ NIK disabled di form edit, tidak dikirim ke server
 //  ✅ Upload Sertifikat/Piagam di form perbaikan
 //  ✅ Setelah verify, langsung tampilkan maqra tanpa input NIK ulang
+//  ✅ Validasi umur form perbaikan memakai syarat cabang dari server
+//     (sebelumnya selalu "tanpa batas" karena field-nya kosong)
+//  ✅ Dokumen existing (foto/KTP/sertifikat/rekom) bisa di-preview via
+//     DocumentPreviewer — peserta bebas pakai yang lama atau ganti baru
+//  ✅ Auto-scroll ke hasil setelah "Cek Status" — tidak perlu scroll manual
+//  ✅ FIX: submitPerbaikan() dengan foto/KTP baru dulu dikirim lewat
+//     jsonpPost (base64 dijejalkan ke query string URL) → PASTI GAGAL untuk
+//     foto (bisa >1 juta karakter, jauh melebihi batas panjang URL browser
+//     & server). api.gs SUDAH punya doPost(e) yang benar (dipakai untuk
+//     pendaftaran awal — lihat komentar "doPost kept for registration
+//     only"), tapi form perbaikan tidak pernah memakainya. Sekarang
+//     submitPerbaikan() memakai postJSON() — fetch() POST asli dengan
+//     Content-Type text/plain (menghindari CORS preflight yang tidak
+//     ditangani GAS) — ke endpoint doPost yang sama.
 // ============================================================
 
 // API_URL dibaca LAZILY saat dipakai (bukan saat file di-parse)
@@ -23,6 +37,7 @@ let _maqraList    = [];     // daftar maqra tersedia
 let _spinning     = false;
 let _maqraResult  = null;
 let _captchaCode  = '';     // captcha saat ini
+let previewer     = null;   // instance DocumentPreviewer (FIX #2 — preview dokumen existing)
 
 // ── Canvas Image Captcha ──────────────────────────────────────
 function generateCaptcha() {
@@ -95,6 +110,14 @@ function refreshCaptcha() {
 document.addEventListener('DOMContentLoaded', () => {
   initDarkMode();
   generateCaptcha();
+  initDocumentPreviewer();   // FIX #2 — siapkan DocumentPreviewer untuk "Lihat Dokumen"
+  // FIX: file:// punya pembatasan request lintas-origin yang berbeda dari
+  // http(s) dan bisa memicu error yang membingungkan di halaman ini.
+  // Untuk uji coba lokal, jalankan lewat server (mis. `python3 -m http.server`)
+  // atau langsung di domain hosting (GitHub Pages), jangan buka file langsung.
+  if (location.protocol === 'file:') {
+    console.warn('[MTQ] Halaman dibuka lewat file:// — beberapa fitur (kirim perbaikan, preview dokumen) butuh http/https untuk berfungsi normal. Gunakan server lokal atau domain hosting untuk uji coba.');
+  }
   const input = document.getElementById('nikInput');
   input.addEventListener('keydown', e => { if (e.key === 'Enter') cekStatus(); });
   input.addEventListener('input',   e => { e.target.value = e.target.value.replace(/\D/g, ''); });
@@ -103,6 +126,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') cekStatus();
   });
 });
+
+// ── FIX #2: DocumentPreviewer — preview dokumen existing (foto/KTP/rekom) ──
+// Dibind sekali di sini; DocumentPreviewer.bindTriggers() memakai event
+// delegation di document, jadi tombol .dp-trigger yang baru dirender
+// belakangan (mis. di dalam showEditForm()) otomatis ikut tertangkap juga.
+function initDocumentPreviewer() {
+  if (typeof DocumentPreviewer === 'undefined') {
+    console.warn('[MTQ] DocumentPreviewer tidak dimuat — pastikan document-previewer.js & document-previewer.css sudah di-include di cekstatus.html. Fitur "Lihat Dokumen" akan nonaktif.');
+    return;
+  }
+  const baseCfg = (typeof MY_DP_CONFIG !== 'undefined') ? MY_DP_CONFIG : {};
+  previewer = new DocumentPreviewer({ ...baseCfg, googleDriveApiKey: '' });
+  previewer.bindTriggers('.dp-trigger');
+}
 
 function initDarkMode() {
   applyTheme(localStorage.getItem('mtq-theme') || 'light');
@@ -143,6 +180,19 @@ async function cekStatus() {
   }
   if (capErr) capErr.style.display = 'none';
 
+  await fetchAndRenderStatus(nik);
+}
+
+// FIX: logika fetch+render dipisah dari validasi captcha di atas, supaya
+// bisa dipakai ulang untuk refresh status setelah submitPerbaikan() SUKSES.
+// Sebelumnya, refresh setelah perbaikan memanggil cekStatus() lagi — yang
+// menolaknya karena captchaInput di titik itu sudah tidak sesuai/relevan,
+// memunculkan toast "Kode keamanan salah" dan membiarkan status yang
+// tampil tetap status LAMA (Ditolak), padahal di server sudah berubah.
+// Identitas peserta di titik ini sudah terverifikasi lewat pengiriman
+// perbaikan itu sendiri (nomor_pendaftaran valid + lolos validasi server),
+// jadi mengecek captcha lagi di sini tidak perlu.
+async function fetchAndRenderStatus(nik) {
   showLoading(true, 'Mencari data peserta...');
   document.getElementById('searchBtn').disabled = true;
   clearAreas();
@@ -160,10 +210,14 @@ async function cekStatus() {
     const data = await jsonpGet({ action: 'checkNIK', nik });
     if (!data.success || !data.found) {
       renderNotFound(nik);
+      scrollToResult();
       return;
     }
     _record = data.record;
+    // FIX #2 — teruskan kunci Drive API (dibatasi HTTP referrer + Drive API only, lihat config.gs)
+    if (previewer) previewer.config.googleDriveApiKey = data.driveApiKey || '';
     renderStatusCard(_record);
+    scrollToResult();   // FIX #3 — langsung bawa user ke hasil, tidak perlu scroll manual
 
     const status = (_record.status_verifikasi || '').trim();
     if (status === 'Terverifikasi') {
@@ -188,6 +242,13 @@ function clearAreas() {
   _maqraList   = [];
   _maqraResult = null;
   _spinning    = false;
+}
+
+// ── FIX #3: auto-scroll ke hasil — sebelumnya user harus scroll manual ──
+function scrollToResult() {
+  setTimeout(() => {
+    document.getElementById('statusArea')?.scrollIntoView({ behavior:'smooth', block:'start' });
+  }, 100);
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1132,7 +1193,11 @@ function showEditForm() {
   if (!_record) return;
   const rec     = _record;
   const isTeam  = (rec.tipe_lomba || '').toLowerCase() === 'team';
-  const anggota = (isTeam && rec.anggota && rec.anggota.length)
+  // FIX #2: sebelumnya syarat "isTeam &&" di sini membuat peserta INDIVIDU
+  // tidak pernah memakai rec.anggota — padahal link_foto/link_ktp (dan hasil
+  // perbaikan sebelumnya) tersimpan di situ untuk SEMUA tipe peserta, karena
+  // apiRegister_ selalu mengisi anggota_json walau untuk pendaftar individu.
+  const anggota = (rec.anggota && rec.anggota.length)
     ? rec.anggota
     : [{ nama_lengkap:rec.nama_lengkap, nik:rec.nik, tempat_lahir:rec.tempat_lahir,
          tanggal_lahir:rec.tanggal_lahir, jenis_kelamin:rec.jenis_kelamin,
@@ -1148,6 +1213,11 @@ function showEditForm() {
     cutoff: (typeof MTQ_CONFIG !== 'undefined' ? MTQ_CONFIG.AGE_CUTOFF_DATE : null)
             || rec.age_cutoff || new Date().toISOString().slice(0,10),
   };
+  // FIX #1: syarat usia sekarang ditampilkan eksplisit di form (bukan cuma
+  // divalidasi diam-diam sesudah user salah isi tanggal lahir).
+  const _ageRuleLabel = _ageRule.maxThn < 99
+    ? `maks. ${_ageRule.maxThn} thn ${_ageRule.maxBln} bln ${_ageRule.maxHri} hr (per ${fmtTglID(_ageRule.cutoff)})${_ageRule.min>0?`, min. ${_ageRule.min} thn`:''}`
+    : (_ageRule.min > 0 ? `min. ${_ageRule.min} tahun` : 'tidak ada batas usia khusus untuk cabang ini');
 
   let membersHtml = anggota.map((m, idx) => {
     const isKetua = idx === 0;
@@ -1178,6 +1248,7 @@ function showEditForm() {
             <input class="field-input" type="date" id="em_dob_${idx}"
                    value="${esc(m.tanggal_lahir||'')}"
                    onchange="validateDOB(this, ${JSON.stringify(_ageRule)}, '${esc(idx.toString())}')">
+            <div class="age-rule-hint">📏 Syarat cabang: ${esc(_ageRuleLabel)}</div>
             <div id="age_msg_${idx}" style="margin-top:5px;font-size:12px;font-weight:600;display:none"></div>
           </div>
           <div class="field-group">
@@ -1192,17 +1263,17 @@ function showEditForm() {
         <div class="two-col" style="margin-top:10px">
           <div class="field-group">
             <label class="field-label">📸 Foto Terbaru</label>
-            ${uzMini('foto_'+idx,'Foto peserta')}
+            ${uzMini('foto_'+idx,'Foto',m.link_foto)}
           </div>
           <div class="field-group">
             <label class="field-label">🪪 KTP / Akte</label>
-            ${uzMini('ktp_'+idx,'KTP/Akte')}
+            ${uzMini('ktp_'+idx,'KTP/Akte',m.link_ktp)}
           </div>
         </div>
         <div class="field-group" style="margin-top:10px">
           <label class="field-label">🏅 Sertifikat / Piagam (opsional)</label>
-          ${uzMini('sert_'+idx+'_1','Sertifikat / Piagam')}
-          <div style="font-size:11px;color:var(--g400);margin-top:4px">JPG/PNG/PDF — maks. 2 MB</div>
+          ${uzMini('sert_'+idx+'_1','Sertifikat / Piagam',m.link_sertifikat)}
+          <div style="font-size:11px;color:var(--g400);margin-top:4px">JPG/PNG/PDF — maks. 2 MB. Kosongkan jika tidak ingin menambah/mengganti.</div>
         </div>
       </div>`;
   }).join('');
@@ -1220,8 +1291,8 @@ function showEditForm() {
         ${membersHtml}
         <div class="edit-section">
           <div class="edit-section-title">📋 Surat Rekomendasi <span class="req">*</span></div>
-          ${uzMini('rekom','Surat Rekomendasi')}
-          <div style="font-size:11px;color:var(--g400);margin-top:4px">Wajib diunggah ulang setiap pengajuan perbaikan</div>
+          ${uzMini('rekom','Surat Rekomendasi',rec.link_rekom)}
+          <div style="font-size:11px;color:var(--g400);margin-top:4px">${rec.link_rekom ? 'Bisa memakai berkas yang sudah ada, atau ganti dengan yang baru.' : 'Wajib diunggah — belum ada berkas tersimpan.'}</div>
         </div>
         <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:12px;border:1.5px solid var(--g200);border-radius:8px;margin-bottom:16px">
           <input type="checkbox" id="editAgree" style="margin-top:2px;width:16px;height:16px;accent-color:var(--em);flex-shrink:0">
@@ -1318,19 +1389,56 @@ function allDOBValid(anggotaCount, ageRule) {
   return true;
 }
 
-function uzMini(key, label) {
+// FIX (v2 — UI/UX diminta disederhanakan lagi): sebelumnya kartu info
+// "dokumen tersimpan" + 2 tombol terpisah (Lihat/Ganti) masih bikin
+// bingung. Sekarang dokumen existing tampil sebagai THUMBNAIL ASLI —
+// tap di mana saja pada thumbnail = langsung buka pemilih file untuk
+// ganti (gaya WhatsApp/Instagram ganti foto profil). Lihat ukuran penuh
+// lewat ikon 🔍 kecil di pojok (memicu DocumentPreviewer, terpisah dari
+// area tap-untuk-ganti supaya tidak ketukar).
+function uzMini(key, label, existingUrl) {
+  const hasExisting = !!existingUrl;
+  const thumb = hasExisting ? driveThumbUrl(existingUrl) : '';
   return `
-    <div class="upload-zone-sm" id="uz_${key}">
-      <input type="file" accept="image/jpeg,image/png,application/pdf" id="uinput_${key}">
-      <div class="uz-icon">📎</div>
-      <div class="uz-label">Upload ${label}</div>
-      <div class="uz-hint">JPG/PNG/PDF — 2 MB</div>
-    </div>
-    <div class="upload-preview-sm" id="uprev_${key}">
-      <span>✅</span>
-      <span class="file-name" id="uname_${key}"></span>
-      <button class="remove-btn" onclick="removeFile('${key}')">✕</button>
+    <div class="uz-wrap" id="uzwrap_${key}">
+      <div class="uz-photo${hasExisting ? '' : ' empty'}" id="uzphoto_${key}"
+           onclick="document.getElementById('uinput_${key}').click()">
+        ${hasExisting ? `<img src="${esc(thumb)}" alt="" onerror="this.style.display='none';this.parentElement.classList.add('thumb-fail')">` : ``}
+        <div class="uz-photo-overlay">
+          <span>${hasExisting ? '🔄' : '📷'}</span>
+          <span>${hasExisting ? 'Tap untuk ganti' : 'Tap untuk upload'}</span>
+        </div>
+        ${hasExisting ? `<button type="button" class="uz-zoom-btn dp-trigger" data-file-url="${esc(existingUrl)}" data-doc-name="${esc(label)}" onclick="event.stopPropagation()" title="Lihat ukuran penuh">🔍</button>` : ``}
+      </div>
+      <div class="uz-caption">
+        <span class="uz-caption-label">${esc(label)}</span>
+        <span class="uz-caption-status" id="uzstatus_${key}">${hasExisting ? 'Tersimpan' : 'Belum ada'}</span>
+      </div>
+      <button type="button" class="uz-undo-btn" id="uzundo_${key}" onclick="undoReplace('${key}','${esc(label)}','${esc(existingUrl||'')}')">↩ Batal, pakai yang lama</button>
+      <input type="file" accept="image/jpeg,image/png,application/pdf" id="uinput_${key}" style="display:none">
     </div>`;
+}
+
+// Bentuk URL thumbnail Drive dari URL .../file/d/{id}/view — tidak perlu
+// API key, cukup untuk file yang sharing-nya "Anyone with link" (semua
+// file upload sistem ini memang begitu, lihat uploadFile_ di upload.gs).
+function driveThumbUrl(driveViewUrl, size) {
+  if (!driveViewUrl) return '';
+  const m = String(driveViewUrl).match(/[-\w]{20,}/);
+  if (!m) return '';
+  return `https://drive.google.com/thumbnail?id=${m[0]}&sz=w${size || 300}`;
+}
+
+// Batal ganti — kembali ke dokumen lama (atau kotak kosong kalau memang
+// belum ada). Render ulang dari uzMini supaya state selalu konsisten,
+// lalu bind ulang input file-nya (outerHTML menghapus listener lama).
+function undoReplace(key, label, existingUrl) {
+  delete _editFiles[key];
+  const wrap = document.getElementById('uzwrap_' + key);
+  if (wrap) {
+    wrap.outerHTML = uzMini(key, label, existingUrl);
+    bindUZ(key);
+  }
 }
 
 function bindUZ(key) {
@@ -1340,39 +1448,50 @@ function bindUZ(key) {
 async function handleFile(key, file) {
   if (!file) return;
   if (file.size > 2 * 1024 * 1024) { showToast('Peringatan','File terlalu besar (maks 2 MB)','warning'); return; }
-  const b64 = await toBase64(file);
-  _editFiles[key] = { name:file.name, type:file.type, data:b64 };
-  document.getElementById('uprev_'+key)?.classList.add('show');
-  const nm = document.getElementById('uname_'+key);
-  if (nm) nm.textContent = file.name;
-  const uz = document.getElementById('uz_'+key);
-  if (uz) uz.style.display = 'none';
-}
 
-function removeFile(key) {
-  delete _editFiles[key];
-  document.getElementById('uprev_'+key)?.classList.remove('show');
-  const uz = document.getElementById('uz_'+key);
-  if (uz) uz.style.display = '';
-  const inp = document.getElementById('uinput_'+key);
-  if (inp) inp.value = '';
-}
+  let dataUrl;
+  try {
+    dataUrl = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload  = () => res(r.result);
+      r.onerror = () => rej(new Error('Gagal membaca file'));
+      r.readAsDataURL(file);
+    });
+  } catch (e) { showToast('Error', e.message, 'error'); return; }
 
-function toBase64(file) {
-  return new Promise((res,rej) => {
-    const r = new FileReader();
-    r.onload  = () => res(r.result.split(',')[1]);
-    r.onerror = () => rej(new Error('Read failed'));
-    r.readAsDataURL(file);
-  });
+  _editFiles[key] = { name: file.name, type: file.type, data: dataUrl.split(',')[1] };
+
+  // Preview instan pakai file yang baru dipilih — tidak perlu upload dulu
+  const photo = document.getElementById('uzphoto_' + key);
+  if (photo) {
+    photo.classList.remove('empty', 'thumb-fail');
+    photo.classList.add('has-new');
+    let img = photo.querySelector('img');
+    if (file.type.startsWith('image/')) {
+      if (!img) { img = document.createElement('img'); img.alt=''; photo.insertBefore(img, photo.firstChild); }
+      img.style.display = '';
+      img.src = dataUrl;
+    } else if (img) {
+      img.style.display = 'none';   // PDF dll: tidak ada thumbnail gambar
+    }
+    const overlaySpans = photo.querySelectorAll('.uz-photo-overlay span');
+    if (overlaySpans[1]) overlaySpans[1].textContent = 'Tap untuk ganti lagi';
+  }
+  const statusEl = document.getElementById('uzstatus_' + key);
+  if (statusEl) statusEl.textContent = '🆕 ' + file.name;
+  const undoBtn = document.getElementById('uzundo_' + key);
+  if (undoBtn) undoBtn.style.display = 'inline-block';
 }
 
 async function submitPerbaikan(nomor, memberCount) {
   if (!document.getElementById('editAgree').checked) {
     showToast('Peringatan','Centang persetujuan terlebih dahulu','warning'); return;
   }
-  if (!_editFiles['rekom']) {
-    showToast('Peringatan','Surat rekomendasi wajib diupload ulang','warning'); return;
+  // FIX #2: rekom wajib ADA (baru atau existing), tapi tidak wajib
+  // diupload ULANG setiap kali — boleh memakai berkas yang sudah tersimpan.
+  const hasExistingRekom = !!(_record && _record.link_rekom);
+  if (!_editFiles['rekom'] && !hasExistingRekom) {
+    showToast('Peringatan','Surat rekomendasi wajib diupload','warning'); return;
   }
 
   // Validasi usia semua anggota sebelum submit
@@ -1411,7 +1530,10 @@ async function submitPerbaikan(nomor, memberCount) {
       };
     });
 
-    const data = await jsonpPost({
+    // FIX: pakai postJSON (fetch POST asli ke doPost), BUKAN jsonpPost.
+    // payload ini bisa membawa foto/KTP base64 yang jauh melebihi batas
+    // panjang URL kalau dikirim lewat jsonpPost (lihat catatan di header file).
+    const data = await postJSON({
       action            : 'perbaikan',
       nomor_pendaftaran : nomor,
       members,
@@ -1421,7 +1543,11 @@ async function submitPerbaikan(nomor, memberCount) {
     if (data.success) {
       showToast('Berhasil','Perbaikan berhasil dikirim. Silakan tunggu verifikasi ulang.','success',6000);
       document.getElementById('editArea').innerHTML = '';
-      cekStatus();
+      // FIX: refresh langsung tanpa validasi captcha ulang — lihat catatan
+      // di fetchAndRenderStatus(). Sebelumnya manggil cekStatus() di sini
+      // membuat toast "Kode keamanan salah" muncul dan status yang tampil
+      // tetap Ditolak (status lama), padahal sudah reset ke Menunggu di server.
+      if (_record?.nik) await fetchAndRenderStatus(_record.nik);
     } else {
       showToast('Gagal', data.message || 'Terjadi kesalahan', 'error', 5000);
     }
@@ -1475,6 +1601,57 @@ function jsonpPost(payload, timeout = 30000) {
 }
 
 /**
+ * FIX: POST asli (fetch) ke doPost — dipakai KHUSUS untuk payload yang bisa
+ * membawa file base64 (foto/KTP/sertifikat), karena jsonpPost/_jsonp di atas
+ * menjejalkan payload ke query string URL — foto sekalipun sudah dikompres
+ * bisa dengan mudah >100.000 karakter, jauh melebihi batas panjang URL yang
+ * ditoleransi browser & infrastruktur Google, dan akan gagal secara diam-diam
+ * atau dengan error yang membingungkan ("Unexpected end of input", dst).
+ *
+ * api.gs SUDAH punya doPost(e) yang benar untuk kasus ini (dipakai proses
+ * pendaftaran awal — lihat komentar "doPost kept for registration only" di
+ * api.gs) — jadi tidak perlu kirim query string sama sekali, cukup fetch()
+ * POST biasa dengan body JSON. Content-Type text/plain (BUKAN application/json)
+ * sengaja dipakai supaya browser menganggap ini "simple request" dan tidak
+ * mengirim CORS preflight (OPTIONS) — Apps Script tidak menangani preflight.
+ */
+async function postJSON(payload, timeout = 30000) {
+  const apiUrl = getApiUrl();
+  if (!apiUrl) throw new Error('API_URL tidak terkonfigurasi — periksa js/config.js');
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+
+  let res;
+  try {
+    res = await fetch(apiUrl, {
+      method : 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },   // hindari CORS preflight
+      body   : JSON.stringify(payload),
+      signal : controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    if (err.name === 'AbortError') {
+      throw new Error('Request timeout (' + Math.round(timeout / 1000) + 's) — server lambat merespons');
+    }
+    throw new Error(
+      'Gagal menghubungi server. Pastikan:\n' +
+      '1. Deploy GAS sudah diperbarui (Re-deploy → New version)\n' +
+      '2. Akses: "Anyone" (bukan hanya yang punya akun Google)\n' +
+      '3. Halaman ini dibuka lewat http/https (mis. server lokal atau GitHub Pages) —\n' +
+      '   BUKAN dibuka langsung dari file (file://), karena browser membatasi\n' +
+      '   permintaan lintas-origin dari file:// secara berbeda.\n' +
+      'Detail teknis: ' + err.message
+    );
+  }
+  clearTimeout(timer);
+
+  if (!res.ok) throw new Error('Server merespons dengan status ' + res.status);
+  return res.json();
+}
+
+/**
  * Core JSONP — tambahkan &callback=xxx ke URL, inject <script>, tunggu callback
  * GAS tidak redirect ketika ada parameter callback=
  */
@@ -1524,6 +1701,12 @@ function showLoading(show, msg = 'Memuat...') {
 }
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+// FIX #1: format tanggal ISO (YYYY-MM-DD) → "1 November 2026" untuk label syarat usia
+function fmtTglID(iso) {
+  try {
+    return new Date(String(iso)+'T00:00:00').toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
+  } catch(e) { return String(iso); }
 }
 function showToast(title, msg, type='info', dur=4000) {
   const icons = { success:'✅',error:'❌',warning:'⚠️',info:'ℹ️' };

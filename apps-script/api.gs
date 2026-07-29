@@ -487,12 +487,60 @@ function apiCheckNIK_v2_(params) {
   return { success:true, found:false };
 }
 
+// ── FIX #1: helper terpusat untuk lookup config cabang ─────────────
+// Dipakai oleh _buildNIKRecord (mengisi syarat usia di response checkNIK)
+// dan apiPerbaikan_ (validasi usia server-side saat submit perbaikan),
+// supaya keduanya konsisten dengan logika yang sama dipakai apiRegister_.
+function getCabangConfig_(cabangLomba) {
+  var target = String(cabangLomba || '').trim();
+  if (!target) return null;
+  try {
+    var ss       = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var cfgSheet = getOrCreateSheet_(ss, SHEET_CONFIG, CONFIG_HEADERS, DEFAULT_CONFIG_DATA);
+    var cfgData  = cfgSheet.getDataRange().getValues();
+    var cfgHdr   = cfgData[0].map(function(h){ return String(h).trim().toLowerCase().replace(/\s+/g,'_'); });
+    var cIdx     = cfgHdr.indexOf('cabang_lomba');
+    for (var i=1; i<cfgData.length; i++) {
+      if (String(cfgData[i][cIdx]||'').trim() === target) {
+        var row = cfgData[i];
+        return {
+          tipe          : String(row[cfgHdr.indexOf('tipe')]||'individu').trim(),
+          gender        : String(row[cfgHdr.indexOf('gender')]||'Semua').trim(),
+          umur_min      : parseInt(row[cfgHdr.indexOf('umur_min')])||0,
+          umur_max_tahun: parseInt(row[cfgHdr.indexOf('umur_max_tahun')])||99,
+          umur_max_bulan: parseInt(row[cfgHdr.indexOf('umur_max_bulan')])||0,
+          umur_max_hari : parseInt(row[cfgHdr.indexOf('umur_max_hari')])||0,
+          kuota         : parseInt(row[cfgHdr.indexOf('kuota')])||31,
+          status        : String(row[cfgHdr.indexOf('status_aktif')]||'').trim(),
+        };
+      }
+    }
+  } catch (eCfg) { logWarn('api','getCabangConfig_ error: '+eCfg.message); }
+  // Fallback ke DEFAULT_CONFIG_DATA (mis. sheet CONFIG belum sinkron)
+  for (var di=0; di<DEFAULT_CONFIG_DATA.length; di++) {
+    if (String(DEFAULT_CONFIG_DATA[di][0]).trim() === target) {
+      var dr = DEFAULT_CONFIG_DATA[di];
+      return { tipe:String(dr[1]).trim(), gender:String(dr[2]).trim(),
+        umur_min:parseInt(dr[3])||0, umur_max_tahun:parseInt(dr[4])||99,
+        umur_max_bulan:parseInt(dr[5])||0, umur_max_hari:parseInt(dr[6])||0,
+        kuota:parseInt(dr[7])||31, status:'Aktif' };
+    }
+  }
+  return null;
+}
+
 function _buildNIKRecord(row, nik, anggotaArr, anggotaIdx) {
   var anggota = [];
   try {
     if (row[COL.ANGGOTA_JSON]) anggota = JSON.parse(row[COL.ANGGOTA_JSON]);
   } catch(e) {}
- 
+
+  // FIX #1 / #2: syarat usia cabang + link dokumen existing, supaya
+  // validateDOB()/allDOBValid() dan uzMini() di cek-maqra.js tidak lagi
+  // selalu jatuh ke nilai default (tanpa batas / tanpa link dokumen).
+  var _cabangNama = String(row[COL.CABANG_LOMBA] || '');
+  var _cabangCfg  = getCabangConfig_(_cabangNama) || {};
+
   return {
     success: true,
     found  : true,
@@ -501,7 +549,7 @@ function _buildNIKRecord(row, nik, anggotaArr, anggotaIdx) {
       tipe_lomba        : String(row[COL.TIPE_LOMBA]        || 'individu'),
       nama_tim          : String(row[COL.NAMA_TIM]          || ''),
       kecamatan         : String(row[COL.KECAMATAN]         || ''),
-      cabang_lomba      : String(row[COL.CABANG_LOMBA]      || ''),
+      cabang_lomba      : _cabangNama,
       nama_lengkap      : String(row[COL.NAMA_LENGKAP]      || ''),
       nik               : String(row[COL.NIK]               || ''),
       tempat_lahir      : String(row[COL.TEMPAT_LAHIR]      || ''),
@@ -515,7 +563,20 @@ function _buildNIKRecord(row, nik, anggotaArr, anggotaIdx) {
       anggota           : anggota,
       nik_pencari       : nik,
       is_ketua          : anggotaIdx === undefined || anggotaIdx === 0,
-    }
+      // ── FIX #1: syarat usia cabang — dipakai validateDOB()/allDOBValid() ──
+      umur_min          : _cabangCfg.umur_min,
+      umur_max_tahun    : _cabangCfg.umur_max_tahun,
+      umur_max_bulan    : _cabangCfg.umur_max_bulan,
+      umur_max_hari     : _cabangCfg.umur_max_hari,
+      age_cutoff        : PENDAFTARAN_CONFIG.AGE_CUTOFF_DATE,
+      // ── FIX #2: link dokumen existing — dipakai uzMini()/"Lihat Dokumen" ──
+      link_rekom        : String(row[COL.LINK_REKOM]  || ''),
+      link_folder       : String(row[COL.LINK_FOLDER] || ''),
+    },
+    // Kunci API Drive (dibatasi HTTP referrer + Drive API only — lihat config.gs)
+    // dikirim di sini agar DocumentPreviewer di halaman publik cekstatus.html
+    // bisa menampilkan preview dokumen milik peserta yang sedang login by NIK.
+    driveApiKey: DRIVE_API_KEY || ''
   };
 }
 
@@ -892,12 +953,12 @@ function logError_(ctx, msg) {
 function apiPerbaikan_(body) {
   var nomor = String(body.nomor_pendaftaran || '').trim();
   if (!nomor) return { success:false, message:'Nomor pendaftaran tidak ada' };
- 
+
   var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
   var sheet = getOrCreateSheet_(ss, SHEET_PENDAFTAR, PENDAFTAR_HEADERS);
   var lastRow = sheet.getLastRow();
   if (lastRow <= 1) return { success:false, message:'Data kosong' };
- 
+
   // Cari baris berdasarkan nomor pendaftaran
   var nums   = sheet.getRange(2, COL.NOMOR_PENDAFTARAN + 1, lastRow - 1, 1).getValues();
   var rowNum = -1;
@@ -905,14 +966,35 @@ function apiPerbaikan_(body) {
     if (String(nums[i][0]).trim() === nomor) { rowNum = i + 2; break; }
   }
   if (rowNum < 0) return { success:false, message:'Nomor tidak ditemukan: ' + nomor };
- 
+
   // Hanya boleh jika status saat ini = Ditolak
   var currentStatus = String(sheet.getRange(rowNum, COL.STATUS_VERIFIKASI + 1).getValue()).trim();
   if (currentStatus !== 'Ditolak') {
     return { success:false, message:'Perbaikan hanya berlaku untuk status Ditolak (saat ini: ' + currentStatus + ')' };
   }
- 
+
   var members = body.members || [];
+
+  // ── FIX #1: validasi usia SEBELUM menyimpan apa pun ────────────────
+  // Sebelumnya tanggal_lahir baru langsung ditulis ke sheet tanpa dicek
+  // ulang terhadap syarat umur cabang lomba, jadi peserta bisa mengganti
+  // tanggal lahir ke nilai di luar syarat cabang saat "perbaikan data".
+  // Sekarang divalidasi dengan logika yang sama dengan apiRegister_,
+  // lewat helper getCabangConfig_ + calcAgeAtCutoff_/validateAge_ (helper.gs).
+  var cabangNama = String(sheet.getRange(rowNum, COL.CABANG_LOMBA + 1).getValue());
+  var cabangCfg  = getCabangConfig_(cabangNama);
+  if (cabangCfg && members.length) {
+    for (var vi = 0; vi < members.length; vi++) {
+      var vm = members[vi];
+      if (!vm.tanggal_lahir) continue;   // tidak diubah oleh peserta — lewati
+      var vAge = calcAgeAtCutoff_(vm.tanggal_lahir);
+      var vChk = validateAge_(vAge, cabangCfg.umur_min, cabangCfg.umur_max_tahun, cabangCfg.umur_max_bulan, cabangCfg.umur_max_hari);
+      if (!vChk.ok) {
+        return { success:false, message:'Anggota ' + (vi + 1) + ' (' + (vm.nama_lengkap || '-') + '): ' + vChk.msg };
+      }
+    }
+  }
+
   if (members.length > 0) {
     var lead = members[0];
     // Update kolom utama dari anggota pertama (ketua / individu)
@@ -922,25 +1004,34 @@ function apiPerbaikan_(body) {
     if (lead.alamat)        sheet.getRange(rowNum, COL.ALAMAT         + 1).setValue(lead.alamat);
     if (lead.no_hp)         sheet.getRange(rowNum, COL.NO_HP          + 1).setValue(lead.no_hp);
     // CATATAN: NIK tidak pernah diupdate dari body — hanya data yang boleh diubah
- 
-    // Upload berkas revisi ke Drive
+
+    // Upload berkas revisi ke Drive.
+    // FIX #2: URL hasil upload sekarang DITANGKAP (newLinks) dan disinkronkan
+    // ke ANGGOTA_JSON di bawah — sebelumnya uploadFile_() dipanggil tapi hasil
+    // URL-nya dibuang, jadi "Lihat Dokumen" tidak akan pernah lihat file baru.
+    var newLinks = {};
     try {
-      var cab  = String(sheet.getRange(rowNum, COL.CABANG_LOMBA + 1).getValue());
+      var cab  = cabangNama;
       var kec  = String(sheet.getRange(rowNum, COL.KECAMATAN + 1).getValue());
       var fold = getPesertaFolder_(cab, kec, nomor);
       var ts   = new Date().getTime();
- 
+
       members.forEach(function(m, mi) {
         var prefix = 'REVISI_' + ts + '_M' + (mi + 1) + '_';
-        if (m.foto) { try { uploadFile_(m.foto, fold, prefix + 'FOTO'); } catch(ue) {} }
-        if (m.ktp)  { try { uploadFile_(m.ktp,  fold, prefix + 'KTP');  } catch(ue) {} }
+        var link = {};
+        if (m.foto) { try { link.foto = uploadFile_(m.foto, fold, prefix + 'FOTO'); } catch(ue) {} }
+        if (m.ktp)  { try { link.ktp  = uploadFile_(m.ktp,  fold, prefix + 'KTP');  } catch(ue) {} }
         if (m.sertifikat && m.sertifikat.length) {
           m.sertifikat.forEach(function(s, si) {
-            try { uploadFile_(s, fold, prefix + 'SERT' + (si + 1)); } catch(ue) {}
+            try {
+              var sUrl = uploadFile_(s, fold, prefix + 'SERT' + (si + 1));
+              if (sUrl) link.sertifikat = sUrl;
+            } catch(ue) {}
           });
         }
+        newLinks[mi] = link;
       });
- 
+
       if (body.rekom) {
         var rekomUrl = uploadFile_(body.rekom, fold, 'REVISI_' + ts + '_REKOMENDASI');
         if (rekomUrl) sheet.getRange(rowNum, COL.LINK_REKOM + 1).setValue(rekomUrl);
@@ -948,32 +1039,40 @@ function apiPerbaikan_(body) {
     } catch (uploadErr) {
       logWarn('api', 'perbaikan upload error: ' + uploadErr.message);
     }
- 
-    // Update ANGGOTA_JSON untuk tim
-    if (members.length > 1) {
-      try {
-        var existingJson = sheet.getRange(rowNum, COL.ANGGOTA_JSON + 1).getValue();
-        var existing     = existingJson ? JSON.parse(existingJson) : [];
-        members.forEach(function(m, idx) {
-          if (!existing[idx]) return;
-          if (m.nama_lengkap)  existing[idx].nama_lengkap  = m.nama_lengkap;
-          if (m.tempat_lahir)  existing[idx].tempat_lahir  = m.tempat_lahir;
-          if (m.tanggal_lahir) existing[idx].tanggal_lahir = m.tanggal_lahir;
-          if (m.alamat)        existing[idx].alamat        = m.alamat;
-          if (m.no_hp)         existing[idx].no_hp         = m.no_hp;
-          // NIK tidak diupdate
-        });
-        sheet.getRange(rowNum, COL.ANGGOTA_JSON + 1).setValue(JSON.stringify(existing));
-      } catch (je) { logWarn('api', 'anggota JSON update error: ' + je.message); }
-    }
+
+    // Update ANGGOTA_JSON.
+    // FIX #2: sebelumnya blok ini hanya berjalan untuk tim (members.length > 1),
+    // sehingga anggota_json milik peserta INDIVIDU tidak pernah ikut tersinkron —
+    // nama/tanggal_lahir/link_foto/link_ktp baru tidak pernah tersimpan di sana,
+    // meskipun kolom utama (NAMA_LENGKAP dst di atas) sudah ter-update. Sekarang
+    // berlaku untuk semua tipe peserta (guard "!existing[idx]" tetap menjaga
+    // agar tidak menulis ke index yang tidak ada).
+    try {
+      var existingJson = sheet.getRange(rowNum, COL.ANGGOTA_JSON + 1).getValue();
+      var existing     = existingJson ? JSON.parse(existingJson) : [];
+      members.forEach(function(m, idx) {
+        if (!existing[idx]) return;
+        if (m.nama_lengkap)  existing[idx].nama_lengkap  = m.nama_lengkap;
+        if (m.tempat_lahir)  existing[idx].tempat_lahir  = m.tempat_lahir;
+        if (m.tanggal_lahir) existing[idx].tanggal_lahir = m.tanggal_lahir;
+        if (m.alamat)        existing[idx].alamat        = m.alamat;
+        if (m.no_hp)         existing[idx].no_hp         = m.no_hp;
+        var nl = newLinks[idx] || {};
+        if (nl.foto)       existing[idx].link_foto       = nl.foto;
+        if (nl.ktp)        existing[idx].link_ktp        = nl.ktp;
+        if (nl.sertifikat) existing[idx].link_sertifikat = nl.sertifikat;
+        // NIK tidak diupdate
+      });
+      sheet.getRange(rowNum, COL.ANGGOTA_JSON + 1).setValue(JSON.stringify(existing));
+    } catch (je) { logWarn('api', 'anggota JSON update error: ' + je.message); }
   }
- 
+
   // Reset status ke Menunggu
   sheet.getRange(rowNum, COL.STATUS_VERIFIKASI + 1).setValue('Menunggu');
   sheet.getRange(rowNum, COL.CATATAN + 1).setValue(
     'Direvisi oleh peserta pada ' + new Date().toLocaleString('id-ID')
   );
- 
+
   writeLog_(ss, 'PERBAIKAN', nomor + ' direset ke Menunggu', 'ok');
   return { success:true, nomor_pendaftaran:nomor, message:'Perbaikan berhasil dikirim.' };
 }
