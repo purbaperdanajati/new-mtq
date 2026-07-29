@@ -54,7 +54,10 @@
       <div class="logo-sub">Kab. Indramayu</div>
     </div>
   </div>
-  <ul class="nav-links"><li><a href="index.html">← Beranda</a></li></ul>
+  <ul class="nav-links">
+    <li><a href="index.html">← Beranda</a></li>
+    <li><a href="cekstatus.html">Cek Status Pendaftaran</a></li>
+  </ul>
   <div class="nav-actions">
     <button class="dark-toggle" id="darkToggle">🌙</button>
     <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
@@ -62,6 +65,7 @@
 </nav>
 <nav class="mobile-nav" id="mobileNav">
   <a href="index.html">← Kembali ke Beranda</a>
+  <a href="cekstatus.html">🔍 Cek Status Pendaftaran</a>
 </nav>
 
 <!-- HEADER -->
@@ -237,6 +241,29 @@
 
 </form>
 </div>
+</div>
+
+<!-- ══ PENDAFTARAN TIDAK BUKA (belum dibuka / sudah ditutup) ══ -->
+<!-- FIX: sebelumnya status tutup/belum_buka dari server cuma memicu -->
+<!-- toast 10 detik di daftar.js, form tetap bisa diisi & baru ditolak -->
+<!-- saat submit. Sekarang seluruh form diganti kartu ini di awal. -->
+<div id="closedContainer" class="hidden" style="padding:40px 24px 80px">
+  <div class="success-card">
+    <div class="success-icon" id="closedIcon">🔒</div>
+    <h2 style="font-family:var(--font-display);font-size:26px;font-weight:700;color:var(--gray-800);margin-bottom:8px" id="closedTitle">Pendaftaran Ditutup</h2>
+    <p style="color:var(--gray-500);margin-bottom:6px" id="closedMsg">Pendaftaran online MTQ 2026 sudah tidak menerima peserta baru.</p>
+
+    <div class="ornament-divider"><div class="diamond"></div></div>
+
+    <div class="participant-detail" id="closedDetail">
+      <!-- diisi oleh JS: tanggal buka & tutup pendaftaran -->
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:20px">
+      <a href="index.html" class="btn btn-emerald">🏠 Kembali ke Beranda</a>
+      <a href="cekstatus.html" class="btn btn-outline">🔍 Cek Status Pendaftaran</a>
+    </div>
+  </div>
 </div>
 
 <!-- ══ SUCCESS PAGE ══════════════════════════════════ -->

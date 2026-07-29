@@ -182,6 +182,8 @@ function loadConfig() {
   log.info('loadConfig → meminta getConfig dari API');
 
   jsonp(`${API_URL}?action=getConfig`, 'mtqConfig', (data) => {
+    let regInfo = null; // { status, buka, tutup, isOpen } — dipakai untuk kunci form di bawah
+
     if (data && data.success && Array.isArray(data.config) && data.config.length) {
       state.config = data.config;
       log.info(`loadConfig ✓ — ${data.config.length} cabang dimuat dari API`);
@@ -196,23 +198,82 @@ function loadConfig() {
       window._ageCutoff = AGE_CUTOFF;
       log.info('AGE_CUTOFF dari server (dipakai untuk kalkulasi):', AGE_CUTOFF);
 
-      // Tampilkan warning jika pendaftaran belum/sudah tutup
-      if (data.registrationConfig && !data.registrationConfig.isOpen) {
-        const status = data.registrationConfig.status;
-        const msg = status === 'belum_buka'
-          ? `⏳ Pendaftaran belum dibuka (buka: ${data.registrationConfig.buka?.slice(0,10)}). Form hanya bisa dicoba dalam mode pengembangan.`
-          : `🔒 Pendaftaran telah ditutup (${data.registrationConfig.tutup?.slice(0,10)}).`;
-        showToast('Info Pendaftaran', msg, 'warning', 10000);
-        log.warn('Pendaftaran status:', status, msg);
-      }
+      if (data.registrationConfig) regInfo = data.registrationConfig;
     } else {
       state.config = MTQ_CONFIG.CABANG_CONFIG_FALLBACK;
       log.warn('loadConfig — API gagal/kosong, memakai MTQ_CONFIG.CABANG_CONFIG_FALLBACK');
       showToast('Info', 'Menggunakan data cabang lomba default (koneksi API gagal).', 'warning');
+
+      // FIX: API tidak terjangkau — tetap hitung status pendaftaran secara
+      // lokal (dari MTQ_CONFIG, sumber sama dengan config.gs) supaya form
+      // tidak salah terbuka hanya karena API sedang bermasalah.
+      const localStatus = getRegStatus();
+      regInfo = {
+        status: localStatus,
+        buka  : MTQ_CONFIG.PENDAFTARAN_BUKA,
+        tutup : MTQ_CONFIG.PENDAFTARAN_TUTUP,
+        isOpen: localStatus === 'buka',
+      };
     }
+
     populateCabang(sel);
     sel.disabled = false;
+
+    // FIX: kunci form SEJAK AWAL kalau pendaftaran sedang tidak buka.
+    // Sebelumnya di sini hanya showToast() yang hilang dalam 10 detik —
+    // form tetap bisa diisi lengkap & baru ditolak server saat submit.
+    if (regInfo && !regInfo.isOpen) {
+      log.warn('Pendaftaran status:', regInfo.status, '— form dikunci di awal');
+      lockRegistrationForm_(regInfo);
+    }
   });
+}
+
+// ── FIX: Kunci form pendaftaran saat status bukan 'buka' ──────
+// Menyembunyikan steps-bar + form, menampilkan #closedContainer
+// dengan pesan & tanggal yang sesuai (belum_buka vs tutup).
+function fmtTanggalIndo_(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  } catch (e) { return String(iso).slice(0, 10); }
+}
+
+function lockRegistrationForm_(regInfo) {
+  const closedContainer = document.getElementById('closedContainer');
+  if (!closedContainer) { log.error('lockRegistrationForm_ — #closedContainer tidak ditemukan di HTML'); return; }
+
+  document.getElementById('formContainer')?.classList.add('hidden');
+  document.querySelector('.steps-bar')?.classList.add('hidden');
+  closedContainer.classList.remove('hidden');
+
+  const bukaFmt  = fmtTanggalIndo_(regInfo.buka);
+  const tutupFmt = fmtTanggalIndo_(regInfo.tutup);
+  const icon     = document.getElementById('closedIcon');
+  const title    = document.getElementById('closedTitle');
+  const msg      = document.getElementById('closedMsg');
+  const detail   = document.getElementById('closedDetail');
+
+  if (regInfo.status === 'belum_buka') {
+    if (icon)  icon.textContent  = '⏳';
+    if (title) title.textContent = 'Pendaftaran Belum Dibuka';
+    if (msg)   msg.textContent   = `Pendaftaran online MTQ 2026 akan dibuka pada ${bukaFmt}. Silakan kembali pada tanggal tersebut.`;
+  } else {
+    if (icon)  icon.textContent  = '🔒';
+    if (title) title.textContent = 'Pendaftaran Telah Ditutup';
+    if (msg)   msg.textContent   = `Pendaftaran online MTQ 2026 telah ditutup sejak ${tutupFmt}. Hubungi panitia untuk informasi lebih lanjut.`;
+  }
+
+  if (detail) {
+    detail.innerHTML = `
+      <table style="width:100%;font-size:14px;border-collapse:collapse">
+        <tr><td style="color:var(--gray-400);padding:6px 0;width:45%">Pendaftaran dibuka</td><td style="font-weight:700">${bukaFmt}</td></tr>
+        <tr><td style="color:var(--gray-400);padding:6px 0">Pendaftaran ditutup</td><td style="font-weight:700">${tutupFmt}</td></tr>
+      </table>`;
+  }
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  log.warn('Form pendaftaran dikunci —', regInfo.status, '| buka:', regInfo.buka, '| tutup:', regInfo.tutup);
 }
 
 // ── Populate Cabang Lomba dropdown ───────────────────────────

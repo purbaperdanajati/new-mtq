@@ -132,82 +132,128 @@ function loadStats() {
   });
 }
 
-// ── FIX #12: Load Registration Status ────────
-// Mengisi semua elemen [data-reg-status] di index.html
-function loadRegStatus() {
-  const statusEls  = document.querySelectorAll('[data-reg-status]');
-  const btnDaftar  = document.querySelectorAll('.btn-daftar, [data-daftar-btn]');
-  const statusText = document.getElementById('regStatusText');
-  const statusBox  = document.getElementById('regStatusBox');
+// ── FIX #13: Load Registration Status ────────
+// SEBELUMNYA: fungsi ini hanya menyasar elemen [data-reg-status],
+// #regStatusBox, #regStatusText, dan .btn-daftar/[data-daftar-btn] —
+// tidak satu pun elemen itu ada di index.html, jadi #heroRegBanner
+// (dan #countdownSection 3-state yang sudah dibuat di HTML/CSS tapi
+// tidak pernah disentuh JS) macet permanen di teks placeholder
+// "⏳ Memuat status pendaftaran...".
+// SEKARANG: menyasar elemen yang benar-benar ada di halaman —
+// #heroRegBanner, #cdStateSoon/#cdStateOpen/#cdStateClosed (dengan
+// angka soonDays/openDays dst. yang di-countdown live tiap detik),
+// #heroRegPeriod, dan tombol daftar (#navDaftarBtn/#heroDaftarBtn/
+// #mobileNavDaftarBtn).
+let _regCountdownTimer = null;
 
-  // Fallback: baca dari MTQ_CONFIG jika ada
+function loadRegStatus() {
+  const banner     = document.getElementById('heroRegBanner');
+  const periodEl   = document.getElementById('heroRegPeriod');
+  const daftarBtns = document.querySelectorAll('#navDaftarBtn, #heroDaftarBtn, #mobileNavDaftarBtn');
+
+  // Fallback: baca dari MTQ_CONFIG jika API tidak terjangkau
   const localBuka  = (typeof MTQ_CONFIG !== 'undefined' && MTQ_CONFIG.PENDAFTARAN_BUKA)  ? MTQ_CONFIG.PENDAFTARAN_BUKA  : null;
   const localTutup = (typeof MTQ_CONFIG !== 'undefined' && MTQ_CONFIG.PENDAFTARAN_TUTUP) ? MTQ_CONFIG.PENDAFTARAN_TUTUP : null;
 
-  function applyStatus(isOpen, status, buka, tutup) {
-    const bukaDate  = buka  ? new Date(buka).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})  : '—';
-    const tutupDate = tutup ? new Date(tutup).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'}) : '—';
-
-    let badge = '', boxClass = '', msg = '';
-    if (status === 'belum_buka') {
-      badge    = `⏳ Pendaftaran Dibuka ${bukaDate}`;
-      boxClass = 'status-belum-buka';
-      msg      = `Pendaftaran akan dibuka pada <strong>${bukaDate}</strong>. Silakan pantau halaman ini.`;
-    } else if (isOpen) {
-      badge    = `✅ Pendaftaran Sedang Buka`;
-      boxClass = 'status-buka';
-      msg      = `Pendaftaran dibuka hingga <strong>${tutupDate}</strong>. Segera daftarkan peserta Anda!`;
-    } else {
-      badge    = `🔒 Pendaftaran Ditutup`;
-      boxClass = 'status-tutup';
-      msg      = `Pendaftaran telah ditutup pada ${tutupDate}. Hubungi panitia untuk informasi lebih lanjut.`;
-    }
-
-    // Update semua elemen [data-reg-status]
-    statusEls.forEach(el => {
-      el.innerHTML = badge;
-      el.className = el.className.replace(/status-\S+/g, '') + ' ' + boxClass;
-    });
-
-    // Tombol daftar
-    btnDaftar.forEach(btn => {
-      if (!isOpen) { btn.classList.add('disabled'); btn.setAttribute('aria-disabled','true'); }
-      else { btn.classList.remove('disabled'); btn.removeAttribute('aria-disabled'); }
-    });
-
-    // Box status (elemen dengan id regStatusBox)
-    if (statusBox) {
-      statusBox.innerHTML = msg;
-      statusBox.className = `reg-status-box ${boxClass}`;
-      statusBox.style.display = 'block';
-    }
-
-    // Text span (elemen dengan id regStatusText)
-    if (statusText) statusText.innerHTML = badge;
+  function fmtLong(iso) {
+    return iso ? new Date(iso).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' }) : '—';
+  }
+  function fmtShort(iso) {
+    return iso ? new Date(iso).toLocaleDateString('id-ID', { day:'numeric', month:'short' }) : '—';
   }
 
-  // Set placeholder sementara
-  statusEls.forEach(el => { el.textContent = ''; });
-  if (statusBox) statusBox.style.display = 'none';
+  function applyStatus(isOpen, status, buka, tutup) {
+    const bukaDate  = fmtLong(buka);
+    const tutupDate = fmtLong(tutup);
+
+    // ── Banner pil di hero ──
+    if (banner) {
+      banner.classList.remove('open', 'soon', 'closed');
+      if (status === 'belum_buka') {
+        banner.classList.add('soon');
+        banner.textContent = `🔔 Pendaftaran dibuka ${bukaDate}`;
+      } else if (isOpen) {
+        banner.classList.add('open');
+        banner.textContent = `🟢 Pendaftaran sedang dibuka — hingga ${tutupDate}`;
+      } else {
+        banner.classList.add('closed');
+        banner.textContent = `🔒 Pendaftaran ditutup sejak ${tutupDate}`;
+      }
+    }
+
+    // ── Info periode di hero-info-card (data live, bukan hardcode) ──
+    if (periodEl && buka && tutup) {
+      periodEl.textContent = `${fmtShort(buka)}–${fmtShort(tutup)}`;
+    }
+
+    // ── Tombol "Daftar Sekarang" (navbar, hero, mobile) ──
+    daftarBtns.forEach(btn => {
+      if (!isOpen) { btn.classList.add('btn-daftar-disabled'); btn.setAttribute('aria-disabled', 'true'); }
+      else { btn.classList.remove('btn-daftar-disabled'); btn.removeAttribute('aria-disabled'); }
+    });
+
+    // ── Countdown 3-state (#countdownSection: soon/open/closed) ──
+    document.querySelectorAll('.cd-state').forEach(el => el.classList.remove('show'));
+    if (_regCountdownTimer) { clearInterval(_regCountdownTimer); _regCountdownTimer = null; }
+
+    if (status === 'belum_buka' && buka) {
+      document.getElementById('cdStateSoon')?.classList.add('show');
+      runRegCountdown(new Date(buka).getTime(), 'soon');
+    } else if (isOpen && tutup) {
+      document.getElementById('cdStateOpen')?.classList.add('show');
+      runRegCountdown(new Date(tutup).getTime(), 'open');
+    } else {
+      document.getElementById('cdStateClosed')?.classList.add('show');
+    }
+  }
 
   // Coba ambil dari API via JSONP
   jsonp(`${CONFIG.API_URL}?action=getStats`, 'mtqRegStatus', (data) => {
     if (data && data.success) {
       applyStatus(data.isOpen, data.status, data.buka, data.tutup);
-    } else {
+    } else if (localBuka && localTutup) {
       // Fallback ke perhitungan lokal dari config.js
-      if (localBuka && localTutup) {
-        const now   = new Date();
-        const buka  = new Date(localBuka);
-        const tutup = new Date(localTutup);
-        const isOpen = now >= buka && now < tutup;
-        const status = now < buka ? 'belum_buka' : isOpen ? 'buka' : 'tutup';
-        applyStatus(isOpen, status, localBuka, localTutup);
-      } else {
-        statusEls.forEach(el => { el.textContent = 'ℹ️ Status tidak tersedia'; });
-      }
+      const now    = new Date();
+      const buka   = new Date(localBuka);
+      const tutup  = new Date(localTutup);
+      const isOpen = now >= buka && now < tutup;
+      const status = now < buka ? 'belum_buka' : isOpen ? 'buka' : 'tutup';
+      applyStatus(isOpen, status, localBuka, localTutup);
+    } else if (banner) {
+      banner.textContent = 'ℹ️ Status pendaftaran tidak tersedia';
     }
   });
+}
+
+// Countdown detik-per-detik untuk state 'soon' (dibuka dalam ...) atau
+// 'open' (ditutup dalam ...). `prefix` menentukan target id: soonDays/
+// soonHours/soonMins/soonSecs, atau openDays/openHours/openMins/openSecs.
+function runRegCountdown(target, prefix) {
+  const els = {
+    days : document.getElementById(prefix + 'Days'),
+    hours: document.getElementById(prefix + 'Hours'),
+    mins : document.getElementById(prefix + 'Mins'),
+    secs : document.getElementById(prefix + 'Secs'),
+  };
+  function tick() {
+    const diff = target - Date.now();
+    if (diff <= 0) {
+      clearInterval(_regCountdownTimer);
+      _regCountdownTimer = null;
+      loadRegStatus();   // waktu tercapai — muat ulang status terbaru dari server
+      return;
+    }
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    if (els.days)  els.days.textContent  = String(d).padStart(2, '0');
+    if (els.hours) els.hours.textContent = String(h).padStart(2, '0');
+    if (els.mins)  els.mins.textContent  = String(m).padStart(2, '0');
+    if (els.secs)  els.secs.textContent  = String(s).padStart(2, '0');
+  }
+  tick();
+  _regCountdownTimer = setInterval(tick, 1000);
 }
 
 /**
