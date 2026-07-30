@@ -65,15 +65,25 @@
     .filter-bar .search-wrap .si { position:absolute; left:11px; top:50%; transform:translateY(-50%); color:var(--gray-400); font-size:14px; }
 
     /* table */
-    .table-wrap { overflow-x:auto; }
-    .data-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    .table-wrap::-webkit-scrollbar { height:7px; }
+    .table-wrap::-webkit-scrollbar-track { background:var(--gray-100); border-radius:4px; }
+    .table-wrap::-webkit-scrollbar-thumb { background:var(--emerald-light); border-radius:4px; }
+    .table-wrap::-webkit-scrollbar-thumb:hover { background:var(--emerald); }
+    /* FIX: width:100% mengunci tabel selalu SAMA DENGAN container, jadi
+       overflow-x:auto di .table-wrap tidak pernah punya apa pun utk
+       di-scroll — kolom malah dipaksa menyempit/teks ke-wrap. min-width:100%
+       cuma jadi batas BAWAH: tabel tetap penuh saat konten sedikit, tapi
+       boleh melebar mengikuti konten (lalu discroll) saat konten banyak. */
+    .data-table { min-width:100%; border-collapse:collapse; font-size:13px; }
     .data-table th { padding:11px 14px; text-align:left; font-size:10px; font-weight:700;
       text-transform:uppercase; letter-spacing:.5px; color:var(--gray-500);
       background:var(--gray-50); border-bottom:1px solid var(--gray-200); white-space:nowrap; }
-    .data-table td { padding:13px 14px; color:var(--gray-700); border-bottom:1px solid var(--gray-100); vertical-align:middle; }
+    .data-table td { padding:13px 14px; color:var(--gray-700); border-bottom:1px solid var(--gray-100);
+      vertical-align:middle; white-space:nowrap; }
     .data-table tr:hover td { background:#fafafa; }
     .data-table .col-num   { width:110px; font-weight:700; color:var(--emerald); font-family:monospace; font-size:12px; }
-    .data-table .col-name  { min-width:150px; }
+    .data-table .col-name  { min-width:150px; white-space:normal; }
     .data-table .col-kec   { min-width:120px; }
     .data-table .col-cabang{ min-width:160px; }
     .data-table .col-act   { width:180px; white-space:nowrap; }
@@ -1058,7 +1068,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const saved = sessionStorage.getItem('mtq_admin_token');
   if (saved) {
     adminLog.info('Token found — auto-login');
-    adm.token = saved; hideLoginOverlay(); loadAll();
+    // FIX: dulu cuma loadAll() di sini, jadi adm.cabangConfig tetap [] tiap
+    // kali sesi di-restore (refresh halaman / buka tab baru) — bukan cuma
+    // saat login manual. Akibatnya kartu Usia di detailModal kehilangan
+    // teks syarat batas usia cabang (reqStr selalu kosong krn cfg = null).
+    adm.token = saved; hideLoginOverlay(); loadCabangConfig(); loadAll();
   } else {
     adminLog.info('No token — show login');
   }
@@ -1267,7 +1281,18 @@ function testConnection() {
 
 // ── Navigation ─────────────────────────────────────────────────
 function showPage(name) {
-  document.querySelectorAll('.admin-page-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.admin-page-section').forEach(s => {
+    s.classList.remove('active');
+    // FIX: pnAdminTab() (admin-penilaian.js) memaksa #page-penilaian jadi
+    // style.setProperty('display','block','important') setiap sub-tab
+    // Penilaian dipakai, supaya bisa "menang" atas kondisi race tertentu.
+    // Inline !important itu mengalahkan aturan CSS .admin-page-section
+    // {display:none} di atas, jadi classList.remove('active') saja tidak
+    // cukup — section itu tetap kelihatan (menumpuk di bawah halaman lain)
+    // walau sudah pindah halaman. Bersihkan inline override-nya di sini,
+    // supaya toggle .active kembali jadi satu-satunya sumber kebenaran.
+    s.style.removeProperty('display');
+  });
   document.getElementById('page-'+name)?.classList.add('active');
   document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
   document.getElementById('nav-'+name)?.classList.add('active');
@@ -1478,14 +1503,19 @@ function openDetail(nomor) {
 // ef(label, value, fieldKey, nomor, full, rawHtml)
 // rawHtml=true  → value is trusted HTML, render as-is (no escaping)
 // rawHtml=false → escape value before rendering (default, safe)
-function ef(label, value, fieldKey, nomor, full=false, rawHtml=false) {
+function ef(label, value, fieldKey, nomor, full=false, rawHtml=false, displayOverride=null) {
   const id      = fieldKey ? `ef_${fieldKey}` : `ef_ro_${label.replace(/\s/g,'_')}`;
   const canEdit = !!fieldKey;
-  // For display: raw HTML passes through; plain text is escaped
-  const displayVal = rawHtml
-    ? (value || '—')
-    : (typeof value === 'string' ? esc(value) : (value || '—'));
-  // For input default value: always plain text (strip tags if any)
+  // For display: displayOverride (e.g. tanggal format Indonesia) wins if given;
+  // otherwise raw HTML passes through, and plain text is escaped as before.
+  const displayVal = displayOverride !== null
+    ? (typeof displayOverride === 'string' ? esc(displayOverride) : displayOverride)
+    : rawHtml
+      ? (value || '—')
+      : (typeof value === 'string' ? esc(value) : (value || '—'));
+  // For input default value: always plain text (strip tags if any) — always
+  // derived from the RAW `value`, never from displayOverride, so editing
+  // still works with the underlying data format (e.g. "1990-12-31").
   const inputVal = typeof value === 'string'
     ? esc(value.replace(/<[^>]*>/g, ''))
     : '';
@@ -1525,7 +1555,12 @@ function saveEdit(fieldKey, nomor) {
     if (data && data.success) {
       const row = adm.allData.find(r=>r.nomor_pendaftaran===nomor);
       if (row) row[fieldKey] = newVal;
-      document.getElementById(`ef_${fieldKey}_val`).textContent = newVal || '—';
+      // tanggal_lahir ditampilkan format Indonesia ("31 Desember 1990") —
+      // format ulang di sini juga, supaya tampilan tidak balik ke ISO
+      // polos setelah simpan (textContent di bawah lolos dari esc()/ef(),
+      // jadi tetap perlu fmtTglIndo secara eksplisit).
+      const displayText = fieldKey === 'tanggal_lahir' ? fmtTglIndo(newVal) : (newVal || '—');
+      document.getElementById(`ef_${fieldKey}_val`).textContent = displayText;
       document.getElementById(`ef_${fieldKey}_edit`)?.classList.remove('show');
       toast('Tersimpan', `${fieldKey} berhasil diperbarui`, 'success');
       renderTable(adm.filtered);
@@ -1766,6 +1801,23 @@ function toast(title, msg, type='info', dur=4000) {
 function esc(str) {
   return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+// ── Format tanggal Indonesia ("1990-12-31" → "31 Desember 1990") ─────────
+// Sengaja parsing string manual (regex), BUKAN `new Date(str)` + getDate()/
+// getMonth() — itu persis pola yang menyebabkan bug timezone tanggal_lahir
+// sebelumnya (lihat rowToObj_ di helper.gs): parsing tanggal-tanpa-jam lalu
+// dibaca ulang dgn getter lokal bisa geser satu hari tergantung timezone
+// admin yang membuka panel. String parsing murni tidak kenal timezone sama
+// sekali, jadi selalu presis apa pun lokasi/browser admin.
+const BULAN_INDO = ['Januari','Februari','Maret','April','Mei','Juni','Juli',
+                     'Agustus','September','Oktober','November','Desember'];
+function fmtTglIndo(dateStr) {
+  if (!dateStr) return '—';
+  const m = String(dateStr).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return esc(dateStr);               // format tak dikenal — tampilkan apa adanya
+  const bulan = BULAN_INDO[parseInt(m[2], 10) - 1];
+  if (!bulan) return esc(dateStr);            // bulan di luar 01–12 — jangan menebak
+  return `${parseInt(m[3], 10)} ${bulan} ${m[1]}`;
+}
 // ── Load cabang config for age requirement display in modal ──────────────
 function loadCabangConfig() {
   jsonp(`${API_URL}?action=getConfig`, 'adminCfg', (data) => {
@@ -1802,7 +1854,7 @@ function buildPesertaSection(r, nomor, anggota, isTeam, cabangConfig) {
         ${ef('Nama Lengkap',  r.nama_lengkap,   'nama_lengkap',  nomor)}
         ${ef('NIK',           r.nik,            'nik',           nomor)}
         ${ef('Tempat Lahir',  r.tempat_lahir,   'tempat_lahir',  nomor)}
-        ${ef('Tgl Lahir',     r.tanggal_lahir,  'tanggal_lahir', nomor)}
+        ${ef('Tgl Lahir',     r.tanggal_lahir,  'tanggal_lahir', nomor, false, false, fmtTglIndo(r.tanggal_lahir))}
         <div class="detail-field">
           <div class="lbl">Usia</div>
           <div class="val">${esc(r.umur_display||'—')}</div>
@@ -1847,7 +1899,7 @@ function buildPesertaSection(r, nomor, anggota, isTeam, cabangConfig) {
         <div class="detail-field"><div class="lbl">Tempat Lahir</div><div class="val">${esc(a.tempat_lahir||'—')}</div></div>
         <div class="detail-field">
           <div class="lbl">Tanggal Lahir & Usia</div>
-          <div class="val">${esc(a.tanggal_lahir||'—')} <span style="color:var(--emerald);font-weight:600">(${esc(a.umur_display||'—')})</span></div>
+          <div class="val">${fmtTglIndo(a.tanggal_lahir)} <span style="color:var(--emerald);font-weight:600">(${esc(a.umur_display||'—')})</span></div>
           ${reqStr}
         </div>
         <div class="detail-field"><div class="lbl">No. HP</div><div class="val">${esc(a.no_hp||'—')}</div></div>
