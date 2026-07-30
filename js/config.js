@@ -17,20 +17,20 @@
 const MTQ_CONFIG = {
 
   // ── Google Apps Script Web App URL — SATU-SATUNYA tempat edit ──
-  API_URL: 'https://script.google.com/macros/s/AKfycbwXu8s6JnJES2bdFXiiGXp_oaJzD8Qqyo21TccbsH-OtbTiiuufn80mofTZSBXGDTq-/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbzgINvXhhHQ89ddnaOhN-xGGPJAeUFG3xq1l_GdKYTbo20LlkyZTPEuIzvzcMHWxoyX/exec',
 
   // ── Tanggal pendaftaran & cutoff umur ────────────────────────
   // Fallback bila API tidak terjangkau — akan ditimpa nilai live
   // dari backend (config.gs → PENDAFTARAN_CONFIG) saat getConfig berhasil.
   // Sesuai Juknis MTQ ke-56 Kab. Indramayu: pendaftaran online 21 s.d. 28 Juli 2026,
   // usia dihitung per 1 November 2026.
-  PENDAFTARAN_BUKA : '2026-07-21T00:00:00',
-  PENDAFTARAN_TUTUP: '2026-07-28T23:59:59',
+  PENDAFTARAN_BUKA : '2026-08-21T00:00:00',
+  PENDAFTARAN_TUTUP: '2026-08-15T23:59:59',
   AGE_CUTOFF_DATE  : '2026-11-01',
 
   // ── Info Event ───────────────────────────────────────────────
-  EVENT_DATE_START  : '2026-08-05T08:00:00',   // Untuk countdown (tanggal mulai)
-  EVENT_DATE_DISPLAY: '5–7 Agustus 2026',      // Untuk tampilan (rentang tanggal)
+  EVENT_DATE_START  : '2026-08-05T00:00:00',   // Untuk countdown (tanggal mulai)
+  EVENT_DATE_DISPLAY: '26–28 Agustus 2026',      // Untuk tampilan (rentang tanggal)
   EVENT_LOCATION    : 'Kecamatan Jatibarang',
   EVENT_THEME       : "Dengan Al-Qur'an Membangun Generasi Emas",
   EVENT_TITLE       : 'MTQ ke-56 Kabupaten Indramayu Tahun 2026',

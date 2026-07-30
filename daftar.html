@@ -74,8 +74,18 @@
   <p>MTQ Kabupaten Indramayu — Isi data dengan benar dan lengkap</p>
 </div>
 
+<!-- ══ LOADING AWAL — tampil sejak render pertama halaman, sebelum -->
+<!-- status pendaftaran dipastikan dari server. Mencegah "kilasan" -->
+<!-- step 1 (pilih cabang & kecamatan) sempat terlihat saat ternyata -->
+<!-- pendaftaran sedang tutup. -->
+<div id="initLoadingContainer" style="padding:100px 24px;text-align:center">
+  <div class="spinner" style="margin:0 auto 20px"></div>
+  <p style="font-size:15px;font-weight:600;color:var(--gray-700)">Memuat form pendaftaran...</p>
+  <small style="font-size:13px;color:var(--gray-400)">Mohon tunggu, sedang memeriksa status pendaftaran</small>
+</div>
+
 <!-- STEPS BAR -->
-<div class="steps-bar">
+<div class="steps-bar hidden">
   <div class="steps-list">
     <div class="step active" id="si1"><div class="step-circle">1</div><div class="step-label">Pilih Lomba</div></div>
     <div class="step"        id="si2"><div class="step-circle">2</div><div class="step-label">Data Peserta</div></div>
@@ -84,7 +94,7 @@
 </div>
 
 <!-- ══ FORM CONTAINER ══════════════════════════════ -->
-<div id="formContainer">
+<div id="formContainer" class="hidden">
 <div class="form-wrapper">
 <form id="regForm" onsubmit="return false">
 

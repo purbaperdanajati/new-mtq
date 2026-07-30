@@ -111,6 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initDarkMode();
   generateCaptcha();
   initDocumentPreviewer();   // FIX #2 — siapkan DocumentPreviewer untuk "Lihat Dokumen"
+  updateNavDaftarStatus_();  // FIX: nonaktifkan link "Daftar" kalau pendaftaran sedang tidak buka
   // FIX: file:// punya pembatasan request lintas-origin yang berbeda dari
   // http(s) dan bisa memicu error yang membingungkan di halaman ini.
   // Untuk uji coba lokal, jalankan lewat server (mis. `python3 -m http.server`)
@@ -126,6 +127,46 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') cekStatus();
   });
 });
+
+// ── FIX: link "Daftar" di navbar dinonaktifkan otomatis kalau ──────
+// pendaftaran online sedang tidak buka (belum mulai / sudah tutup).
+// Sebelumnya link ini selalu aktif tanpa memandang status pendaftaran,
+// jadi peserta bisa saja diarahkan ke daftar.html padahal pendaftaran
+// sudah tutup (di sana form-nya sendiri sekarang sudah terkunci, tapi
+// idealnya pengguna tahu dari sini dulu tanpa perlu pindah halaman).
+async function updateNavDaftarStatus_() {
+  const link = document.getElementById('navDaftarLink');
+  if (!link) return;
+
+  function applyDaftarStatus(isOpen, status) {
+    if (isOpen) {
+      link.classList.remove('nav-link-disabled');
+      link.removeAttribute('aria-disabled');
+      link.removeAttribute('title');
+      link.textContent = '📝 Daftar';
+    } else {
+      link.classList.add('nav-link-disabled');
+      link.setAttribute('aria-disabled', 'true');
+      link.title = status === 'belum_buka'
+        ? 'Pendaftaran belum dibuka'
+        : 'Pendaftaran sudah ditutup';
+      link.textContent = '🔒 Daftar';
+    }
+  }
+
+  try {
+    const data = await jsonpGet({ action: 'getStats' });
+    if (!data || !data.success) throw new Error('respons getStats tidak valid');
+    applyDaftarStatus(data.isOpen, data.status);
+  } catch (err) {
+    console.warn('[MTQ] updateNavDaftarStatus_ — API gagal, pakai fallback lokal:', err.message);
+    // Fallback: hitung status dari MTQ_CONFIG (config.js) kalau API tidak terjangkau
+    if (typeof getRegStatus === 'function') {
+      const status = getRegStatus();
+      applyDaftarStatus(status === 'buka', status);
+    }
+  }
+}
 
 // ── FIX #2: DocumentPreviewer — preview dokumen existing (foto/KTP/rekom) ──
 // Dibind sekali di sini; DocumentPreviewer.bindTriggers() memakai event

@@ -33,6 +33,8 @@
     [data-theme="dark"] .navbar{background:rgba(26,31,46,.96)}
     .nav-logo{display:flex;align-items:center;gap:10px}.logo-icon{font-size:24px}.logo-text{font-weight:800;font-size:16px;color:var(--em)}.logo-sub{font-size:11px;color:var(--g400)}
     .nav-links{list-style:none;display:flex;gap:4px}.nav-links a{padding:8px 14px;border-radius:var(--r-sm);text-decoration:none;color:var(--g600);font-size:14px;font-weight:500;transition:all .2s}.nav-links a:hover{background:var(--g100);color:var(--em)}
+    .nav-links a.nav-link-disabled{opacity:.45;pointer-events:none;cursor:not-allowed}
+    .nav-links a.nav-link-disabled:hover{background:none;color:var(--g600)}
     .dark-toggle{background:var(--g100);border:none;border-radius:var(--r-sm);width:36px;height:36px;cursor:pointer;font-size:16px;transition:all .2s}
 
     /* ── Hero ── */
@@ -242,7 +244,7 @@
   </div>
   <ul class="nav-links">
     <li><a href="index.html">← Beranda</a></li>
-    <li><a href="daftar.html">📝 Daftar</a></li>
+    <li><a href="daftar.html" id="navDaftarLink">📝 Daftar</a></li>
   </ul>
   <button class="dark-toggle" id="darkToggle">🌙</button>
 </nav>

@@ -92,7 +92,9 @@ document.addEventListener('DOMContentLoaded', () => {
   initDarkMode();
   loadConfig();
   setupRekomUpload();
-  renderStep(1);
+  // FIX: renderStep(1) TIDAK dipanggil di sini lagi — form baru
+  // ditampilkan (lewat revealRegistrationForm_) setelah status
+  // pendaftaran dari server dipastikan "buka". Lihat loadConfig().
 });
 
 // ── API helper — fetch dulu, JSONP sebagai fallback ───────────
@@ -225,6 +227,8 @@ function loadConfig() {
     if (regInfo && !regInfo.isOpen) {
       log.warn('Pendaftaran status:', regInfo.status, '— form dikunci di awal');
       lockRegistrationForm_(regInfo);
+    } else {
+      revealRegistrationForm_();
     }
   });
 }
@@ -243,6 +247,7 @@ function lockRegistrationForm_(regInfo) {
   const closedContainer = document.getElementById('closedContainer');
   if (!closedContainer) { log.error('lockRegistrationForm_ — #closedContainer tidak ditemukan di HTML'); return; }
 
+  document.getElementById('initLoadingContainer')?.classList.add('hidden');
   document.getElementById('formContainer')?.classList.add('hidden');
   document.querySelector('.steps-bar')?.classList.add('hidden');
   closedContainer.classList.remove('hidden');
@@ -274,6 +279,17 @@ function lockRegistrationForm_(regInfo) {
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
   log.warn('Form pendaftaran dikunci —', regInfo.status, '| buka:', regInfo.buka, '| tutup:', regInfo.tutup);
+}
+
+// ── FIX: Tampilkan form pendaftaran (dipanggil hanya setelah status ──
+// dipastikan "buka" dari loadConfig). Menyembunyikan loading awal,
+// memunculkan steps-bar + form, lalu render step 1 seperti biasa.
+function revealRegistrationForm_() {
+  document.getElementById('initLoadingContainer')?.classList.add('hidden');
+  document.querySelector('.steps-bar')?.classList.remove('hidden');
+  document.getElementById('formContainer')?.classList.remove('hidden');
+  renderStep(1);
+  log.info('Pendaftaran sedang buka — form ditampilkan');
 }
 
 // ── Populate Cabang Lomba dropdown ───────────────────────────
