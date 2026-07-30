@@ -188,8 +188,32 @@ function initAllSheets() {
 function rowToObj_(row) {
   var obj = {};
   PENDAFTAR_HEADERS.forEach(function(h,i){ obj[h] = row[i]!==undefined ? row[i] : ''; });
+  // FIX: Sheets otomatis mengubah teks "YYYY-MM-DD" pada kolom tanggal_lahir
+  // menjadi sel bertipe Date. getValues() lalu mengembalikan objek Date
+  // (dibentuk pada timezone spreadsheet), dan begitu objek ini di-
+  // JSON.stringify (lihat apiGetAll_), JS otomatis memanggil .toISOString()
+  // (selalu UTC) — ini MENGGESER tanggal mundur satu hari untuk timezone di
+  // depan UTC, mis. Asia/Jakarta (UTC+7): "2002-02-01" → "2002-01-31T17:00:00.000Z".
+  // Normalisasi balik ke string "yyyy-MM-dd" polos di sini, sebelum dikirim
+  // sebagai JSON, memakai timezone yang sama dgn yang dipakai Sheets saat
+  // membaca sel tsb — supaya tanggal kalendernya tetap presis seperti input.
+  // Jika selnya sudah berupa teks biasa (bukan Date), dibiarkan apa adanya.
+  if (obj.tanggal_lahir instanceof Date) {
+    obj.tanggal_lahir = Utilities.formatDate(obj.tanggal_lahir, _sheetTimeZone_(), 'yyyy-MM-dd');
+  }
   if (obj.anggota_json) { try { obj.anggota = JSON.parse(obj.anggota_json); } catch(e){ obj.anggota=[]; } }
   return obj;
+}
+
+// Timezone spreadsheet, di-cache per eksekusi supaya rowToObj_() tidak
+// membuka spreadsheet berulang kali saat memetakan banyak baris (.map()).
+var _cachedSheetTz_ = null;
+function _sheetTimeZone_() {
+  if (!_cachedSheetTz_) {
+    try { _cachedSheetTz_ = SpreadsheetApp.openById(SPREADSHEET_ID).getSpreadsheetTimeZone(); }
+    catch (e) { _cachedSheetTz_ = Session.getScriptTimeZone() || 'Asia/Jakarta'; }
+  }
+  return _cachedSheetTz_;
 }
 
 function countByCabang_(sheet, cabang) {

@@ -553,7 +553,13 @@ function _buildNIKRecord(row, nik, anggotaArr, anggotaIdx) {
       nama_lengkap      : String(row[COL.NAMA_LENGKAP]      || ''),
       nik               : String(row[COL.NIK]               || ''),
       tempat_lahir      : String(row[COL.TEMPAT_LAHIR]      || ''),
-      tanggal_lahir     : String(row[COL.TANGGAL_LAHIR]     || ''),
+      // FIX: sel tanggal_lahir bisa berupa objek Date (Sheets auto-detect
+      // teks "YYYY-MM-DD" sbg tanggal) — String(dateObj) akan menghasilkan
+      // format panjang salah zona (mis. "Fri Feb 01 2002 00:00:00 GMT+0700"),
+      // bukan "2002-02-01". Lihat komentar rowToObj_() di helper.gs.
+      tanggal_lahir     : row[COL.TANGGAL_LAHIR] instanceof Date
+                            ? Utilities.formatDate(row[COL.TANGGAL_LAHIR], _sheetTimeZone_(), 'yyyy-MM-dd')
+                            : String(row[COL.TANGGAL_LAHIR] || ''),
       jenis_kelamin     : String(row[COL.JENIS_KELAMIN]     || ''),
       alamat            : String(row[COL.ALAMAT]            || ''),
       no_hp             : String(row[COL.NO_HP]             || ''),

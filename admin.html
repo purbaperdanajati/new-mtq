@@ -19,17 +19,34 @@
       position: fixed; top: 68px; left: 0; bottom: 0; overflow-y: auto; padding: 16px 0; z-index: 50;
       transition: transform .3s; box-shadow: var(--shadow-sm); }
     .admin-content { margin-left: 240px; padding: 28px 32px; flex: 1; }
-    .sidebar-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.8px;
-      color:var(--gray-400); padding: 12px 20px 4px; }
-    .sidebar-item  { display:flex; align-items:center; gap:10px; padding:10px 20px;
-      font-size:14px; font-weight:500; color:var(--gray-600); cursor:pointer;
-      border-radius:0; transition:all .2s; border-left: 3px solid transparent; }
-    .sidebar-item:hover { background:var(--emerald-xs); color:var(--emerald); }
-    .sidebar-item.active { background:var(--emerald-xs); color:var(--emerald); border-left-color:var(--emerald); font-weight:700; }
-    .sidebar-item .icon { font-size:16px; width:20px; text-align:center; }
-    .sidebar-badge { margin-left:auto; background:var(--emerald); color:#fff; font-size:10px;
-      font-weight:700; padding:1px 6px; border-radius:999px; }
-    .sidebar-badge.warn { background:#ef4444; }
+    .sidebar-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px;
+      color:var(--gray-400); padding:18px 20px 8px; display:flex; align-items:center; gap:8px; }
+    .sidebar-label::after { content:''; flex:1; height:1px; background:var(--gray-100); }
+    .sidebar-item  { position:relative; display:flex; align-items:center; gap:11px; padding:10px 16px 10px 20px;
+      margin:2px 10px; font-size:13.5px; font-weight:500; color:var(--gray-600); cursor:pointer;
+      border-radius:10px; transition:background .2s ease, color .2s ease, transform .2s ease; }
+    .sidebar-item::before { content:''; position:absolute; left:6px; top:50%; width:3px; height:0;
+      border-radius:3px; background:var(--emerald); transform:translateY(-50%);
+      transition:height .25s cubic-bezier(.34,1.56,.64,1), background .2s ease; }
+    .sidebar-item:hover { background:var(--emerald-xs); color:var(--emerald); transform:translateX(2px); }
+    .sidebar-item:hover:not(.active)::before { height:9px; background:var(--emerald-light); opacity:.55; }
+    .sidebar-item.active { background:var(--emerald-xs); color:var(--emerald); font-weight:700; }
+    .sidebar-item.active::before { height:18px; }
+    .sidebar-item:focus-visible { outline:none; box-shadow:0 0 0 2px var(--white), 0 0 0 4px var(--emerald-light); }
+    .sidebar-item .icon { font-size:15px; width:26px; height:26px; flex-shrink:0; border-radius:8px;
+      display:flex; align-items:center; justify-content:center; background:var(--gray-50);
+      transition:background .2s ease, transform .2s ease; }
+    .sidebar-item:hover .icon, .sidebar-item.active .icon { background:var(--emerald-pale); }
+    .sidebar-item.active .icon { transform:scale(1.06); }
+    .sidebar-badge { margin-left:auto; background:var(--gray-200); color:var(--gray-500); font-size:10px;
+      font-weight:700; padding:2px 7px; border-radius:999px; min-width:17px; text-align:center;
+      transition:background .2s ease, color .2s ease; }
+    .sidebar-badge.warn { background:linear-gradient(135deg, var(--gold-bright), var(--gold)); color:#fff;
+      animation:badgePulse 2.4s ease-in-out infinite; }
+    @keyframes badgePulse {
+      0%, 100% { box-shadow:0 0 0 0 rgba(217,119,6,.4); }
+      50%      { box-shadow:0 0 0 5px rgba(217,119,6,0); }
+    }
 
     /* pages */
     .admin-page-section { display:none; }
@@ -97,23 +114,34 @@
     .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:9000;
       display:none; align-items:center; justify-content:center; padding:20px;
       backdrop-filter:blur(4px); }
-    .modal-overlay.show { display:flex; }
+    .modal-overlay.show { display:flex; animation:modalBackdropIn .18s ease; }
     .modal-box { background:var(--white); border-radius:16px; width:100%; max-width:680px;
       max-height:92vh; overflow-y:auto; box-shadow:0 24px 80px rgba(0,0,0,.2); }
-    .modal-head { display:flex; align-items:center; justify-content:space-between;
+    .modal-overlay.show .modal-box { animation:modalPopIn .32s cubic-bezier(.16,1,.3,1) both; }
+    @keyframes modalBackdropIn { from { opacity:0; } to { opacity:1; } }
+    @keyframes modalPopIn { from { opacity:0; transform:translateY(16px) scale(.96); } to { opacity:1; transform:translateY(0) scale(1); } }
+    .modal-head { display:flex; align-items:center; justify-content:space-between; gap:16px;
       padding:20px 24px; border-bottom:1px solid var(--gray-100); position:sticky; top:0;
       background:var(--white); z-index:1; }
-    .modal-head h3 { font-size:18px; font-weight:700; }
-    .modal-head .reg-tag { font-size:12px; font-weight:700; color:var(--emerald);
-      background:var(--emerald-xs); padding:3px 10px; border-radius:999px; }
-    .modal-x { font-size:22px; cursor:pointer; color:var(--gray-400); padding:2px 8px; border-radius:6px; }
-    .modal-x:hover { color:var(--gray-800); background:var(--gray-100); }
+    .modal-head::after { content:''; position:absolute; left:0; right:0; bottom:-1px; height:2px;
+      background:linear-gradient(90deg, var(--emerald-light), var(--gold-bright) 65%, transparent); opacity:.55; }
+    .modal-head h3 { font-size:18px; font-weight:700; color:var(--gray-900); }
+    .modal-head .reg-tag { font-size:12px; font-weight:700; color:var(--emerald); margin-top:5px; display:inline-block;
+      background:var(--emerald-xs); padding:3px 10px; border-radius:999px; font-variant-numeric:tabular-nums; letter-spacing:.2px; }
+    .modal-x { width:32px; height:32px; display:flex; align-items:center; justify-content:center;
+      font-size:17px; cursor:pointer; color:var(--gray-400); background:var(--gray-50);
+      border:1px solid var(--gray-100); border-radius:9px; flex-shrink:0;
+      transition:background .15s ease, color .15s ease, border-color .15s ease, transform .25s ease; }
+    .modal-x:hover { color:#ef4444; background:rgba(239,68,68,.12); border-color:rgba(239,68,68,.3); transform:rotate(90deg); }
+    .modal-x:focus-visible { outline:none; color:var(--emerald); box-shadow:0 0 0 3px rgba(16,185,129,.25); }
     .modal-body { padding:24px; }
     .modal-section { margin-bottom:20px; }
     .modal-section-title { font-size:11px; font-weight:700; text-transform:uppercase;
       letter-spacing:.6px; color:var(--gray-400); margin-bottom:10px; border-bottom:1px solid var(--gray-100); padding-bottom:6px; }
     .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-    .detail-field { background:var(--gray-50); border-radius:8px; padding:10px 12px; }
+    .detail-field { background:var(--gray-50); border:1px solid transparent; border-radius:10px; padding:10px 12px;
+      transition:border-color .18s ease, box-shadow .18s ease; }
+    .detail-field:hover { border-color:var(--emerald-light); box-shadow:var(--shadow-sm); }
     .detail-field .lbl { font-size:10px; font-weight:600; color:var(--gray-400); text-transform:uppercase; letter-spacing:.4px; }
     .detail-field .val { font-size:14px; font-weight:600; color:var(--gray-800); margin-top:2px; word-break:break-word; }
     .detail-field.full { grid-column:1/-1; }
@@ -121,19 +149,25 @@
     /* inline edit */
     .editable-field { display:flex; align-items:center; gap:6px; }
     .editable-field .val { flex:1; }
-    .edit-pen { font-size:14px; cursor:pointer; color:var(--gray-300); transition:color .2s; }
-    .edit-pen:hover { color:var(--emerald); }
+    .edit-pen { font-size:13px; cursor:pointer; color:var(--gray-300); opacity:.55; padding:3px 4px; border-radius:5px;
+      transition:opacity .18s ease, color .18s ease, background .18s ease; }
+    .detail-field:hover .edit-pen { opacity:1; }
+    .edit-pen:hover, .edit-pen:focus-visible { color:var(--emerald); background:var(--emerald-xs); outline:none; }
     .inline-edit-row { display:none; gap:6px; margin-top:6px; }
-    .inline-edit-row.show { display:flex; }
+    .inline-edit-row.show { display:flex; animation:rowIn .18s ease; }
+    @keyframes rowIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
     .inline-edit-row .field-input { flex:1; padding:6px 10px; font-size:13px; }
     .inline-edit-row .btn-save { padding:6px 12px; font-size:12px; }
-    .inline-edit-row .btn-cancel { padding:6px 10px; font-size:12px; background:var(--gray-100); color:var(--gray-600); border:none; border-radius:6px; cursor:pointer; }
+    .inline-edit-row .btn-cancel { padding:6px 10px; font-size:12px; background:var(--gray-100); color:var(--gray-600); border:none; border-radius:6px; cursor:pointer;
+      transition:background .15s ease, color .15s ease; }
+    .inline-edit-row .btn-cancel:hover { background:var(--gray-200); color:var(--gray-800); }
 
     /* doc preview */
     .doc-link { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600;
-      color:var(--emerald); padding:5px 10px; border-radius:6px; background:var(--emerald-xs);
-      text-decoration:none; transition:all .2s; margin:3px; }
-    .doc-link:hover { background:var(--emerald); color:#fff; }
+      color:var(--emerald); padding:6px 12px; border-radius:8px; background:var(--emerald-xs);
+      text-decoration:none; transition:background .18s ease, color .18s ease, transform .15s ease, box-shadow .18s ease; margin:3px; }
+    .doc-link:hover { background:var(--emerald); color:#fff; transform:translateY(-1px); box-shadow:0 4px 14px rgba(6,95,70,.25); }
+    .doc-link:focus-visible { outline:none; box-shadow:0 0 0 3px rgba(16,185,129,.3); }
     .no-doc { font-size:12px; color:var(--gray-400); font-style:italic; }
 
     /* modal action bar */
@@ -142,10 +176,25 @@
 
     /* member cards in modal */
     .member-mini { background:var(--gray-50); border:1px solid var(--gray-200); border-radius:10px;
-      padding:12px 14px; margin-bottom:10px; }
+      padding:12px 14px; margin-bottom:10px; transition:border-color .18s ease, box-shadow .18s ease; }
+    .member-mini:hover { border-color:var(--emerald-light); box-shadow:var(--shadow-sm); }
     .member-mini-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
     .member-mini-num { width:24px; height:24px; border-radius:50%; background:var(--emerald);
-      color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0; }
+      color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0;
+      box-shadow:0 2px 6px rgba(6,95,70,.3); }
+
+    /* Menghormati preferensi "reduced motion" perangkat — animasi/transform
+       dimatikan, state akhirnya tetap sama persis. */
+    @media (prefers-reduced-motion: reduce) {
+      .sidebar-item, .sidebar-item::before, .sidebar-item .icon,
+      .modal-overlay.show, .modal-overlay.show .modal-box,
+      .inline-edit-row.show, .doc-link, .modal-x {
+        transition:none !important;
+        animation:none !important;
+      }
+      .sidebar-badge.warn { animation:none !important; }
+      .sidebar-item:hover, .doc-link:hover, .modal-x:hover { transform:none !important; }
+    }
 
     /* stats */
     .admin-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:24px; }
@@ -338,22 +387,22 @@
         id="sidebarToggleBtn">⬅ Sembunyikan</button>
     </div>
     <div class="sidebar-label">Manajemen</div>
-    <div class="sidebar-item active" id="nav-peserta" onclick="showPage('peserta')">
+    <div class="sidebar-item active" id="nav-peserta" tabindex="0" role="button" onclick="showPage('peserta')">
       <span class="icon">👥</span> Daftar Peserta
       <span class="sidebar-badge" id="badgePending">0</span>
     </div>
-    <div class="sidebar-item" id="nav-stats" onclick="showPage('stats')">
+    <div class="sidebar-item" id="nav-stats" tabindex="0" role="button" onclick="showPage('stats')">
       <span class="icon">📊</span> Statistik
     </div>
-    <div class="sidebar-item" id="nav-maqra" onclick="showPage('maqra')">
+    <div class="sidebar-item" id="nav-maqra" tabindex="0" role="button" onclick="showPage('maqra')">
       <span class="icon">📖</span> Manajemen Maqra
     </div>
-    <div class="sidebar-item" id="nav-penilaian" onclick="showPage('penilaian')">
+    <div class="sidebar-item" id="nav-penilaian" tabindex="0" role="button" onclick="showPage('penilaian')">
       <span class="icon">⚖️</span> Sistem Penilaian
     </div>
     <div class="sidebar-label">Aksi</div>
-    <div class="sidebar-item" onclick="refreshData()"><span class="icon">🔄</span> Refresh Data</div>
-    <div class="sidebar-item" onclick="exportCSV()"><span class="icon">📥</span> Export CSV</div>
+    <div class="sidebar-item" tabindex="0" role="button" onclick="refreshData()"><span class="icon">🔄</span> Refresh Data</div>
+    <div class="sidebar-item" tabindex="0" role="button" onclick="exportCSV()"><span class="icon">📥</span> Export CSV</div>
     <div style="position:absolute;bottom:16px;left:0;right:0;padding:0 12px">
       <div style="font-size:11px;color:var(--gray-400);text-align:center">MTQ 2026 Admin v1.0</div>
     </div>
@@ -912,13 +961,13 @@
 
 <!-- ══ DETAIL / EDIT MODAL ══════════════════════════════════ -->
 <div class="modal-overlay" id="detailModal">
-  <div class="modal-box">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal-head">
       <div>
         <h3 id="modalTitle">Detail Peserta</h3>
         <span class="reg-tag" id="modalRegNum"></span>
       </div>
-      <span class="modal-x" onclick="closeModal('detailModal')">✕</span>
+      <span class="modal-x" tabindex="0" role="button" aria-label="Tutup" onclick="closeModal('detailModal')">✕</span>
     </div>
     <div class="modal-body" id="modalBody"><!-- filled by JS --></div>
     <div class="modal-actions" id="modalActions"><!-- filled by JS --></div>
@@ -1445,7 +1494,7 @@ function ef(label, value, fieldKey, nomor, full=false, rawHtml=false) {
     <div class="lbl">${label}</div>
     <div class="editable-field">
       <div class="val" id="${id}_val">${displayVal}</div>
-      ${canEdit ? `<span class="edit-pen" onclick="toggleEdit('${fieldKey}')" title="Edit">✏️</span>` : ''}
+      ${canEdit ? `<span class="edit-pen" tabindex="0" role="button" aria-label="Edit ${label}" onclick="toggleEdit('${fieldKey}')" title="Edit">✏️</span>` : ''}
     </div>
     ${canEdit ? `<div class="inline-edit-row" id="${id}_edit">
       <input type="text" class="field-input" id="${id}_input" value="${inputVal}">
@@ -1620,13 +1669,19 @@ function confirmAction(){ if(adm.pending){ adm.pending(); adm.pending=null; } }
 // openModal/closeModal defined above with lock logic
 // FIX 3: Click backdrop to close — detail stays open while confirm visible
 // Strategy: mark detailModal as 'locked' while confirmModal is open
+let _modalFocusStack = [];
 function openModal(id) {
   const el = document.getElementById(id);
   if (!el) return;
+  _modalFocusStack.push(document.activeElement);
   el.classList.add('show');
   if (id === 'confirmModal') {
     // Lock detailModal so backdrop-click won't close it
     document.getElementById('detailModal')?.setAttribute('data-locked', '1');
+  }
+  if (id === 'detailModal') {
+    // a11y: begin keyboard focus at the close button once the dialog is visible
+    requestAnimationFrame(() => document.querySelector('#detailModal .modal-x')?.focus());
   }
 }
 function closeModal(id) {
@@ -1637,7 +1692,25 @@ function closeModal(id) {
     // Unlock detailModal after confirm is closed
     document.getElementById('detailModal')?.removeAttribute('data-locked');
   }
+  // a11y: return keyboard focus to whatever opened this modal
+  const prevFocus = _modalFocusStack.pop();
+  if (prevFocus && typeof prevFocus.focus === 'function' && document.body.contains(prevFocus)) {
+    prevFocus.focus({ preventScroll: true });
+  }
 }
+
+// a11y: Escape closes the topmost visible modal; Enter/Space activate role="button" elements
+// (sidebar items, modal close button, inline edit-pen) since they're <div>/<span>, not <button>.
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if (document.getElementById('confirmModal')?.classList.contains('show')) { closeModal('confirmModal'); return; }
+    if (document.getElementById('detailModal')?.classList.contains('show')) { closeModal('detailModal'); return; }
+  }
+  if ((e.key === 'Enter' || e.key === ' ') && e.target?.getAttribute?.('role') === 'button') {
+    e.preventDefault();
+    e.target.click();
+  }
+});
 
 // Backdrop click handler — only fires when clicking the overlay itself (not children)
 document.querySelectorAll('.modal-overlay').forEach(overlay => {

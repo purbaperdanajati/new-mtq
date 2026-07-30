@@ -1,7 +1,10 @@
 // ============================================================
-//  MTQ 2026 — apps-script/config.gs  (rev 6)
+//  MTQ 2026 — apps-script/config.gs  (rev 7)
 //  Fix #2: kuota=31 (1 per kecamatan), #9: initSheets lengkap,
 //  #10: umur_min=0 (tidak ada batas bawah), #4: password here
+//  rev 7: update jadwal — pendaftaran online 5-15 Agustus 2026,
+//  pelaksanaan MTQ 26-28 Agustus 2026 (lihat juga config.js,
+//  index.html bagian Jadwal Kegiatan & Pengumuman)
 // ============================================================
 
 // ── 1. Spreadsheet & Drive ───────────────────────────────────
@@ -25,10 +28,10 @@ var SHEET_PENDAFTAR = 'PENDAFTAR';
 var SHEET_LOG       = 'LOG';
 
 // ── 4. Konfigurasi Pendaftaran ────────────────────────────────
-// Sesuai Juknis MTQ ke-56 Kab. Indramayu: pendaftaran online 21 s.d. 28 Juli 2026
+// Sesuai Juknis MTQ ke-56 Kab. Indramayu: pendaftaran online 5 s.d. 15 Agustus 2026
 var PENDAFTARAN_CONFIG = {
-  BUKA           : '2026-07-21T00:00:00',
-  TUTUP          : '2026-07-28T23:59:59',
+  BUKA           : '2026-08-05T00:00:00',
+  TUTUP          : '2026-08-15T23:59:59',
   AGE_CUTOFF_DATE: '2026-11-01',   // Juknis: usia dihitung per 1 November 2026 — sudah benar
   // OVERRIDE: null=auto | true=paksa buka | false=paksa tutup
   OVERRIDE       : null
@@ -37,7 +40,7 @@ var PENDAFTARAN_CONFIG = {
 // ── 5. Info Event ─────────────────────────────────────────────
 var EVENT_INFO = {
   nama   : 'MTQ ke-56 Kabupaten Indramayu Tahun 2026',
-  tanggal: '5–7 Agustus 2026',
+  tanggal: '26–28 Agustus 2026',
   lokasi : 'Kecamatan Jatibarang',
   tema   : "Dengan Al-Qur'an Membangun Generasi Emas"
 };
