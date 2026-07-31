@@ -217,12 +217,14 @@
           </div>
         </div>
         <div class="upload-zone" id="rekomZone">
-          <input type="file" accept="image/jpeg,image/png,application/pdf" id="rekomInput">
+          <input type="file" accept="image/*,application/pdf" id="rekomInput">
           <div class="upload-icon" id="rekomIcon">📋</div>
           <h4>Upload Surat Rekomendasi</h4>
           <p>JPG/PNG/PDF — Maks. 2 MB <span class="req">*</span></p>
           <img id="rekomThumb" class="upload-thumb" style="display:none">
         </div>
+        <button type="button" class="upload-camera-btn">📷 Ambil Foto dari Kamera</button>
+        <input type="file" accept="image/*" capture="environment" class="upload-capture-input" style="display:none">
         <div class="upload-preview" id="rekomPreview">
           <span class="file-icon">📄</span>
           <span class="file-name"></span>

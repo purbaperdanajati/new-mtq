@@ -74,7 +74,7 @@ function initSheetHeaders(sh, name) {
 // ── Setup awal (jalankan sekali manual) ──────────────────────
 function setup() {
   Object.values(SHEET).forEach(name => getSheet(name));
-  Logger.log('Setup selesai! (Tanggal pendaftaran dibaca dari PENDAFTARAN_CONFIG di config.gs — satu sumber, tidak perlu di-seed lagi di sini.)');
+  logInfo('penilaian', 'Setup selesai! (Tanggal pendaftaran dibaca dari PENDAFTARAN_CONFIG di config.gs — satu sumber, tidak perlu di-seed lagi di sini.)');
 }
 
 // ── CONFIG ────────────────────────────────────────────────────
@@ -487,7 +487,7 @@ Sistem Penilaian MTQ 2026
   `.trim();
 
   MailApp.sendEmail(adminEmail, subject, body);
-  Logger.log('Email ringkasan terkirim ke ' + adminEmail);
+  logInfo('penilaian', 'Email ringkasan terkirim ke ' + adminEmail);
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -501,8 +501,8 @@ Sistem Penilaian MTQ 2026
 function testSetup() {
   setup();
   const stats = getPenilaianStats_();
-  Logger.log('Stats: ' + JSON.stringify(stats));
-  Logger.log('Test selesai — semua sheet berhasil dibuat!');
+  logInfo('penilaian', 'Stats: ' + JSON.stringify(stats));
+  logInfo('penilaian', 'Test selesai — semua sheet berhasil dibuat!');
 }
 
 /**
@@ -513,5 +513,5 @@ function resetNilai_DANGER() {
   const sh = getSheet(SHEET.NILAI);
   const lastRow = sh.getLastRow();
   if (lastRow > 1) sh.deleteRows(2, lastRow - 1);
-  Logger.log('Semua data nilai telah dihapus!');
+  logWarn('penilaian', 'Semua data nilai telah dihapus! (resetNilai_DANGER)');
 }

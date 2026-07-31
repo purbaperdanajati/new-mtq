@@ -925,16 +925,18 @@ function renderUploadSections() {
           ${roleStr ? `<div style="font-size:12px;font-weight:400;color:var(--gray-400)">${roleStr}</div>` : ''}
         </div>
       </div>
-      <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr">
+      <div class="form-grid" style="grid-template-columns:1fr">
 
         <div class="upload-col">
           <div class="upload-zone" id="photoZone_${i}">
-            <input type="file" accept="image/jpeg,image/png" id="photoInput_${i}">
+            <input type="file" accept="image/*" id="photoInput_${i}">
             <div class="upload-icon" id="photoIcon_${i}">📸</div>
-            <h4>Pas Foto</h4>
+            <h4>Pas Foto Background Biru</h4>
             <p>JPG/PNG — Maks. 2 MB <span class="req">*</span></p>
             <img id="photoThumb_${i}" class="upload-thumb" style="display:none">
           </div>
+          <button type="button" class="upload-camera-btn">📷 Ambil Foto dari Kamera</button>
+          <input type="file" accept="image/*" capture="environment" class="upload-capture-input" style="display:none">
           <div class="upload-preview" id="photoPreview_${i}">
             <span class="file-icon">🖼️</span>
             <span class="file-name"></span>
@@ -945,12 +947,14 @@ function renderUploadSections() {
 
         <div class="upload-col">
           <div class="upload-zone" id="ktpZone_${i}">
-            <input type="file" accept="image/jpeg,image/png,application/pdf" id="ktpInput_${i}">
+            <input type="file" accept="image/*,application/pdf" id="ktpInput_${i}">
             <div class="upload-icon" id="ktpIcon_${i}">🪪</div>
             <h4>KTP / Kartu Keluarga</h4>
             <p>JPG/PNG/PDF — Maks. 2 MB <span class="req">*</span></p>
             <img id="ktpThumb_${i}" class="upload-thumb" style="display:none">
           </div>
+          <button type="button" class="upload-camera-btn">📷 Ambil Foto dari Kamera</button>
+          <input type="file" accept="image/*" capture="environment" class="upload-capture-input" style="display:none">
           <div class="upload-preview" id="ktpPreview_${i}">
             <span class="file-icon">📄</span>
             <span class="file-name"></span>
@@ -962,12 +966,14 @@ function renderUploadSections() {
         <!-- FIX #7: Sertifikat / piagam lomba (opsional) -->
         <div class="upload-col">
           <div class="upload-zone" id="sertZone_${i}">
-            <input type="file" accept="image/jpeg,image/png,application/pdf" id="sertInput_${i}">
+            <input type="file" accept="image/*,application/pdf" id="sertInput_${i}">
             <div class="upload-icon" id="sertIcon_${i}">🏅</div>
             <h4>Sertifikat / Piagam</h4>
             <p>JPG/PNG/PDF — Maks. 2 MB <em style="color:var(--gray-400)">(Opsional)</em></p>
             <img id="sertThumb_${i}" class="upload-thumb" style="display:none">
           </div>
+          <button type="button" class="upload-camera-btn">📷 Ambil Foto dari Kamera</button>
+          <input type="file" accept="image/*" capture="environment" class="upload-capture-input" style="display:none">
           <div class="upload-preview" id="sertPreview_${i}">
             <span class="file-icon">🏅</span>
             <span class="file-name"></span>
@@ -1023,6 +1029,74 @@ function setupUpload(zoneId, fileKey, previewId, allowedTypes, maxMB, thumbId, i
       if (file) handleFile(file, fileKey, zone, preview, allowedTypes, maxMB, thumbId, iconId);
     });
   }
+
+  // ── FIX: tombol "Ambil Foto" — kamera langsung ──────────────────
+  // Beberapa HP (a.l. Samsung/One UI) tidak menampilkan opsi Kamera di
+  // pemilih file bawaan ketika accept berisi beberapa tipe/PDF. Input
+  // tersembunyi dengan capture="environment" ini menjamin kamera selalu
+  // bisa dibuka langsung, terlepas dari perilaku pemilih file HP masing-
+  // masing. Tombol & input ini opsional — dicari sebagai saudara zone,
+  // bukan parameter, supaya setupUpload tidak perlu diubah tiap dipanggil.
+  const col           = zone.closest('.upload-col') || zone.parentElement;
+  const captureBtn    = col?.querySelector('.upload-camera-btn');
+  const captureInput  = col?.querySelector('.upload-capture-input');
+  if (captureBtn && captureInput) {
+    captureBtn.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      captureInput.click();
+    });
+    captureInput.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (file) handleFile(file, fileKey, zone, preview, allowedTypes, maxMB, thumbId, iconId);
+      captureInput.value = '';   // reset — supaya foto yang sama bisa diambil ulang bila perlu
+    });
+  }
+}
+
+// ── FIX: kompresi gambar di sisi klien ──────────────────────────
+// Foto langsung dari kamera HP modern biasanya 3–8 MB — jauh di atas
+// batas 2 MB. Alih-alih menolak file itu, kita kecilkan dulu (resize +
+// re-encode JPEG) supaya tetap bisa dipakai tanpa peserta harus cari
+// aplikasi kompres sendiri. File non-gambar (PDF) dilewati apa adanya.
+function compressImage(file, maxMB = 1.8, maxDim = 1920) {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) { resolve(file); return; }
+    const maxBytes = maxMB * 1024 * 1024;
+    if (file.size <= maxBytes) { resolve(file); return; }
+
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
+        else { width = Math.round(width * maxDim / height); height = maxDim; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+
+      let quality = 0.85;
+      const attempt = () => {
+        canvas.toBlob(blob => {
+          if (!blob) { reject(new Error(`Gagal mengompres "${file.name}".`)); return; }
+          if (blob.size > maxBytes && quality > 0.35) {
+            quality -= 0.15;
+            attempt();
+            return;
+          }
+          const newName = file.name.replace(/\.\w+$/, '') + '.jpg';
+          resolve(new File([blob], newName, { type: 'image/jpeg', lastModified: Date.now() }));
+        }, 'image/jpeg', quality);
+      };
+      attempt();
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error(`Gagal membaca gambar "${file.name}" untuk dikompres.`)); };
+    img.src = url;
+  });
 }
 
 function handleFile(file, key, zone, preview, allowedTypes, maxMB, thumbId, iconId) {
@@ -1032,8 +1106,30 @@ function handleFile(file, key, zone, preview, allowedTypes, maxMB, thumbId, icon
     showToast('Format Salah', `Gunakan: ${allowedTypes.map(t => t.split('/')[1].toUpperCase()).join(', ')}`, 'error');
     return;
   }
+
+  handleFileAsync_(file, key, zone, preview, maxMB, thumbId, iconId);
+}
+
+async function handleFileAsync_(file, key, zone, preview, maxMB, thumbId, iconId) {
+  // FIX: kompres dulu kalau gambar & melebihi batas — supaya foto dari
+  // kamera langsung tetap terpakai tanpa perlu ditolak.
+  if (file.type.startsWith('image/') && file.size > maxMB * 1024 * 1024) {
+    zone.classList.add('compressing');
+    try {
+      const before = file.size;
+      file = await compressImage(file, maxMB * 0.9);
+      log.info(`handleFile — kompresi ${key}: ${fmtSize(before)} → ${fmtSize(file.size)}`);
+    } catch (e) {
+      log.error('handleFile — kompresi gagal:', e);
+      showToast('Kompresi Gagal', e.message || 'Gagal mengompres gambar, coba foto lain.', 'error');
+      zone.classList.remove('compressing');
+      return;
+    }
+    zone.classList.remove('compressing');
+  }
+
   if (file.size > maxMB * 1024 * 1024) {
-    showToast('File Terlalu Besar', `Maksimal ${maxMB} MB per file.`, 'error');
+    showToast('File Terlalu Besar', `Maksimal ${maxMB} MB per file — file ini masih ${fmtSize(file.size)} setelah dikompres otomatis. Coba gunakan foto lain.`, 'error');
     return;
   }
 
@@ -1212,17 +1308,36 @@ async function submitForm() {
     const payloadSize = JSON.stringify(payload).length;
     const payloadKB   = (payloadSize / 1024).toFixed(1);
     log.info('submitForm — payload siap, size ≈', payloadSize, 'bytes');
-    showProgress(60, 'Mengunggah data ke server...', `Ukuran data: ${payloadKB} KB — mohon tunggu`);
+    showProgress(60, 'Mengunggah data ke server...', `Ukuran data: ${payloadKB} KB — proses ini bisa 30–60 detik tergantung koneksi, mohon jangan tutup halaman.`);
     log.info('submitForm — mengirim POST ke GAS...');
 
+    // ── FIX: batas waktu request (AbortController) ─────────────────
+    // fetch() tanpa timeout bisa menggantung tanpa batas di koneksi
+    // seluler yang lemah — pengguna hanya melihat loading tanpa
+    // kepastian. 100 detik memberi ruang untuk proses upload beberapa
+    // berkas ke Drive di sisi server (per FIX #7, upload.gs) sambil
+    // tetap memberi kepastian ke pengguna kalau memang macet.
+    const controller = new AbortController();
+    const submitTimeoutId = setTimeout(() => controller.abort(), 100000);
+
     // ── FIX #7: Content-Type: text/plain → simple request, no CORS preflight ──
-    const res = await fetch(API_URL, {
-      method   : 'POST',
-      headers  : { 'Content-Type': 'text/plain;charset=UTF-8' },
-      body     : JSON.stringify(payload),
-      redirect : 'follow',
-    });
+    let res;
+    try {
+      res = await fetch(API_URL, {
+        method   : 'POST',
+        headers  : { 'Content-Type': 'text/plain;charset=UTF-8' },
+        body     : JSON.stringify(payload),
+        redirect : 'follow',
+        signal   : controller.signal,
+      });
+    } finally {
+      clearTimeout(submitTimeoutId);
+    }
     log.info(`submitForm — response status: ${res.status} ${res.statusText}`);
+
+    if (!res.ok) {
+      throw new Error(`Server merespons dengan status ${res.status}. Coba beberapa saat lagi.`);
+    }
 
     showProgress(90, 'Memproses respons server...', 'Server sedang menyimpan data');
     const result = await res.json();
@@ -1245,10 +1360,20 @@ async function submitForm() {
         : rawErr);
     }
   } catch (err) {
-    log.error('submitForm ✗ —', err.message, err);
+    log.error('submitForm ✗ —', err?.name, err?.message, err);
     log.timeEnd('submitForm');
     hideLoading();
-    showToast('Gagal Mendaftar', err.message || 'Terjadi kesalahan. Coba beberapa saat lagi.', 'error', 7000);
+    // FIX: pesan lebih spesifik untuk kasus timeout/jaringan, supaya
+    // tidak semua kegagalan tampil sebagai pesan generik yang sama.
+    let userMsg = err?.message || '';
+    if (err?.name === 'AbortError') {
+      userMsg = 'Koneksi terlalu lama merespons (lebih dari 100 detik). Periksa sinyal/koneksi internet Anda lalu coba lagi — jika file cukup besar, coba gunakan WiFi.';
+    } else if (err?.name === 'TypeError' && /fetch|network/i.test(userMsg)) {
+      userMsg = 'Gagal terhubung ke server. Periksa koneksi internet Anda dan coba lagi.';
+    } else if (!userMsg) {
+      userMsg = 'Terjadi kesalahan. Coba beberapa saat lagi.';
+    }
+    showToast('Gagal Mendaftar', userMsg, 'error', 7000);
     state.isSubmitting = false;
   }
   log.end();
@@ -1258,7 +1383,10 @@ function toBase64(file) {
   return new Promise((res, rej) => {
     const r = new FileReader();
     r.onload  = () => res(r.result.split(',')[1]);
-    r.onerror = rej;
+    // FIX: FileReader.onerror memberi ProgressEvent, bukan Error — tidak
+    // punya .message, jadi submitForm() dulu selalu jatuh ke pesan generik
+    // "Terjadi kesalahan..." tanpa petunjuk apa yang sebenarnya gagal.
+    r.onerror = () => rej(new Error(`Gagal membaca file "${file.name}". Coba pilih ulang filenya.`));
     r.readAsDataURL(file);
   });
 }
