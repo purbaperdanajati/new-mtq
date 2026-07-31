@@ -931,8 +931,9 @@ function renderUploadSections() {
           <div class="upload-zone" id="photoZone_${i}">
             <input type="file" accept="image/*" id="photoInput_${i}">
             <div class="upload-icon" id="photoIcon_${i}">📸</div>
-            <h4>Pas Foto Background Biru</h4>
+            <h4>Pas Foto</h4>
             <p>JPG/PNG — Maks. 2 MB <span class="req">*</span></p>
+            <p style="color:#2563eb;font-weight:600">📘 Wajib latar belakang biru</p>
             <img id="photoThumb_${i}" class="upload-thumb" style="display:none">
           </div>
           <button type="button" class="upload-camera-btn">📷 Ambil Foto dari Kamera</button>
@@ -1431,6 +1432,17 @@ function generateQRCode(text) {
       correctLevel: QRCode.CorrectLevel.H,
     });
   }
+}
+
+// FIX: tombol "Daftar Peserta Lain" di halaman sukses. Form ini punya
+// banyak state (anggota, file terupload, langkah aktif, dsb.) — reload
+// halaman adalah cara paling aman untuk kembali ke kondisi bersih tanpa
+// risiko ada sisa state/listener dari pendaftaran sebelumnya yang
+// kebawa. Sekaligus otomatis memuat ulang kuota/config terbaru dari
+// server (berguna kalau kuota berubah sejak form pertama dibuka).
+function daftarPesertaLain() {
+  log.info('daftarPesertaLain — reload untuk pendaftaran baru');
+  location.href = location.pathname;
 }
 
 function downloadPDF() {
