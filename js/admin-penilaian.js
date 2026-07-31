@@ -722,7 +722,13 @@ async function pnLoadPesertaTable(forceRefresh) {
       adminLog.end(); return;
     }
 
-    wrap.innerHTML = '<table class="data-table" style="width:100%">'
+    // FIX: sebelumnya style="width:100%" mengunci tabel selalu sama
+    // lebar dengan container (.table-wrap), jadi overflow-x:auto tidak
+    // pernah punya apa pun untuk di-scroll — kolom malah dipaksa
+    // menyempit di layar sempit. Dihapus supaya tabel boleh melebar
+    // mengikuti konten lalu discroll, konsisten dengan .data-table di
+    // admin.html (lihat komentar FIX di sana).
+    wrap.innerHTML = '<table class="data-table">'
       + '<thead><tr><th style="width:40px">#</th><th>Nama / Tim</th><th>Kecamatan</th><th>Cabang</th><th>No. Pendaftaran</th><th>Status</th></tr></thead>'
       + '<tbody>'
       + list.map(function(p, idx) {
@@ -894,7 +900,9 @@ async function pnLoadRekapTable(forceRefresh) {
 
     document.getElementById('pnRekapExportBtn')?.removeAttribute('disabled');
 
-    wrap.innerHTML = '<table class="data-table" style="width:100%;font-size:13px">'
+    // FIX: sama seperti pnLoadPesertaTable — width:100% dihapus supaya
+    // tabel bisa melebar & discroll di layar sempit.
+    wrap.innerHTML = '<table class="data-table" style="font-size:13px">'
       + '<thead><tr><th>Peserta</th><th>Cabang</th><th>Hakim</th><th>Total</th><th>Parameter</th><th>Catatan</th><th>Waktu</th></tr></thead>'
       + '<tbody>'
       + rows.map(function(d) {

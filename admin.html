@@ -13,12 +13,20 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
   <style>
     /* ── Extra admin styles ── */
-    body.admin-page { padding-top: 68px; }
+    body.admin-page { padding-top: 68px; overflow-x: hidden; }
     .admin-layout  { display: flex; min-height: calc(100vh - 68px); }
     .admin-sidebar { width: 240px; background: var(--white); border-right: 1px solid var(--gray-200);
       position: fixed; top: 68px; left: 0; bottom: 0; overflow-y: auto; padding: 16px 0; z-index: 50;
       transition: transform .3s; box-shadow: var(--shadow-sm); }
-    .admin-content { margin-left: 240px; padding: 28px 32px; flex: 1; }
+    /* FIX: .admin-content adalah flex child (anak dari .admin-layout yang
+       display:flex) tapi TIDAK punya min-width:0 — flex item punya
+       min-width:auto secara default, artinya browser TIDAK MENGIZINKANNYA
+       menyempit di bawah lebar konten instrinsiknya. Akibatnya, tabel
+       lebar di dalam .table-wrap memaksa .admin-content (dan seluruh
+       halaman) melebar mengikuti tabel, bukan tabel yang di-scroll di
+       dalam .table-wrap seperti niatnya. min-width:0 di sini membuat
+       overflow-x:auto pada .table-wrap akhirnya benar-benar berfungsi. */
+    .admin-content { margin-left: 240px; padding: 28px 32px; flex: 1; min-width: 0; }
     .sidebar-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px;
       color:var(--gray-400); padding:18px 20px 8px; display:flex; align-items:center; gap:8px; }
     .sidebar-label::after { content:''; flex:1; height:1px; background:var(--gray-100); }
@@ -70,6 +78,10 @@
     .table-wrap::-webkit-scrollbar-track { background:var(--gray-100); border-radius:4px; }
     .table-wrap::-webkit-scrollbar-thumb { background:var(--emerald-light); border-radius:4px; }
     .table-wrap::-webkit-scrollbar-thumb:hover { background:var(--emerald); }
+    /* FIX: hint "geser untuk lihat lebih" — hanya relevan di layar
+       sempit, disembunyikan di desktop (lihat definisi tampil di
+       @media max-width:768px). */
+    .table-scroll-hint { display: none; }
     /* FIX: width:100% mengunci tabel selalu SAMA DENGAN container, jadi
        overflow-x:auto di .table-wrap tidak pernah punya apa pun utk
        di-scroll — kolom malah dipaksa menyempit/teks ke-wrap. min-width:100%
@@ -219,7 +231,7 @@
     /* login */
     .login-overlay { position:fixed; inset:0; background:linear-gradient(135deg,#064e3b,#065f46);
       z-index:9999; display:flex; align-items:center; justify-content:center; }
-    .login-box { background:var(--white); border-radius:20px; padding:48px 40px; width:360px;
+    .login-box { background:var(--white); border-radius:20px; padding:48px 40px; width:360px; max-width:calc(100vw - 32px); box-sizing:border-box;
       box-shadow:0 32px 80px rgba(0,0,0,.3); text-align:center; }
     .login-logo { font-size:48px; margin-bottom:12px; }
     .login-box h2 { font-size:22px; font-weight:800; color:var(--gray-900); margin-bottom:4px; }
@@ -303,6 +315,30 @@
       .admin-sidebar.open { transform:translateX(0); }
       .admin-content { margin-left:0; padding:16px; }
       .detail-grid { grid-template-columns:1fr; }
+
+      /* FIX: banyak form di tab Maqra/Penilaian pakai grid 2-3 kolom
+         lewat inline style (bukan class), jadi tidak bisa dioverride
+         lewat selector class biasa — dipaksa 1 kolom di layar sempit
+         lewat [style*=...] + !important (satu-satunya cara yang bisa
+         menang lawan inline style tanpa mengubah tiap baris HTML-nya).
+         Sebelumnya aturan serupa cuma berlaku di #page-penilaian —
+         sekarang dikonsolidasi & berlaku di seluruh halaman admin.
+         "1fr 1fr" otomatis menangkap "1fr 1fr 1fr" juga karena
+         keduanya dicek sebagai substring. */
+      [style*="grid-template-columns:1fr 1fr"],
+      [style*="grid-template-columns:repeat(3,1fr)"],
+      [style*="grid-template-columns:400px 1fr"],
+      [style*="grid-template-columns:1fr 100px"] {
+        grid-template-columns: 1fr !important;
+      }
+
+      /* FIX: hint agar user tahu tabel bisa digeser ke samping —
+         scrollbar tipis di .table-wrap gampang terlewat di HP. */
+      .table-wrap { position: relative; }
+      .table-scroll-hint {
+        display: block; font-size: 11px; color: var(--gray-400);
+        margin: -8px 0 8px; text-align: right;
+      }
     }
   </style>
 </head>
@@ -335,7 +371,7 @@
       <label class="field-label">Verifikasi — ketik 6 karakter berikut:</label>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <canvas id="captchaCanvas" width="240" height="64"
-          style="border:1.5px solid var(--gray-200);border-radius:8px;cursor:pointer;display:block;background:#f8fafc"
+          style="border:1.5px solid var(--gray-200);border-radius:8px;cursor:pointer;display:block;background:#f8fafc;max-width:100%;height:auto"
           onclick="initCaptcha()" title="Klik untuk ganti captcha"></canvas>
         <button type="button" onclick="initCaptcha()"
           style="background:none;border:1.5px solid var(--gray-200);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:16px;color:var(--gray-500)"
@@ -457,6 +493,7 @@
 
       <!-- Table -->
       <div class="admin-card">
+        <div class="table-scroll-hint">👉 Geser tabel untuk melihat kolom lainnya</div>
         <div class="table-wrap">
           <table class="data-table" id="pesertaTable">
             <thead>
@@ -498,6 +535,7 @@
       <!-- Per-cabang breakdown -->
       <div class="admin-card">
         <div class="admin-card-header"><h2>📋 Rekap Per Cabang Lomba</h2></div>
+        <div class="table-scroll-hint">👉 Geser tabel untuk melihat kolom lainnya</div>
         <div class="table-wrap">
           <table class="data-table" id="cabangTable">
             <thead><tr><th>Cabang Lomba</th><th>Gender</th><th>Terdaftar</th><th>Terverifikasi</th><th>Menunggu</th><th>Ditolak</th><th>Nonaktif</th></tr></thead>
@@ -728,6 +766,7 @@
             <input class="field-input" id="maqraSearchHasil"
               placeholder="🔍 Cari nama / nomor / maqra..." oninput="maqraFilterHasil()">
           </div>
+          <div class="table-scroll-hint">👉 Geser tabel untuk melihat kolom lainnya</div>
           <div class="table-wrap">
             <table class="data-table">
               <thead><tr><th>No.</th><th>Nomor Daftar</th><th>Nama</th><th>Kecamatan</th><th>Cabang</th><th>Maqra</th><th>Waktu</th></tr></thead>
@@ -926,6 +965,7 @@
                 </div>
               </div>
             </div>
+            <div class="table-scroll-hint">👉 Geser tabel untuk melihat kolom lainnya</div>
             <div id="pnPesertaTableWrap" class="table-wrap">
               <div style="text-align:center;padding:40px;color:var(--gray-400)"><div style="font-size:32px">🧑</div><p>Pilih cabang untuk melihat peserta</p></div>
             </div>
@@ -957,6 +997,7 @@
                 </select>
               </div>
             </div>
+            <div class="table-scroll-hint">👉 Geser tabel untuk melihat kolom lainnya</div>
             <div id="pnRekapTableWrap" class="table-wrap">
               <div style="text-align:center;padding:40px;color:var(--gray-400)"><div style="font-size:32px">📊</div><p>Belum ada nilai yang disubmit</p></div>
             </div>
@@ -2063,9 +2104,10 @@ window.addEventListener('resize', () => {
     .pn-tab-pane        { display:none; }
     .pn-tab-pane.active { display:block !important; }
 
-    @media(max-width:768px) {
-      #page-penilaian [style*="grid-template-columns:1fr 1fr"] { grid-template-columns:1fr !important; }
-    }
+    /* FIX: aturan grid mobile untuk halaman ini dikonsolidasi ke
+       @media (max-width:768px) di <style> bagian atas file (dekat
+       definisi .admin-content) — sekarang berlaku untuk SELURUH
+       halaman admin, bukan cuma #page-penilaian. */
   </style>
   <script>
   // ── Tab switcher untuk sub-tab Maqra ─────────────────────────
