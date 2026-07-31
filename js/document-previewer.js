@@ -1072,7 +1072,17 @@ class DocumentPreviewer {
     /* ============================================================
        PRIVATE — UTILS
     ============================================================ */
-    _log(...a) { if (this.config.debug) console.log('[DocumentPreviewer]', ...a); }
+    // Satu pintu: kalau MTQ_CONFIG global ada (dipakai di dalam proyek
+    // MTQ 2026) dan LOGGER_ENABLED=false, logger komponen ini ikut
+    // senyap — terlepas dari nilai this.config.debug per-instance.
+    // Kalau MTQ_CONFIG tidak ada (dipakai standalone di proyek lain,
+    // lihat komentar di document-previewer.config.js), fallback ke
+    // this.config.debug seperti semula supaya komponen ini tetap
+    // portable di luar proyek MTQ 2026.
+    _log(...a) {
+        const masterOn = (typeof MTQ_CONFIG === 'undefined' || MTQ_CONFIG.LOGGER_ENABLED !== false);
+        if (this.config.debug && masterOn) console.log('[DocumentPreviewer]', ...a);
+    }
 }
 
 

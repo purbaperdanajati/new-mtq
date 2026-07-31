@@ -100,7 +100,7 @@ async function verifyNIK() {
 
   } catch (err) {
     showToast('Error', 'Gagal menghubungi server: ' + err.message, 'error');
-    console.error(err);
+    log.error(err);
   } finally {
     showLoading(false);
     document.getElementById('verifyBtn').disabled = false;

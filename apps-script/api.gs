@@ -334,12 +334,6 @@ function apiAdminLogin_(params) {
   var expected = String(ADMIN_PASSWORD || '').trim();
   logInfo('api','incoming.length='+incoming.length+' expected.length='+expected.length);
 
-  // Char-by-char debug (hapus setelah konfirmasi bekerja)
-  var inChars = incoming.split('').map(function(c){return c.charCodeAt(0);}).join(',');
-  var exChars = expected.split('').map(function(c){return c.charCodeAt(0);}).join(',');
-  logInfo('api','incoming chars: ['+inChars+']');
-  logInfo('api','expected chars: ['+exChars+']');
-
   if (!incoming) return {success:false, message:'Password tidak boleh kosong'};
   if (incoming !== expected) {
     logWarn('api','Login GAGAL — tidak cocok');
@@ -950,10 +944,12 @@ function updateRowField_(nomor, colIndex, value, catatan) {
 //   return { isOpen:false };
 // }
  
-// ── Dummy logError_ (jika tidak ada di scope) ─────────────────
+// ── logError_ (alias) ──────────────────────────────────────────
+// FIX: sebelumnya dummy dengan console.error mentah (bypass
+// LOGGER_ENABLED & sheet LOG). Sekarang diarahkan ke logError()
+// asli di helper.gs supaya tetap lewat satu pintu yang sama.
 function logError_(ctx, msg) {
-  // Ganti dengan fungsi log Anda yang sudah ada
-  console.error('['+ctx+'] '+msg);
+  logError(ctx, msg);
 }
 
 function apiPerbaikan_(body) {

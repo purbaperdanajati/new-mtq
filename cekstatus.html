@@ -345,10 +345,10 @@
   (function() {
     const url = window.MTQ_API_URL || (typeof MTQ_CONFIG !== 'undefined' ? MTQ_CONFIG.API_URL : '');
     if (!url) {
-      console.error('[MTQ] KRITIS: window.MTQ_API_URL kosong setelah config.js dimuat!');
-      console.error('[MTQ] Pastikan MTQ_CONFIG.API_URL sudah diisi di js/config.js');
+      log.error('[MTQ] KRITIS: window.MTQ_API_URL kosong setelah config.js dimuat!');
+      log.error('[MTQ] Pastikan MTQ_CONFIG.API_URL sudah diisi di js/config.js');
     } else {
-      console.log('[MTQ] API_URL OK, panjang:', url.length);
+      log.debug('[MTQ] API_URL OK, panjang:', url.length);
     }
   })();
 </script>

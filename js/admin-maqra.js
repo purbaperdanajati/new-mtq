@@ -629,5 +629,5 @@ function maqraShowLoading(show, msg = 'Memuat...') {
 function maqraShowToast(title, msg, type = 'info', duration = 4000) {
   // Gunakan showToast dari admin.js jika tersedia
   if (typeof showToast === 'function') { showToast(title, msg, type, duration); return; }
-  console.warn(`[Maqra Toast] ${type}: ${title} — ${msg}`);
+  adminLog.warn(`[Maqra Toast] ${type}: ${title} — ${msg}`);
 }

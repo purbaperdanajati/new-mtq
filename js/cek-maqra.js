@@ -27,7 +27,7 @@
 // karena config.js mungkin belum selesai dieksekusi saat baris ini dijalankan
 function getApiUrl() {
   const url = window.MTQ_API_URL || (typeof MTQ_CONFIG !== 'undefined' ? MTQ_CONFIG.API_URL : '') || '';
-  if (!url) console.error('[MTQ] API_URL kosong — pastikan js/config.js dimuat sebelum cek-maqra.js');
+  if (!url) log.error('[MTQ] API_URL kosong — pastikan js/config.js dimuat sebelum cek-maqra.js');
   return url;
 }
 
@@ -117,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Untuk uji coba lokal, jalankan lewat server (mis. `python3 -m http.server`)
   // atau langsung di domain hosting (GitHub Pages), jangan buka file langsung.
   if (location.protocol === 'file:') {
-    console.warn('[MTQ] Halaman dibuka lewat file:// — beberapa fitur (kirim perbaikan, preview dokumen) butuh http/https untuk berfungsi normal. Gunakan server lokal atau domain hosting untuk uji coba.');
+    log.warn('[MTQ] Halaman dibuka lewat file:// — beberapa fitur (kirim perbaikan, preview dokumen) butuh http/https untuk berfungsi normal. Gunakan server lokal atau domain hosting untuk uji coba.');
   }
   const input = document.getElementById('nikInput');
   input.addEventListener('keydown', e => { if (e.key === 'Enter') cekStatus(); });
@@ -159,7 +159,7 @@ async function updateNavDaftarStatus_() {
     if (!data || !data.success) throw new Error('respons getStats tidak valid');
     applyDaftarStatus(data.isOpen, data.status);
   } catch (err) {
-    console.warn('[MTQ] updateNavDaftarStatus_ — API gagal, pakai fallback lokal:', err.message);
+    log.warn('[MTQ] updateNavDaftarStatus_ — API gagal, pakai fallback lokal:', err.message);
     // Fallback: hitung status dari MTQ_CONFIG (config.js) kalau API tidak terjangkau
     if (typeof getRegStatus === 'function') {
       const status = getRegStatus();
@@ -174,7 +174,7 @@ async function updateNavDaftarStatus_() {
 // belakangan (mis. di dalam showEditForm()) otomatis ikut tertangkap juga.
 function initDocumentPreviewer() {
   if (typeof DocumentPreviewer === 'undefined') {
-    console.warn('[MTQ] DocumentPreviewer tidak dimuat — pastikan document-previewer.js & document-previewer.css sudah di-include di cekstatus.html. Fitur "Lihat Dokumen" akan nonaktif.');
+    log.warn('[MTQ] DocumentPreviewer tidak dimuat — pastikan document-previewer.js & document-previewer.css sudah di-include di cekstatus.html. Fitur "Lihat Dokumen" akan nonaktif.');
     return;
   }
   const baseCfg = (typeof MY_DP_CONFIG !== 'undefined') ? MY_DP_CONFIG : {};
@@ -243,7 +243,7 @@ async function fetchAndRenderStatus(nik) {
     showLoading(false);
     document.getElementById('searchBtn').disabled = false;
     showToast('Konfigurasi Error', 'API URL belum terkonfigurasi. Periksa js/config.js', 'error', 8000);
-    console.error('[MTQ] window.MTQ_API_URL kosong saat cekStatus dipanggil');
+    log.error('[MTQ] window.MTQ_API_URL kosong saat cekStatus dipanggil');
     return;
   }
 
@@ -267,7 +267,7 @@ async function fetchAndRenderStatus(nik) {
     }
   } catch (err) {
     showToast('Error', 'Gagal menghubungi server. Coba lagi.', 'error');
-    console.error(err);
+    log.error(err);
   } finally {
     showLoading(false);
     document.getElementById('searchBtn').disabled = false;
@@ -796,7 +796,7 @@ async function downloadKartuPeserta() {
     pdf.save(fname);
     showToast('Berhasil', `Kartu peserta diunduh — ${anggota.length} halaman`, 'success', 5000);
   } catch (err) {
-    console.error('[KartuPeserta]', err);
+    log.error('[KartuPeserta]', err);
     showToast('Error', 'Gagal membuat kartu: ' + err.message, 'error');
   } finally {
     showLoading(false);

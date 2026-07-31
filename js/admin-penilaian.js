@@ -148,7 +148,7 @@ function pnAdminTab(tab, forceRefresh) {
   _pnCurrentTab = tab;
   forceRefresh  = !!forceRefresh;
 
-  console.group('[PN] pnAdminTab \u2192 ' + tab + (forceRefresh ? ' (force)' : ''));
+  adminLog.group('[PN] pnAdminTab \u2192 ' + tab + (forceRefresh ? ' (force)' : ''));
 
   // ── 0. Re-aktifkan #page-penilaian setiap kali sub-tab diklik ──────────
   // Root cause "visible:false": browser tidak mem-parse !important dari
@@ -171,7 +171,7 @@ function pnAdminTab(tab, forceRefresh) {
       var cs = window.getComputedStyle(ancestor);
       if (cs.display === 'none') {
         ancestor.style.setProperty('display', 'block', 'important');
-        console.warn('[PN] Force-show hidden ancestor:', ancestor.tagName + (ancestor.id ? '#'+ancestor.id : ''));
+        adminLog.warn('[PN] Force-show hidden ancestor:', ancestor.tagName + (ancestor.id ? '#'+ancestor.id : ''));
       }
       ancestor = ancestor.parentElement;
     }
@@ -194,17 +194,17 @@ function pnAdminTab(tab, forceRefresh) {
     void pane.offsetHeight;  // paksa reflow
     var computed = window.getComputedStyle(pane).display;
     var visible  = pane.offsetParent !== null;
-    console.log('[PN] Pane #pn-tab-' + tab
+    adminLog.debug('[PN] Pane #pn-tab-' + tab
       + ' computed.display:' + computed
       + ' visible:' + visible);
 
     // Jika masih tidak terlihat, log SELURUH rantai leluhur untuk temukan biang kerok
     if (!visible) {
-      console.warn('[PN] MASIH hidden. Tracing ancestor chain:');
+      adminLog.warn('[PN] MASIH hidden. Tracing ancestor chain:');
       var el = pane.parentElement;
       while (el && el !== document.body) {
         var cs = window.getComputedStyle(el);
-        console.log('  ancestor:', el.tagName + (el.id?'#'+el.id:'') + (el.className?' .'+el.className.split(' ').join('.'):''),
+        adminLog.debug('  ancestor:', el.tagName + (el.id?'#'+el.id:'') + (el.className?' .'+el.className.split(' ').join('.'):''),
           '| display:', cs.display,
           '| visibility:', cs.visibility,
           '| classList:', el.classList.toString(),
@@ -213,7 +213,7 @@ function pnAdminTab(tab, forceRefresh) {
       }
     }
   } else {
-    console.error('[PN] Pane #pn-tab-' + tab + ' NOT FOUND');
+    adminLog.error('[PN] Pane #pn-tab-' + tab + ' NOT FOUND');
   }
 
   // ── 2. Button active state ────────────────────────────────
@@ -228,17 +228,17 @@ function pnAdminTab(tab, forceRefresh) {
   // ── 3. Load tab data ──────────────────────────────────────
   if (tab === 'rekap') {
     _pnShowWrap('pnRekapTableWrap', '\u23F3 Memuat data nilai...');
-    try { pnLoadRekapTable(forceRefresh).catch(function(e){ console.error('[PN] rekap error:', e); _pnShowWrapErr('pnRekapTableWrap', e); }); } catch(e) { _pnShowWrapErr('pnRekapTableWrap', e); }
+    try { pnLoadRekapTable(forceRefresh).catch(function(e){ adminLog.error('[PN] rekap error:', e); _pnShowWrapErr('pnRekapTableWrap', e); }); } catch(e) { _pnShowWrapErr('pnRekapTableWrap', e); }
     try { pnPopulateRekapFilters(forceRefresh).catch(function(){}); } catch(e) {}
   }
   if (tab === 'peserta') {
     _pnShowWrap('pnPesertaTableWrap', '\u23F3 Memuat data peserta...');
-    try { pnLoadPesertaTable(forceRefresh).catch(function(e){ console.error('[PN] peserta error:', e); _pnShowWrapErr('pnPesertaTableWrap', e); }); } catch(e) { _pnShowWrapErr('pnPesertaTableWrap', e); }
+    try { pnLoadPesertaTable(forceRefresh).catch(function(e){ adminLog.error('[PN] peserta error:', e); _pnShowWrapErr('pnPesertaTableWrap', e); }); } catch(e) { _pnShowWrapErr('pnPesertaTableWrap', e); }
   }
   if (tab === 'hakim')     { try { pnRenderHakimList(forceRefresh).catch(function(){}); } catch(e) {} }
   if (tab === 'parameter') { try { pnRenderParamSummary(forceRefresh).catch(function(){}); } catch(e) {} }
 
-  console.groupEnd();
+  adminLog.end();
 }
 
 // Tampilkan placeholder segera (sebelum async selesai)
@@ -666,15 +666,15 @@ async function pnLoadPesertaTable(forceRefresh) {
   var cabang  = (document.getElementById('pnPesertaCabangFilter')?.value) || '';
   var wrap    = document.getElementById('pnPesertaTableWrap');
 
-  console.group('[PN] pnLoadPesertaTable cabang="' + cabang + '" force=' + !!forceRefresh);
-  console.log('[PN] wrap element:', wrap ? 'found' : 'NULL — berhenti');
-  if (!wrap) { console.groupEnd(); return; }
+  adminLog.group('[PN] pnLoadPesertaTable cabang="' + cabang + '" force=' + !!forceRefresh);
+  adminLog.debug('[PN] wrap element:', wrap ? 'found' : 'NULL — berhenti');
+  if (!wrap) { adminLog.end(); return; }
 
   var cacheKey = 'peserta';
 
   try {
     var cachedData = pnGetCache(cacheKey);
-    console.log('[PN] cache hit:', !!cachedData, cachedData ? '(' + pnCacheTs(cacheKey) + ')' : '');
+    adminLog.debug('[PN] cache hit:', !!cachedData, cachedData ? '(' + pnCacheTs(cacheKey) + ')' : '');
 
     var allData;
 
@@ -682,23 +682,23 @@ async function pnLoadPesertaTable(forceRefresh) {
       allData = cachedData.data;
       var tsEl = document.getElementById('pnPesertaCacheTs');
       if (tsEl) tsEl.textContent = 'cache ' + pnCacheTs(cacheKey);
-      console.log('[PN] menggunakan cache peserta, keys:', Object.keys(allData || {}).length);
+      adminLog.debug('[PN] menggunakan cache peserta, keys:', Object.keys(allData || {}).length);
     } else {
       wrap.innerHTML = '<div style="text-align:center;padding:28px;color:var(--gray-500);font-size:13px"><div style="font-size:24px;margin-bottom:8px">⏳</div><div>Memuat data peserta...</div></div>';
-      console.log('[PN] memanggil pnGet(getPeserta, {adminView:true})...');
+      adminLog.debug('[PN] memanggil pnGet(getPeserta, {adminView:true})...');
       var res = await pnGet('getPeserta', { adminView: 'true' });
-      console.log('[PN] pnGet getPeserta response:', JSON.stringify(res).slice(0,200));
+      adminLog.debug('[PN] pnGet getPeserta response:', JSON.stringify(res).slice(0,200));
       if (!res || !res.success) {
         var errMsg = (res && res.error) ? res.error : 'Timeout/no_response — coba klik 🔄 Refresh';
-        console.error('[PN] getPeserta gagal:', errMsg);
+        adminLog.error('[PN] getPeserta gagal:', errMsg);
         wrap.innerHTML = '<div style="text-align:center;padding:32px;color:#dc2626"><div style="font-size:28px">⚠️</div><p style="font-weight:600;margin:8px 0">Gagal memuat peserta</p><p style="font-size:12px;color:var(--gray-400)">' + errMsg + '</p><p style="font-size:12px;margin-top:8px">Pastikan GAS sudah di-deploy ulang, lalu klik 🔄 Refresh</p></div>';
-        console.groupEnd(); return;
+        adminLog.end(); return;
       }
       allData = res.data || {};
       pnSetCache(cacheKey, allData);
       var tsEl2 = document.getElementById('pnPesertaCacheTs');
       if (tsEl2) tsEl2.textContent = 'diperbarui ' + pnCacheTs(cacheKey);
-      console.log('[PN] peserta data type:', Array.isArray(allData) ? 'array' : 'object', 'keys:', Array.isArray(allData) ? allData.length : Object.keys(allData).length);
+      adminLog.debug('[PN] peserta data type:', Array.isArray(allData) ? 'array' : 'object', 'keys:', Array.isArray(allData) ? allData.length : Object.keys(allData).length);
     }
 
     var list;
@@ -707,7 +707,7 @@ async function pnLoadPesertaTable(forceRefresh) {
     } else {
       list = Array.isArray(allData) ? allData : Object.values(allData).flat();
     }
-    console.log('[PN] peserta list.length:', list.length, '(cabang filter: "' + cabang + '")');
+    adminLog.debug('[PN] peserta list.length:', list.length, '(cabang filter: "' + cabang + '")');
 
     if (!list.length) {
       var note = cabang
@@ -719,7 +719,7 @@ async function pnLoadPesertaTable(forceRefresh) {
         + '<p style="font-size:12px;color:var(--gray-400);margin:0 0 4px">' + note + '</p>'
         + '<p style="font-size:12px;color:var(--gray-400)">Gunakan tombol 🔄 Refresh untuk memuat ulang.</p>'
         + '</div>';
-      console.groupEnd(); return;
+      adminLog.end(); return;
     }
 
     wrap.innerHTML = '<table class="data-table" style="width:100%">'
@@ -743,14 +743,14 @@ async function pnLoadPesertaTable(forceRefresh) {
       + '</tbody></table>'
       + '<div style="padding:10px 14px;font-size:12px;color:var(--gray-400);border-top:1px solid var(--gray-100)">👥 ' + list.length + ' peserta' + (cabang ? ' — ' + cabang : '') + '</div>';
 
-    console.log('[PN] tabel peserta berhasil dirender, rows:', list.length);
+    adminLog.debug('[PN] tabel peserta berhasil dirender, rows:', list.length);
 
   } catch(err) {
-    console.error('[PN] pnLoadPesertaTable ERROR:', err);
+    adminLog.error('[PN] pnLoadPesertaTable ERROR:', err);
     if (wrap) wrap.innerHTML = '<div style="text-align:center;padding:32px;color:#dc2626"><div style="font-size:28px">❌</div><p style="font-weight:600;margin:8px 0">Error</p><p style="font-size:12px;color:var(--gray-400)">' + (err && err.message ? err.message : String(err)) + '</p><p style="font-size:12px;margin-top:8px">Lihat console browser (F12) untuk detail.</p></div>';
   }
 
-  console.groupEnd();
+  adminLog.end();
 }
 
 async function pnTambahPeserta() {
@@ -839,25 +839,25 @@ async function pnLoadRekapTable(forceRefresh) {
   var hakimId = document.getElementById('pnRekapHakimFilter')?.value   || null;
   var wrap    = document.getElementById('pnRekapTableWrap');
 
-  console.group('[PN] pnLoadRekapTable cabang="' + cabang + '" hakimId="' + hakimId + '" force=' + !!forceRefresh);
-  console.log('[PN] wrap element:', wrap ? 'found' : 'NULL — berhenti');
-  if (!wrap) { console.groupEnd(); return; }
+  adminLog.group('[PN] pnLoadRekapTable cabang="' + cabang + '" hakimId="' + hakimId + '" force=' + !!forceRefresh);
+  adminLog.debug('[PN] wrap element:', wrap ? 'found' : 'NULL — berhenti');
+  if (!wrap) { adminLog.end(); return; }
 
   try {
     var rekap = !forceRefresh && pnGetCache('rekap') ? pnGetCache('rekap').data : null;
-    console.log('[PN] rekap cache hit:', !!rekap);
+    adminLog.debug('[PN] rekap cache hit:', !!rekap);
 
     if (!rekap) {
       wrap.innerHTML = '<div style="text-align:center;padding:28px;color:var(--gray-500);font-size:13px"><div style="font-size:24px;margin-bottom:8px">⏳</div><div>Memuat rekap nilai...</div></div>';
-      console.log('[PN] memanggil 3 pnGet paralel (getNilai, getPeserta, getHakim)...');
+      adminLog.debug('[PN] memanggil 3 pnGet paralel (getNilai, getPeserta, getHakim)...');
       var r = await Promise.all([
         pnGet('getNilai', {}),
         pnGet('getPeserta', { adminView: 'true' }),
         pnGet('getHakim'),
       ]);
-      console.log('[PN] getNilai success:', !!(r[0]&&r[0].success), 'data keys:', r[0]&&r[0].data ? Object.keys(r[0].data).length : 0);
-      console.log('[PN] getPeserta success:', !!(r[1]&&r[1].success), 'type:', r[1]&&r[1].data ? (Array.isArray(r[1].data)?'array':'object') : 'null');
-      console.log('[PN] getHakim success:', !!(r[2]&&r[2].success), 'count:', r[2]&&r[2].data ? r[2].data.length : 0);
+      adminLog.debug('[PN] getNilai success:', !!(r[0]&&r[0].success), 'data keys:', r[0]&&r[0].data ? Object.keys(r[0].data).length : 0);
+      adminLog.debug('[PN] getPeserta success:', !!(r[1]&&r[1].success), 'type:', r[1]&&r[1].data ? (Array.isArray(r[1].data)?'array':'object') : 'null');
+      adminLog.debug('[PN] getHakim success:', !!(r[2]&&r[2].success), 'count:', r[2]&&r[2].data ? r[2].data.length : 0);
       rekap = {
         nilaiMap  : (r[0] && r[0].data) || {},
         pesertaAll: (r[1] && r[1].data) || {},
@@ -874,13 +874,13 @@ async function pnLoadRekapTable(forceRefresh) {
     }
 
     var allRows = Object.values(rekap.nilaiMap || {});
-    console.log('[PN] nilaiMap total rows sebelum filter:', allRows.length);
+    adminLog.debug('[PN] nilaiMap total rows sebelum filter:', allRows.length);
     var rows = allRows.filter(function(d) {
       if (cabang  && d.cabang  !== cabang)  return false;
       if (hakimId && d.hakimId !== hakimId) return false;
       return true;
     });
-    console.log('[PN] rows setelah filter:', rows.length);
+    adminLog.debug('[PN] rows setelah filter:', rows.length);
 
     if (!rows.length) {
       wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-500)">'
@@ -889,7 +889,7 @@ async function pnLoadRekapTable(forceRefresh) {
         + '<p style="font-size:12px;color:var(--gray-400);margin:0">Hakim perlu login di <strong>penilaian.html</strong> dan submit nilai untuk cabang yang ditugaskan.</p>'
         + '<p style="font-size:12px;color:var(--gray-400);margin:4px 0 0">Setelah submit, klik 🔄 Refresh untuk melihat data terbaru.</p>'
         + '</div>';
-      console.groupEnd(); return;
+      adminLog.end(); return;
     }
 
     document.getElementById('pnRekapExportBtn')?.removeAttribute('disabled');
@@ -912,10 +912,10 @@ async function pnLoadRekapTable(forceRefresh) {
         }).join('')
       + '</tbody></table>';
 
-    console.log('[PN] rekap tabel berhasil dirender, rows:', rows.length);
+    adminLog.debug('[PN] rekap tabel berhasil dirender, rows:', rows.length);
 
   } catch(err) {
-    console.error('[PN] pnLoadRekapTable ERROR:', err);
+    adminLog.error('[PN] pnLoadRekapTable ERROR:', err);
     if (wrap) wrap.innerHTML = '<div style="text-align:center;padding:32px;color:#dc2626">'
       + '<div style="font-size:28px">❌</div>'
       + '<p style="font-weight:600;margin:8px 0">Error memuat rekap</p>'
@@ -924,7 +924,7 @@ async function pnLoadRekapTable(forceRefresh) {
       + '</div>';
   }
 
-  console.groupEnd();
+  adminLog.end();
 }
 function pnExportRekapCSV() {
   const rows  = [['Cabang','Peserta','Kecamatan','Hakim','Parameter','Nilai','Bobot%','Total','Catatan','Waktu']];

@@ -17,7 +17,7 @@
 const MTQ_CONFIG = {
 
   // ── Google Apps Script Web App URL — SATU-SATUNYA tempat edit ──
-  API_URL: 'https://script.google.com/macros/s/AKfycby_zWihthH9b_vUneYTeGt6FvVNKYDjOfomRhN_MOBFWYj7p2kAHLJJxpa2Eyuw41Kg/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbwFN-LHcOZr8ZS08P1CtMYkJsvzEjzoQZDoEnesuwY6xP5R3zEnK8loJ6CksafCZwk/exec',
 
   // ── Tanggal pendaftaran & cutoff umur ────────────────────────
   // Fallback bila API tidak terjangkau — akan ditimpa nilai live
@@ -88,6 +88,13 @@ const MTQ_CONFIG = {
   // true  = tampilkan tombol Random Fill (untuk testing)
   // false = sembunyikan (untuk produksi)
   DEV_MODE: true,
+
+  // ── Logger — SATU PINTU on/off untuk SEMUA logger frontend ────
+  // Dipakai oleh objek `log` di bawah, adminLog (admin.html), dan
+  // MTQ_LOG (penilaian.html). true = tampil di console (dan panel
+  // logger di penilaian.html), false = senyap di semua halaman.
+  // Ganti HANYA di sini — jangan hardcode ulang di file lain.
+  LOGGER_ENABLED: true,
 };
 
 // ── Turunan otomatis: nama cabang saja (untuk dropdown/filter) ──
@@ -116,27 +123,29 @@ MTQ_CONFIG.applyServerConfig = function(data) {
 };
 
 // ── Logger terpusat ──────────────────────────────────────────
+// Setiap method dijaga oleh MTQ_CONFIG.LOGGER_ENABLED — matikan
+// logger di SELURUH frontend cukup dengan ganti satu nilai itu.
 const log = {
-  info : (...a) => console.log('%c[MTQ] INFO', 'color:#065f46;font-weight:bold', ...a),
-  warn : (...a) => console.warn('%c[MTQ] WARN', 'color:#b45309;font-weight:bold', ...a),
-  error: (...a) => console.error('%c[MTQ] ERROR', 'color:#dc2626;font-weight:bold', ...a),
-  debug: (...a) => console.debug('%c[MTQ] DEBUG', 'color:#6b7280;font-weight:bold', ...a),
-  step : (n, msg) => console.group(
+  info : (...a) => { if (MTQ_CONFIG.LOGGER_ENABLED) console.log('%c[MTQ] INFO', 'color:#065f46;font-weight:bold', ...a); },
+  warn : (...a) => { if (MTQ_CONFIG.LOGGER_ENABLED) console.warn('%c[MTQ] WARN', 'color:#b45309;font-weight:bold', ...a); },
+  error: (...a) => { if (MTQ_CONFIG.LOGGER_ENABLED) console.error('%c[MTQ] ERROR', 'color:#dc2626;font-weight:bold', ...a); },
+  debug: (...a) => { if (MTQ_CONFIG.LOGGER_ENABLED) console.debug('%c[MTQ] DEBUG', 'color:#6b7280;font-weight:bold', ...a); },
+  step : (n, msg) => { if (MTQ_CONFIG.LOGGER_ENABLED) console.group(
     `%c[MTQ] STEP ${n}: ${msg}`,
     'color:#0369a1;font-weight:bold'
-  ),
+  ); },
 
-  group: (title) => console.group(
+  group: (title) => { if (MTQ_CONFIG.LOGGER_ENABLED) console.group(
     `%c[MTQ] ${title}`,
     'color:#047857;font-weight:bold'
-  ),
+  ); },
 
-  end  : () => console.groupEnd(),
+  end  : () => { if (MTQ_CONFIG.LOGGER_ENABLED) console.groupEnd(); },
 
-  time : (label) => console.time(`[MTQ] ${label}`),
-  timeEnd: (label) => console.timeEnd(`[MTQ] ${label}`),
+  time : (label) => { if (MTQ_CONFIG.LOGGER_ENABLED) console.time(`[MTQ] ${label}`); },
+  timeEnd: (label) => { if (MTQ_CONFIG.LOGGER_ENABLED) console.timeEnd(`[MTQ] ${label}`); },
 
-  table: (data) => console.table(data),
+  table: (data) => { if (MTQ_CONFIG.LOGGER_ENABLED) console.table(data); },
 };
 
 // ── Utilitas Tanggal ─────────────────────────────────────────

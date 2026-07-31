@@ -759,7 +759,11 @@ const ADMIN_PIN = '1234'; // ganti via panel admin setelah login pertama
 // ── DEV MODE ──────────────────────────────────────────────────────
 // true  = tampilkan log detail di console + panel logger di layar
 // false = hanya error yang muncul
-const DEV = true;
+// SATU PINTU: nilai ini sekarang ikut MTQ_CONFIG.LOGGER_ENABLED
+// (js/config.js) — jangan hardcode ulang true/false di sini.
+const DEV = (typeof MTQ_CONFIG !== 'undefined' && typeof MTQ_CONFIG.LOGGER_ENABLED !== 'undefined')
+  ? MTQ_CONFIG.LOGGER_ENABLED
+  : true;
 
 // ════════════════════════════════════════════════════════════════
 //  LOGGER TERPUSAT

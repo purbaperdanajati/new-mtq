@@ -6,6 +6,14 @@
  *
  *  API Key diambil otomatis dari kolom DRIVE_API_KEY di Sheet Config
  *  oleh bop-script.js saat runtime. Tidak perlu diubah file ini.
+ *
+ *  `debug` di bawah ini khusus untuk log internal komponen
+ *  DocumentPreviewer saja. Kalau dipakai di dalam proyek MTQ 2026
+ *  (MTQ_CONFIG tersedia), log ini JUGA tunduk pada satu pintu
+ *  MTQ_CONFIG.LOGGER_ENABLED di js/config.js — jadi biar debug:true
+ *  di sini, tetap senyap kalau LOGGER_ENABLED di-set false secara
+ *  global. Kalau dipakai standalone di proyek lain (tanpa
+ *  MTQ_CONFIG), flag debug di sini berlaku sendiri seperti biasa.
  * ================================================================
  */
 

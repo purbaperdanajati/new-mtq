@@ -1,6 +1,10 @@
 // ============================================================
-//  MTQ 2026 — helper.gs  (rev 7)
+//  MTQ 2026 — helper.gs  (rev 8)
 //  Fix: proper logger with sheet+console, token fix
+//  rev 8: _log() sekarang baca LOGGER_ENABLED (config.gs) —
+//  satu pintu on/off untuk Logger.log. Baris ke sheet LOG (audit
+//  trail) tetap tersimpan terlepas dari flag ini — lihat catatan
+//  di config.gs bagian 2b.
 // ============================================================
 
 // ════════════════════════════════════════════════════════════
@@ -15,7 +19,11 @@ function logError(ctx, msg, data) { _log('ERROR', ctx, msg, data); }
 function _log(level, ctx, msg, data) {
   var line = '[MTQ2026][' + level + '][' + ctx + '] ' + msg;
   if (data !== undefined) line += ' | ' + JSON.stringify(data);
-  Logger.log(line);
+  // Satu pintu on/off: LOGGER_ENABLED di config.gs. Default aman ke
+  // "aktif" kalau variabelnya entah kenapa belum terdefinisi.
+  if (typeof LOGGER_ENABLED === 'undefined' || LOGGER_ENABLED) Logger.log(line);
+  // Baris ke sheet LOG TETAP disimpan walau logger dimatikan — ini
+  // audit trail (verifikasi/pendaftaran), bukan sekadar debug noise.
   _logBuffer.push([new Date().toISOString(), level, ctx, msg,
                    data !== undefined ? JSON.stringify(data) : '']);
 }

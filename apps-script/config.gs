@@ -1,10 +1,12 @@
 // ============================================================
-//  MTQ 2026 — apps-script/config.gs  (rev 7)
+//  MTQ 2026 — apps-script/config.gs  (rev 8)
 //  Fix #2: kuota=31 (1 per kecamatan), #9: initSheets lengkap,
 //  #10: umur_min=0 (tidak ada batas bawah), #4: password here
 //  rev 7: update jadwal — pendaftaran online 5-15 Agustus 2026,
 //  pelaksanaan MTQ 26-28 Agustus 2026 (lihat juga config.js,
 //  index.html bagian Jadwal Kegiatan & Pengumuman)
+//  rev 8: LOGGER_ENABLED — satu pintu on/off untuk Logger.log
+//  backend (lihat juga LOGGER_ENABLED di js/config.js untuk frontend)
 // ============================================================
 
 // ── 1. Spreadsheet & Drive ───────────────────────────────────
@@ -21,6 +23,16 @@ var ADMIN_PASSWORD   = 'MTQ2026@Admin!';
 // Batasi: Application restrictions = HTTP referrers (your domain)
 // Batasi: API restrictions = Google Drive API only
 var DRIVE_API_KEY    = 'GANTI_DRIVE_API_KEY';
+
+// ── 2b. Logger — satu pintu untuk semua logInfo/logWarn/logError ──
+// (dipakai oleh helper.gs → _log() → dipanggil dari api.gs, dll.)
+// true  = Logger.log tetap jalan (kelihatan di menu Executions GAS)
+// false = Logger.log dimatikan (mengurangi noise saat produksi)
+// CATATAN: baris LOG di sheet "LOG" (audit trail pendaftaran/verifikasi)
+// TETAP tersimpan walau LOGGER_ENABLED=false — sengaja dipisah dari
+// Logger.log karena sheet LOG dipakai sebagai jejak audit, bukan sekadar
+// debug. Kalau ingin sheet LOG juga ikut mati, beri tahu saya.
+var LOGGER_ENABLED   = true;
 
 // ── 3. Nama Sheet ─────────────────────────────────────────────
 var SHEET_CONFIG    = 'CONFIG';

@@ -1016,16 +1016,18 @@
 // API_URL: satu sumber dari js/config.js (window.MTQ_API_URL) — jangan ubah di sini
 const API_URL = window.MTQ_API_URL || '';
 
+// Satu pintu: dijaga oleh MTQ_CONFIG.LOGGER_ENABLED (js/config.js),
+// sama seperti `log` di config.js dan MTQ_LOG di penilaian.html.
 const adminLog = {
-  _p: (lvl, ...a) => console.log(`%c[ADMIN][${lvl}]`,`color:${({INFO:'#065f46',WARN:'#b45309',ERROR:'#dc2626',DEBUG:'#6b7280'}[lvl]||'#374151')};font-weight:bold`,...a),
+  _p: (lvl, ...a) => { if (MTQ_CONFIG.LOGGER_ENABLED) console.log(`%c[ADMIN][${lvl}]`,`color:${({INFO:'#065f46',WARN:'#b45309',ERROR:'#dc2626',DEBUG:'#6b7280'}[lvl]||'#374151')};font-weight:bold`,...a); },
   info : (...a) => adminLog._p('INFO',  ...a),
   warn : (...a) => adminLog._p('WARN',  ...a),
   error: (...a) => adminLog._p('ERROR', ...a),
   debug: (...a) => adminLog._p('DEBUG', ...a),
-  step : (n,...a)=> console.group(`%c[ADMIN][STEP ${n}]`,'color:#0369a1;font-weight:bold',...a),
-  end  : ()     => console.groupEnd(),
-  time : (l)    => console.time('[ADMIN] '+l),
-  timeEnd:(l)   => console.timeEnd('[ADMIN] '+l),
+  step : (n,...a)=> { if (MTQ_CONFIG.LOGGER_ENABLED) console.group(`%c[ADMIN][STEP ${n}]`,'color:#0369a1;font-weight:bold',...a); },
+  end  : ()     => { if (MTQ_CONFIG.LOGGER_ENABLED) console.groupEnd(); },
+  time : (l)    => { if (MTQ_CONFIG.LOGGER_ENABLED) console.time('[ADMIN] '+l); },
+  timeEnd:(l)   => { if (MTQ_CONFIG.LOGGER_ENABLED) console.timeEnd('[ADMIN] '+l); },
 };
 
 // ── State ─────────────────────────────────────────────────────

@@ -921,7 +921,7 @@ async function apiPost(action, payload = {}) {
     const data = await resp.json();
     return data;
   } catch (e) {
-    console.warn('[MTQ] API POST gagal, fallback localStorage:', e.message);
+    log.warn('[MTQ] API POST gagal, fallback localStorage:', e.message);
     return handleLocalAction(action, payload);
   }
 }
@@ -939,7 +939,7 @@ async function apiGet(action, params = {}) {
     const data = await resp.json();
     return data;
   } catch (e) {
-    console.warn('[MTQ] API GET gagal, fallback localStorage:', e.message);
+    log.warn('[MTQ] API GET gagal, fallback localStorage:', e.message);
     return handleLocalAction(action, params);
   }
 }
@@ -1178,7 +1178,7 @@ async function syncNilaiToAPI(scoreKey, scoreData) {
     await apiPost('saveNilai', { key: scoreKey, data: scoreData });
   } catch(e) {
     // Sudah tersimpan di localStorage, sync gagal diam-diam
-    console.warn('[MTQ] Sync API gagal:', e.message);
+    log.warn('[MTQ] Sync API gagal:', e.message);
   }
 }
 
