@@ -590,12 +590,32 @@ async function startSpin() {
   const itemH      = 50;
   const totalItems = strip.childElementCount;
   const safeMax    = Math.floor(totalItems * 0.55) * itemH;
+  const wrapPos    = Math.floor(totalItems / 6) * itemH;
 
   // Mulai dari 1/6 posisi agar tidak lompat dari nol
-  let offset = Math.floor(totalItems / 6) * itemH;
+  let offset = wrapPos;
   strip.style.transition = 'none';
   strip.style.transform  = `translateY(-${offset}px)`;
   void strip.offsetHeight; // force reflow
+
+  // FIX: satu langkah animasi, dipakai bersama oleh teaser spin (Phase 1)
+  // dan spin lambat selama menunggu server (Phase 2 baru). Saat offset
+  // wrap-around ke awal, transisi dimatikan sesaat (transition:none)
+  // supaya loncatannya instan, bukan ikut dianimasikan mundur — itulah
+  // sebabnya sebelumnya animasi terlihat "tersentak"/tidak smooth tiap
+  // kali strip mengulang dari awal.
+  function stepSpin(durMs) {
+    offset += itemH;
+    if (offset >= safeMax) {
+      offset = wrapPos;
+      strip.style.transition = 'none';
+      strip.style.transform  = `translateY(-${offset}px)`;
+      void strip.offsetHeight;
+    } else {
+      strip.style.transition = `transform ${durMs}ms ease-in-out`;
+      strip.style.transform  = `translateY(-${offset}px)`;
+    }
+  }
 
   // Phase 1: teaser spin — akselerasi bertahap
   const phases = [
@@ -606,16 +626,26 @@ async function startSpin() {
   ];
   for (const ph of phases) {
     for (let i = 0; i < ph.count; i++) {
-      offset += itemH;
-      if (offset >= safeMax) offset = Math.floor(totalItems / 6) * itemH;
-      strip.style.transition = `transform ${ph.dur}ms ease-in-out`;
-      strip.style.transform  = `translateY(-${offset}px)`;
+      stepSpin(ph.dur);
       await sleep(ph.dur + 8);
     }
   }
 
   // Phase 2: call API via JSONP POST (no fetch, no CORS)
+  // FIX: sebelumnya strip diam TOTAL di sini menunggu respons server —
+  // panggilan ambilMaqra ke Apps Script bisa makan beberapa detik
+  // (baca+tulis sheet), dan tanpa gerakan sama sekali itu terlihat
+  // seperti nge-freeze 6-10 detik. Sekarang strip terus berputar pelan
+  // selama menunggu, baru berhenti begitu respons (sukses/gagal) datang.
   if (status) status.textContent = '🔐 Mengunci pilihan...';
+  let keepSpinning = true;
+  (async () => {
+    while (keepSpinning) {
+      stepSpin(260);
+      await sleep(268);
+    }
+  })();
+
   let chosen = null;
   try {
     const data = await jsonpPost({
@@ -640,17 +670,37 @@ async function startSpin() {
     if (btn) btn.disabled = false;
     _spinning = false;
     return;
+  } finally {
+    keepSpinning = false;
   }
 
   // Phase 3: decelerate to chosen item
+  // FIX: sebelumnya mencari target dari titik TETAP (midStart = 1/3 dari
+  // total item), tidak peduli strip sedang berada di posisi mana. Kalau
+  // titik tetap itu kebetulan lebih "ke atas" dari offset saat ini
+  // (sangat mungkin, karena Phase 1+2 terus maju dan bisa sudah lewat
+  // 1/3 itu), strip terpaksa meluncur MUNDUR dulu untuk mencapainya —
+  // itulah "loncat ke atas" yang terlihat. Sekarang dicari MULAI dari
+  // beberapa item DI DEPAN posisi sekarang, jadi geraknya selalu lanjut
+  // ke bawah, tidak pernah berbalik arah.
   if (status) status.textContent = '✨ Maqra ditemukan!';
-  const items      = Array.from(strip.children);
-  const midStart   = Math.floor(items.length / 3);
-  const refTxt     = (chosen.maqra_teks || chosen.maqra || '').trim();
-  let   targetIdx  = midStart;
-  for (let i = midStart; i < items.length - 5; i++) {
+  const items     = Array.from(strip.children);
+  const refTxt    = (chosen.maqra_teks || chosen.maqra || '').trim();
+  const curIdx    = offset / itemH;
+  const minAhead  = 15;   // jarak minimum di depan supaya deselerasi masih terasa mulus
+  let targetIdx = -1;
+  for (let i = Math.ceil(curIdx) + minAhead; i < items.length - 5; i++) {
     if ((items[i].textContent || '').trim() === refTxt) { targetIdx = i; break; }
   }
+  if (targetIdx === -1) {
+    // Reel pendek / posisi sudah dekat ujung — cari lagi dengan jarak
+    // minimum yang lebih longgar, TETAP tidak boleh mundur dari posisi
+    // sekarang.
+    for (let i = Math.ceil(curIdx) + 1; i < items.length; i++) {
+      if ((items[i].textContent || '').trim() === refTxt) { targetIdx = i; break; }
+    }
+  }
+  if (targetIdx === -1) targetIdx = items.length - 1; // fallback terakhir, seharusnya tak pernah kepakai
   // Hitung windowCenterY dinamis dari DOM
   const lanternBox  = document.getElementById('lanternBox');
   const windowH     = lanternBox ? lanternBox.clientHeight : 200;
@@ -965,21 +1015,25 @@ async function renderKartuCanvas(member, rec, memberIdx, isTeam, CW, CH) {
   ctx.clip();
 
   const fotoSrc  = member.foto_url || member.foto_drive_url || member.link_foto || rec.foto_url || '';
-  const fotoUrls = gDriveThumbUrls(fotoSrc); // beberapa kandidat URL thumbnail → konversi Drive link
+  // FIX: sebelumnya coba muat langsung dari drive.google.com/thumbnail
+  // & lh3.googleusercontent.com dengan img.crossOrigin='anonymous' —
+  // KEDUANYA tidak mengirim header CORS sama sekali, jadi permintaan
+  // gambar itu SELALU diblokir browser (bukan cuma "kadang gagal") dan
+  // kartu selalu jatuh ke placeholder inisial. Sekarang ambil lewat
+  // proxy backend (base64 via getDriveImage, lihat api.gs) — tidak ada
+  // isu cross-origin sama sekali karena hasilnya data: URL.
+  const img = await loadDriveImageViaProxy(fotoSrc);
   let fotoOk = false;
 
-  for (let fi = 0; fi < fotoUrls.length && !fotoOk; fi++) {
-    const img = await loadImageSafe(fotoUrls[fi]);
-    if (img) {
-      // Object-fit: cover — center crop
-      const ar = img.naturalWidth / img.naturalHeight;
-      let sw, sh, sx, sy;
-      if (ar > 1) { sh = img.naturalHeight; sw = sh; sx = (img.naturalWidth - sw) / 2; sy = 0; }
-      else         { sw = img.naturalWidth;  sh = sw; sy = (img.naturalHeight - sh) / 2; sx = 0; }
-      ctx.drawImage(img, sx, sy, sw, sh,
-        photoCX - photoR, photoCY - photoR, photoR * 2, photoR * 2);
-      fotoOk = true;
-    }
+  if (img) {
+    // Object-fit: cover — center crop
+    const ar = img.naturalWidth / img.naturalHeight;
+    let sw, sh, sx, sy;
+    if (ar > 1) { sh = img.naturalHeight; sw = sh; sx = (img.naturalWidth - sw) / 2; sy = 0; }
+    else         { sw = img.naturalWidth;  sh = sw; sy = (img.naturalHeight - sh) / 2; sx = 0; }
+    ctx.drawImage(img, sx, sy, sw, sh,
+      photoCX - photoR, photoCY - photoR, photoR * 2, photoR * 2);
+    fotoOk = true;
   }
 
   if (!fotoOk) {
@@ -1144,25 +1198,35 @@ function fitTextSize(ctx, text, maxWidth, maxPx, minPx, weight, family, pxFn) {
 }
 
 /** Konversi berbagai format URL Google Drive → daftar kandidat URL thumbnail (dicoba berurutan) */
-function gDriveThumbUrls(url) {
-  if (!url) return [];
-  const out = [];
+// FIX: pengganti gDriveThumbUrls (lama) — sudah tidak dipakai lagi untuk
+// kartu peserta karena kedua kandidat URL-nya (drive.google.com/thumbnail
+// & lh3.googleusercontent.com) sama-sama tidak mengirim header CORS,
+// jadi img.crossOrigin='anonymous' ke situ SELALU gagal, bukan cuma
+// kadang-kadang. Fungsi ini mengambil ID file lalu minta byte gambarnya
+// lewat action=getDriveImage di backend (server-ke-server, tidak kena
+// CORS sama sekali), dan memuatnya sebagai data: URL — yang mana
+// browser TIDAK PERNAH menganggapnya cross-origin, jadi aman dibaca
+// canvas (drawImage/toDataURL) tanpa syarat apa pun.
+async function loadDriveImageViaProxy(url) {
+  if (!url) return null;
   let id = null;
-
-  let m = url.match(/[?&]id=([^&]+)/);
+  let m = String(url).match(/[?&]id=([^&]+)/);
   if (m) id = m[1];
-  if (!id) { m = url.match(/\/file\/d\/([^\/\?&]+)/); if (m) id = m[1]; }
+  if (!id) { m = String(url).match(/\/file\/d\/([^\/\?&]+)/); if (m) id = m[1]; }
+  if (!id) return null;
 
-  if (id) {
-    // drive.google.com/thumbnail biasanya bekerja, tapi kadang gagal CORS untuk canvas.
-    // lh3.googleusercontent.com sering lebih andal untuk drawImage()+toDataURL().
-    out.push(`https://drive.google.com/thumbnail?id=${id}&sz=w800`);
-    out.push(`https://lh3.googleusercontent.com/d/${id}=w800`);
-  } else {
-    // Tidak terdeteksi sebagai link Drive — coba apa adanya (mis. data: URL atau https biasa)
-    out.push(url);
+  try {
+    const data = await jsonpGet({ action: 'getDriveImage', id }, 20000);
+    if (!data || !data.success || !data.dataUrl) return null;
+    return await new Promise(resolve => {
+      const img = new Image();
+      img.onload  = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = data.dataUrl;
+    });
+  } catch (err) {
+    return null;
   }
-  return out;
 }
 
 /** Helper: roundRect polyfill (cek native dulu) */
@@ -1202,18 +1266,11 @@ function truncateText(ctx, text, maxWidth) {
   return t + '…';
 }
 
-/** Helper: muat gambar dengan crossOrigin anonymous, timeout 6 detik */
-function loadImageSafe(url) {
-  return new Promise(resolve => {
-    if (!url) { resolve(null); return; }
-    const img  = new Image();
-    img.crossOrigin = 'anonymous';
-    const t = setTimeout(() => resolve(null), 6000);
-    img.onload  = () => { clearTimeout(t); resolve(img); };
-    img.onerror = () => { clearTimeout(t); resolve(null); };
-    img.src = url;
-  });
-}
+/** FIX: loadImageSafe (lama, img.crossOrigin='anonymous' ke URL Drive
+ * langsung) dihapus dari sini — sudah digantikan loadDriveImageViaProxy
+ * di atas untuk kasus kartu peserta. Lihat komentar di sana untuk
+ * alasannya (Drive tidak pernah mengirim header CORS untuk thumbnail).
+ */
 
 /** Helper: lazy-load script tag (skip jika sudah ada) */
 function loadScript(src) {

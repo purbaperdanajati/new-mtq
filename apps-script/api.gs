@@ -75,6 +75,19 @@ function doGet(e) {
         case 'checkNIK'      : result = apiCheckNIK_v2_(params);            break;
         case 'initSheets'    : result = { success:true, msg: initAllSheets() }; break;
         case 'debugConfig'   : result = apiDebugConfig_();                  break;
+
+        // FIX: proxy gambar Drive → base64, supaya bisa dimuat ke <canvas>
+        // (kartu peserta) tanpa CORS. drive.google.com/thumbnail dan
+        // lh3.googleusercontent.com TIDAK mengirim header CORS, jadi
+        // <img crossOrigin="anonymous"> ke sana selalu gagal dimuat dari
+        // origin manapun selain punya Google sendiri — ini bukan bug di
+        // frontend, itu keterbatasan Drive. Base64 lewat sini tidak
+        // punya masalah origin sama sekali (data: URL). File tetap harus
+        // "Anyone with link" seperti biasa (lihat uploadFile_ di
+        // upload.gs) — endpoint ini tidak membuka akses baru, cuma
+        // menyediakan jalur lain untuk mengambil isi file yang memang
+        // sudah publik lewat link.
+        case 'getDriveImage' : result = apiGetDriveImage_(params);          break;
  
         // Admin (token validated inside each function)
         case 'adminLogin'    : result = apiAdminLogin_(params);             break;
@@ -249,30 +262,40 @@ function importPesertaFromPendaftaran_(cabang, statusFilter) {
   return { success: true, count: newRows.length, cabang: cabang };
 }
 
-function dispatchGet_(params, action) {
-  switch (action) {
-    // Public
-    case 'ping'          : return { success:true, pong:true, ts:new Date().toISOString() };
-    case 'getConfig'     : return apiGetConfig_();
-    case 'getStats'      : return apiGetStats_();
-    case 'getQuota'      : return apiGetQuota_(params);
-    case 'checkDuplicate': return apiCheckDuplicate_(params);
-    case 'checkNIK'      : return apiCheckNIK_(params);
-    case 'initSheets'    : return { success:true, msg: initAllSheets() };
-    case 'debugConfig'   : return apiDebugConfig_();
- 
-    // Maqra (public)
-    case 'getMaqraStatus': return apiGetMaqraStatus_(params);
- 
-    // Admin (GET)
-    case 'adminLogin'    : return apiAdminLogin_(params);
-    case 'getAllPendaftar': return apiGetAll_(params);
-    case 'updateStatus'  : return apiUpdateStatusGet_(params);
-    case 'editPeserta'   : return apiEditPesertaGet_(params);
-    case 'deactivate'    : return apiDeactivateGet_(params);
-    case 'getMaqraAdmin' : return apiGetMaqraAdmin_(params);
- 
-    default: return { success:true, message:'MTQ 2026 API aktif' };
+// FIX: dispatchGet_(params, action) yang lama dihapus dari sini — tidak
+// pernah dipanggil di mana pun (routing GET yang aktif ada di switch
+// dalam doGet() di atas), jadi murni kode mati peninggalan refactor
+// sebelumnya. Digantikan fungsi baru di bawah, yang memang dipakai.
+
+// FIX: ambil isi file Drive di sisi server (tidak kena CORS sama sekali,
+// karena UrlFetch/DriveApp jalan server-ke-server) lalu kembalikan
+// sebagai data URL base64. Dipakai cek-maqra.js (downloadKartuPeserta)
+// untuk memuat foto peserta ke <canvas> — drive.google.com/thumbnail
+// dan lh3.googleusercontent.com tidak mengirim Access-Control-Allow-
+// Origin, jadi <img crossOrigin="anonymous"> ke situ selalu diblokir
+// browser dari origin manapun selain punya Google. Ukuran dibatasi
+// (MAX_BYTES) sebagai jaga-jaga terhadap file yang bukan gambar/salah
+// upload — respons JSONP yang sangat besar bisa lambat/gagal di HP.
+function apiGetDriveImage_(params) {
+  var id = String(params.id || '').trim();
+  if (!id) return { success:false, message:'ID file kosong' };
+
+  var MAX_BYTES = 8 * 1024 * 1024; // 8MB — jauh di atas batas 2MB upload foto, cukup longgar
+  try {
+    var file = DriveApp.getFileById(id);
+    var blob = file.getBlob();
+    if (blob.getBytes().length > MAX_BYTES) {
+      return { success:false, message:'File terlalu besar untuk dimuat sebagai gambar kartu' };
+    }
+    var mimeType = blob.getContentType() || 'image/jpeg';
+    if (mimeType.indexOf('image/') !== 0) {
+      return { success:false, message:'File bukan gambar (' + mimeType + ')' };
+    }
+    var base64 = Utilities.base64Encode(blob.getBytes());
+    return { success:true, dataUrl: 'data:' + mimeType + ';base64,' + base64 };
+  } catch (err) {
+    logWarn('api', 'apiGetDriveImage_ gagal untuk id=' + id + ': ' + err.message);
+    return { success:false, message:'Gagal mengambil gambar: ' + err.message };
   }
 }
 
@@ -284,6 +307,7 @@ function _dispatchPost(body) {
     case 'ambilMaqra'     : return apiAmbilMaqra_(body);
     case 'saveMaqra'      : return apiSaveMaqraAdmin_(body);
     case 'deleteMaqra'    : return apiDeleteMaqraAdmin_(body);
+    case 'deleteMaqraBulk': return apiDeleteMaqraBulkAdmin_(body);
     case 'saveMaqraConfig': return apiSaveMaqraConfig_(body);
     case 'perbaikan'      : return apiPerbaikan_(body);
     default: return { success:false, message:'Unknown action: ' + action };

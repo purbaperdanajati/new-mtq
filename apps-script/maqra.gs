@@ -352,6 +352,43 @@ function apiDeleteMaqraAdmin_(body) {
   return { success:false, message:'Maqra tidak ditemukan: '+target };
 }
 
+// FIX: hapus banyak maqra sekaligus (checklist multi-pilih di
+// #maqraCabangGroups) — satu kali baca+tulis sheet untuk semuanya,
+// bukan memanggil apiDeleteMaqraAdmin_ berkali-kali dari klien (yang
+// artinya satu round-trip Apps Script per item, lambat kalau yang
+// dipilih banyak).
+function apiDeleteMaqraBulkAdmin_(body) {
+  if (!isTokenValid_(body.token)) return { success:false, message:'Sesi tidak valid' };
+
+  var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(SHEET_MAQRA);
+  if (!sheet) return { success:false, message:'Sheet MAQRA tidak ditemukan' };
+
+  var ids = Array.isArray(body.id_maqra_list) ? body.id_maqra_list : [];
+  ids = ids.map(function(x){ return String(x).trim(); }).filter(function(x){ return x; });
+  if (!ids.length) return { success:false, message:'id_maqra_list wajib diisi (array, tidak boleh kosong)' };
+
+  if (sheet.getLastRow() <= 1) return { success:false, message:'Sheet kosong' };
+
+  var idSet = {};
+  ids.forEach(function(id){ idSet[id] = true; });
+
+  var rows = sheet.getRange(2,1,sheet.getLastRow()-1,1).getValues();
+
+  // FIX: kumpulkan dulu SEMUA baris yang cocok, baru hapus dari BAWAH
+  // ke ATAS (descending). Kalau hapus sambil jalan dari atas, baris di
+  // bawahnya ikut bergeser naik dan index yang sudah dihitung jadi
+  // salah sasaran — bug klasik hapus banyak baris sekaligus.
+  var toDelete = [];
+  for (var i = 0; i < rows.length; i++) {
+    if (idSet[String(rows[i][0]).trim()]) toDelete.push(i + 2); // +2: 1-based + lewati header
+  }
+  toDelete.sort(function(a,b){ return b - a; });
+  toDelete.forEach(function(rowIdx){ sheet.deleteRow(rowIdx); });
+
+  return { success:true, deleted: toDelete.length, requested: ids.length };
+}
+
 // ────────────────────────────────────────────────────────────
 //  ADMIN (POST): saveMaqraConfig
 //  Simpan konfigurasi buka/tutup pengambilan maqra

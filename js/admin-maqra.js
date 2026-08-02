@@ -11,6 +11,12 @@ let _maqraToken    = null;   // diambil dari sesi admin yang sudah login
 let _allMaqra      = [];
 let _allHasil      = [];
 let _globalCfg     = null;
+// FIX: dipakai supaya grup cabang yang barusan ditambah/diganti maqra-nya
+// otomatis terbuka setelah maqraLoadData() me-render ulang — soalnya
+// sekarang semua grup mulai dalam keadaan tertutup (lihat
+// maqraRenderMaqraTable), jadi tanpa ini user harus klik manual buat
+// lihat hasil yang baru saja disimpan.
+let _maqraAutoExpandCabang = null;
 
 // Cabang list: SATU SUMBER di js/config.js → MTQ_CONFIG.CABANG_LIST
 // (jangan hardcode array cabang lagi di sini — edit config.js saja)
@@ -95,35 +101,12 @@ function maqraUpdateFilterCabang(list) {
 }
 
 // ── Maqra Table ───────────────────────────────────────────────
-function maqraRenderMaqraTable(list) {
-  const tbody = document.getElementById('maqraTableBody');
-  if (!tbody) return;
-  if (!list.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--gray-400)">Belum ada maqra. Tambahkan maqra terlebih dahulu.</td></tr>';
-    return;
-  }
-  tbody.innerHTML = list.map((m, i) => `
-    <tr>
-      <td style="color:var(--gray-400);font-size:12px">${m.nomor_urut || i + 1}</td>
-      <td style="font-size:12px">${maqraEsc(m.cabang_lomba)}</td>
-      <td>
-        <div style="font-weight:600">${maqraEsc(m.maqra_teks)}</div>
-        ${m.maqra_detail ? `<div style="font-size:11px;color:var(--gray-400)">${maqraEsc(m.maqra_detail)}</div>` : ''}
-      </td>
-      <td>
-        <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;${m.sudah_diambil ? 'background:#fef3c7;color:#b45309' : 'background:#d1fae5;color:#065f46'}">
-          ${m.sudah_diambil ? '✅ Sudah Diambil' : '⏳ Tersedia'}
-        </span>
-        ${m.sudah_diambil && m.diambil_oleh
-          ? `<div style="font-size:11px;color:var(--gray-400);margin-top:3px">Oleh: ${maqraEsc(m.diambil_oleh)}</div>` : ''}
-      </td>
-      <td>
-        ${!m.sudah_diambil
-          ? `<button style="background:#fef2f2;color:#dc2626;border:none;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer" onclick="maqraDelete('${maqraEsc(m.id_maqra)}')">🗑️ Hapus</button>`
-          : '—'}
-      </td>
-    </tr>`).join('');
-}
+// FIX: versi lama fungsi ini (target #maqraTableBody) dihapus dari sini —
+// elemen itu sudah tidak ada di admin.html (UI sekarang pakai kartu
+// grouped-by-cabang di #maqraCabangGroups, lihat definisi di bawah).
+// Fungsi lama itu 100% tidak pernah jalan karena tertimpa definisi
+// kedua (nama fungsi sama, JS pakai yang terakhir) — dihapus supaya
+// tidak membingungkan pembaca berikutnya.
 
 // ── UI Helpers: Mode toggle ───────────────────────────────────
 let _maqraMode = 'tambah'; // 'tambah' | 'ganti'
@@ -212,9 +195,15 @@ function maqraRenderMaqraTable(list) {
     const tersedia = items.filter(m => !m.sudah_diambil).length;
     const diambil  = items.filter(m =>  m.sudah_diambil).length;
     const pct      = items.length ? Math.round(diambil / items.length * 100) : 0;
+    const groupId  = `grp_${cabang.replace(/[^a-zA-Z0-9]/g,'_')}`;
 
     const rows = items.map((m, i) => `
       <tr style="${m.sudah_diambil ? 'opacity:.55' : ''}">
+        <td style="width:30px">
+          ${!m.sudah_diambil
+            ? `<input type="checkbox" class="maqra-del-check" data-group="${groupId}" data-id="${maqraEsc(m.id_maqra)}" onchange="maqraUpdateBulkBtn('${groupId}')" style="width:15px;height:15px;cursor:pointer">`
+            : ''}
+        </td>
         <td style="color:var(--gray-400);font-size:11px;white-space:nowrap">${m.nomor_urut || i+1}</td>
         <td>
           <span style="font-weight:600;color:var(--gray-800)">${maqraEsc(m.maqra_teks)}</span>
@@ -239,7 +228,7 @@ function maqraRenderMaqraTable(list) {
     return `
       <div class="admin-card" style="margin-bottom:14px">
         <div class="admin-card-header" style="cursor:pointer;user-select:none"
-          onclick="maqraToggleCabangGroup('grp_${cabang.replace(/[^a-zA-Z0-9]/g,'_')}')"
+          onclick="maqraToggleCabangGroup('${groupId}')"
           title="Klik untuk buka/tutup">
           <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
             <span style="font-size:16px">📖</span>
@@ -255,13 +244,25 @@ function maqraRenderMaqraTable(list) {
               <div style="height:100%;width:${pct}%;background:${pct===100?'#22c55e':'var(--gold)'};border-radius:999px;transition:width .4s"></div>
             </div>
             <span style="font-size:11px;color:var(--gray-400);font-weight:600;min-width:28px">${pct}%</span>
-            <span style="font-size:14px;color:var(--gray-400)">▾</span>
+            <!-- FIX #4: mulai tertutup (▸), bukan terbuka (▾) — lihat max-height:0 di bawah -->
+            <span id="${groupId}_arrow" style="font-size:14px;color:var(--gray-400)">▸</span>
           </div>
         </div>
-        <div id="grp_${cabang.replace(/[^a-zA-Z0-9]/g,'_')}" style="overflow:hidden;transition:max-height .3s ease;max-height:9999px">
+        <!-- FIX #4: max-height:0 — grup mulai tertutup, tidak auto-expand -->
+        <div id="${groupId}" style="overflow:hidden;transition:max-height .3s ease;max-height:0px">
+          <div style="padding:8px 16px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--gray-500);cursor:pointer">
+              <input type="checkbox" onchange="maqraToggleSelectAllInGroup(this,'${groupId}')" style="width:14px;height:14px;cursor:pointer">
+              Pilih semua yang tersedia
+            </label>
+            <button id="bulkDelBtn_${groupId}" onclick="maqraBulkDelete('${groupId}','${maqraEsc(cabang)}')"
+              style="display:none;font-size:12px;padding:5px 10px;background:#dc2626;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600">
+              🗑️ Hapus Terpilih (<span id="bulkDelCount_${groupId}">0</span>)
+            </button>
+          </div>
           <div class="table-wrap">
             <table class="data-table" style="font-size:12px">
-              <thead><tr><th style="width:40px">#</th><th>Maqra</th><th style="width:120px">Status</th><th style="width:44px">Aksi</th></tr></thead>
+              <thead><tr><th style="width:30px"></th><th style="width:40px">#</th><th>Maqra</th><th style="width:120px">Status</th><th style="width:44px">Aksi</th></tr></thead>
               <tbody>${rows}</tbody>
             </table>
           </div>
@@ -280,6 +281,62 @@ function maqraRenderMaqraTable(list) {
         </div>
       </div>`;
   }).join('');
+
+  // FIX: buka otomatis grup yang barusan disimpan (lihat _maqraAutoExpandCabang)
+  if (_maqraAutoExpandCabang) {
+    const gid = `grp_${_maqraAutoExpandCabang.replace(/[^a-zA-Z0-9]/g,'_')}`;
+    const el  = document.getElementById(gid);
+    if (el) {
+      el.style.maxHeight = (el.scrollHeight + 200) + 'px';
+      const arrow = document.getElementById(gid + '_arrow');
+      if (arrow) arrow.textContent = '▾';
+      el.closest('.admin-card')?.scrollIntoView({ behavior:'smooth', block:'center' });
+    }
+    _maqraAutoExpandCabang = null;
+  }
+}
+
+// FIX #2: pilih semua checkbox yang tersedia dalam satu grup sekaligus
+function maqraToggleSelectAllInGroup(masterCheckbox, groupId) {
+  const boxes = document.querySelectorAll(`.maqra-del-check[data-group="${groupId}"]`);
+  boxes.forEach(b => { b.checked = masterCheckbox.checked; });
+  maqraUpdateBulkBtn(groupId);
+}
+
+// FIX #2: tampilkan/perbarui tombol "Hapus Terpilih" sesuai jumlah yang dicentang
+function maqraUpdateBulkBtn(groupId) {
+  const checked = document.querySelectorAll(`.maqra-del-check[data-group="${groupId}"]:checked`);
+  const btn   = document.getElementById(`bulkDelBtn_${groupId}`);
+  const count = document.getElementById(`bulkDelCount_${groupId}`);
+  if (count) count.textContent = checked.length;
+  if (btn)   btn.style.display = checked.length ? 'inline-flex' : 'none';
+}
+
+// FIX #2: hapus semua maqra yang dicentang dalam satu grup — satu
+// panggilan backend (action deleteMaqraBulk) untuk semuanya sekaligus,
+// bukan satu-satu, supaya tidak lambat kalau yang dipilih banyak.
+async function maqraBulkDelete(groupId, cabang) {
+  const checked = document.querySelectorAll(`.maqra-del-check[data-group="${groupId}"]:checked`);
+  const ids = Array.from(checked).map(el => el.dataset.id);
+  if (!ids.length) return;
+  if (!confirm(`Hapus ${ids.length} maqra terpilih dari "${cabang}"?\n\nTindakan ini tidak bisa dibatalkan.`)) return;
+
+  maqraShowLoading(true, `Menghapus ${ids.length} maqra...`);
+  try {
+    const data = await maqraPostJSON({ action:'deleteMaqraBulk', token:_maqraToken, id_maqra_list: ids });
+    if (data.success) {
+      maqraShowToast('Berhasil', `${data.deleted} maqra dihapus dari ${cabang}`, 'success');
+    } else {
+      if (data.message === 'Sesi tidak valid') { maqraHandleSessionExpired(); return; }
+      maqraShowToast('Gagal', data.message || 'Terjadi kesalahan', 'error');
+    }
+    maqraLoadData();
+  } catch (err) {
+    maqraShowToast('Error', err.message + ' — memuat ulang untuk memastikan status...', 'error', 6000);
+    maqraLoadData();
+  } finally {
+    maqraShowLoading(false);
+  }
 }
 
 // Toggle expand/collapse group card
@@ -288,6 +345,8 @@ function maqraToggleCabangGroup(id) {
   if (!el) return;
   const isOpen = el.style.maxHeight && el.style.maxHeight !== '0px';
   el.style.maxHeight = isOpen ? '0px' : (el.scrollHeight + 200) + 'px';
+  const arrow = document.getElementById(id + '_arrow');
+  if (arrow) arrow.textContent = isOpen ? '▸' : '▾';
 }
 
 // Quick-fill form dari tombol cabang card
@@ -441,6 +500,26 @@ async function maqraSaveMaqra() {
   const existingForCabang = _allMaqra.filter(m => m.cabang_lomba === cabang);
   const startUrut = replace ? 1 : existingForCabang.length + 1;
 
+  // FIX #2: penjagaan duplikat — sebelumnya baris yang teksnya PERSIS
+  // sama dengan maqra yang sudah ada di cabang yang sama tetap bisa
+  // ditambahkan berulang kali (id_maqra selalu baru karena nomor urut
+  // increment, jadi lolos begitu saja). Dicek terhadap _allMaqra — data
+  // yang sama yang dipakai merender #maqraCabangGroups — supaya sinkron
+  // dengan apa yang terlihat di layar. Hanya relevan untuk mode Tambah;
+  // mode Ganti Semua memang menghapus dulu sebelum menulis ulang.
+  if (!replace) {
+    const existingTexts = new Set(existingForCabang.map(m => (m.maqra_teks || '').trim().toLowerCase()));
+    const dupes = lines.filter(l => existingTexts.has(l.toLowerCase()));
+    if (dupes.length) {
+      const listTxt = dupes.map(d => `• ${d}`).join('\n');
+      const proceed = confirm(
+        `⚠️ ${dupes.length} baris berikut SUDAH ADA di "${cabang}":\n\n${listTxt}\n\n` +
+        `Lanjutkan tetap menyimpan? (akan jadi entri duplikat)`
+      );
+      if (!proceed) return;
+    }
+  }
+
   // ── Build items array — ini yang diharapkan backend ─────────
   const items = lines.map((line, idx) => {
     const nomorUrut = startUrut + idx;
@@ -462,7 +541,7 @@ async function maqraSaveMaqra() {
 
   maqraShowLoading(true, `Menyimpan ${items.length} maqra...`);
   try {
-    const data = await maqraJsonpPost({
+    const data = await maqraPostJSON({
       action      : 'saveMaqra',
       token       : _maqraToken,
       cabang_lomba: cabang,
@@ -476,13 +555,21 @@ async function maqraSaveMaqra() {
       if (replaceEl) replaceEl.value = 'false';
       maqraSetMode('tambah');
       maqraCountLines();
+      _maqraAutoExpandCabang = cabang;
       maqraLoadData();
     } else {
       if (data.message === 'Sesi tidak valid') { maqraHandleSessionExpired(); return; }
       maqraShowToast('Gagal', data.message || 'Terjadi kesalahan', 'error');
+      maqraLoadData();   // FIX: sinkronkan tampilan — barangkali sebagian sempat tersimpan
     }
   } catch (err) {
-    maqraShowToast('Error', 'Gagal mengirim data: ' + err.message, 'error');
+    // FIX: sebelumnya berhenti di sini meninggalkan tampilan basi —
+    // request bisa saja SUDAH diproses & tersimpan di server walau
+    // klien gagal menerima balasannya (mis. timeout). Muat ulang
+    // otomatis supaya user tidak perlu refresh manual untuk tahu
+    // status sebenarnya.
+    maqraShowToast('Error', 'Gagal mengirim data: ' + err.message + ' — memuat ulang untuk memastikan status...', 'error', 6000);
+    maqraLoadData();
   } finally {
     maqraShowLoading(false);
   }
@@ -493,16 +580,18 @@ async function maqraDelete(idMaqra) {
   if (!confirm(`Hapus maqra "${idMaqra}"?`)) return;
   maqraShowLoading(true, 'Menghapus...');
   try {
-    const data = await maqraJsonpPost({ action:'deleteMaqra', token:_maqraToken, id_maqra:idMaqra });
+    const data = await maqraPostJSON({ action:'deleteMaqra', token:_maqraToken, id_maqra:idMaqra });
     if (data.success) {
       maqraShowToast('Berhasil', 'Maqra dihapus', 'success');
       maqraLoadData();
     } else {
       if (data.message === 'Sesi tidak valid') { maqraHandleSessionExpired(); return; }
       maqraShowToast('Gagal', data.message, 'error');
+      maqraLoadData();
     }
   } catch (err) {
-    maqraShowToast('Error', err.message, 'error');
+    maqraShowToast('Error', err.message + ' — memuat ulang untuk memastikan status...', 'error', 6000);
+    maqraLoadData();
   } finally {
     maqraShowLoading(false);
   }
@@ -526,7 +615,7 @@ async function maqraSaveConfig() {
 
   maqraShowLoading(true, 'Menyimpan konfigurasi...');
   try {
-    const data = await maqraJsonpPost({
+    const data = await maqraPostJSON({
       action       : 'saveMaqraConfig',
       token        : _maqraToken,
       cabang_lomba : 'GLOBAL',
@@ -541,9 +630,11 @@ async function maqraSaveConfig() {
     } else {
       if (data.message === 'Sesi tidak valid') { maqraHandleSessionExpired(); return; }
       maqraShowToast('Gagal', data.message, 'error');
+      maqraLoadData();
     }
   } catch (err) {
-    maqraShowToast('Error', err.message, 'error');
+    maqraShowToast('Error', err.message + ' — memuat ulang untuk memastikan status...', 'error', 6000);
+    maqraLoadData();
   } finally {
     maqraShowLoading(false);
   }
@@ -594,6 +685,17 @@ function maqraJsonpGet(params, timeout = 15000) {
   });
 }
 
+// FIX: DEPRECATED untuk mutasi (save/delete) — JANGAN dipakai lagi untuk
+// itu. Payload di sini dijejalkan ke query string URL (?postData=...),
+// dan teks maqra (bisa beberapa ayat) gampang menembus batas panjang URL
+// yang ditoleransi browser/infrastruktur Google. Efeknya: server tetap
+// menerima & memproses (data BENAR-BENAR tersimpan), tapi <script> tag
+// JSONP gagal memuat balasannya di sisi klien → muncul "Network error"
+// padahal datanya sudah masuk (baru kelihatan setelah refresh manual).
+// Dipertahankan di sini HANYA untuk kompatibilitas kalau ada pemanggil
+// lama; mutasi baru pakai maqraPostJSON di bawah (fetch POST asli, body
+// di request body bukan URL — sama seperti postJSON() di cek-maqra.js
+// yang sudah terbukti jalan untuk kasus serupa).
 function maqraJsonpPost(payload, timeout = 30000) {
   return new Promise((resolve, reject) => {
     const cb  = 'mtqMqP_' + Date.now() + '_' + Math.floor(Math.random()*9999);
@@ -606,6 +708,44 @@ function maqraJsonpPost(payload, timeout = 30000) {
     timer    = setTimeout(() => { delete window[cb]; s.remove(); reject(new Error('Timeout')); }, timeout);
     document.head.appendChild(s);
   });
+}
+
+// FIX: transport POST asli untuk mutasi (save/delete maqra & config).
+// Body dikirim di request body (fetch), bukan di URL — tidak ada batas
+// panjang seperti JSONP tunnel. Content-Type text/plain (bukan
+// application/json) sengaja dipakai supaya browser menganggap ini
+// "simple request" dan tidak mengirim CORS preflight (OPTIONS), karena
+// Apps Script (api.gs → doPost) tidak menangani preflight. api.gs sudah
+// punya doPost(e) yang dipakai bersama oleh registrasi & perbaikan
+// (lihat postJSON() di cek-maqra.js) — action saveMaqra/deleteMaqra/
+// saveMaqraConfig sudah dirutekan lewat _dispatchPost(body) yang sama
+// persis dengan tunnel ?postData=, jadi tinggal ganti cara kirimnya saja.
+async function maqraPostJSON(payload, timeout = 30000) {
+  const apiUrl = MAQRA_API_URL();
+  if (!apiUrl) throw new Error('API_URL tidak terkonfigurasi — periksa js/config.js');
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+
+  let res;
+  try {
+    res = await fetch(apiUrl, {
+      method : 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body   : JSON.stringify(payload),
+      signal : controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    if (err.name === 'AbortError') {
+      throw new Error('Request timeout (' + Math.round(timeout / 1000) + 's) — server lambat merespons. Data mungkin sudah tersimpan; refresh untuk memastikan.');
+    }
+    throw new Error('Gagal menghubungi server: ' + err.message);
+  }
+  clearTimeout(timer);
+
+  if (!res.ok) throw new Error('Server merespons dengan status ' + res.status);
+  return res.json();
 }
 
 // ── Utilities (private, prefix maqra agar tidak konflik) ──────
@@ -627,7 +767,14 @@ function maqraShowLoading(show, msg = 'Memuat...') {
   const lm = document.getElementById('loadingMsg'); if (lm && show) lm.textContent = msg;
 }
 function maqraShowToast(title, msg, type = 'info', duration = 4000) {
-  // Gunakan showToast dari admin.js jika tersedia
-  if (typeof showToast === 'function') { showToast(title, msg, type, duration); return; }
+  // FIX: sebelumnya cek `showToast` — fungsi itu HANYA didefinisikan di
+  // admin.js, yang (lihat catatan sesi sebelumnya) ternyata tidak pernah
+  // dimuat admin.html sama sekali. Akibatnya kondisi ini selalu false,
+  // dan kode SELALU jatuh ke fallback adminLog.warn di bawah — yang
+  // cuma menulis ke console, tidak pernah menampilkan apa pun di layar.
+  // Fungsi toast yang benar-benar aktif di admin.html bernama `toast`
+  // (lihat definisinya di inline script admin.html, dipakai refreshData()
+  // dkk. — signature-nya sudah sama persis: title, msg, type, duration).
+  if (typeof toast === 'function') { toast(title, msg, type, duration); return; }
   adminLog.warn(`[Maqra Toast] ${type}: ${title} — ${msg}`);
 }
