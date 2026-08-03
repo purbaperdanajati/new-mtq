@@ -1066,6 +1066,11 @@ const adminLog = {
   error: (...a) => adminLog._p('ERROR', ...a),
   debug: (...a) => adminLog._p('DEBUG', ...a),
   step : (n,...a)=> { if (MTQ_CONFIG.LOGGER_ENABLED) console.group(`%c[ADMIN][STEP ${n}]`,'color:#0369a1;font-weight:bold',...a); },
+  // FIX: hilang sebelumnya — admin-penilaian.js memanggil adminLog.group(title)
+  // (hasil konversi dari console.group() lama, lihat sesi logger sebelumnya)
+  // tapi method-nya sendiri tidak pernah ditambahkan ke sini, jadi
+  // "adminLog.group is not a function" begitu tab Penilaian dibuka.
+  group: (title) => { if (MTQ_CONFIG.LOGGER_ENABLED) console.group(`%c[ADMIN] ${title}`, 'color:#047857;font-weight:bold'); },
   end  : ()     => { if (MTQ_CONFIG.LOGGER_ENABLED) console.groupEnd(); },
   time : (l)    => { if (MTQ_CONFIG.LOGGER_ENABLED) console.time('[ADMIN] '+l); },
   timeEnd:(l)   => { if (MTQ_CONFIG.LOGGER_ENABLED) console.timeEnd('[ADMIN] '+l); },
