@@ -678,7 +678,19 @@ function apiGetConfig_() {
 function apiGetStats_() {
   var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
   var sheet = getOrCreateSheet_(ss, SHEET_PENDAFTAR, PENDAFTAR_HEADERS);
-  if (sheet.getLastRow()<=1) return { success:true, total:0, verified:0, pending:0, rejected:0, nonaktif:0, cabangs:0, kecamatans:0 };
+  // FIX: regStatus dihitung SEBELUM early-return, lalu disertakan di KEDUA
+  // jalur return (sheet PENDAFTAR kosong maupun sudah terisi). Sebelumnya
+  // jalur early-return (sheet baru berisi header / belum ada pendaftar sama
+  // sekali) TIDAK menyertakan isOpen/status/buka/tutup, sehingga di
+  // main.js → loadRegStatus() field2 itu undefined dan #heroRegBanner
+  // jatuh ke cabang "else" (dianggap TERTUTUP, dgn tanggal "—") — persis
+  // yang terjadi di hari pertama pendaftaran dibuka saat PENDAFTAR masih 0 baris.
+  var regStatus = isRegistrationOpen_();
+  if (sheet.getLastRow()<=1) {
+    return { success:true, total:0, verified:0, pending:0, rejected:0, nonaktif:0, cabangs:0, kecamatans:0,
+             isOpen:regStatus.open, status:regStatus.status,
+             buka:PENDAFTARAN_CONFIG.BUKA, tutup:PENDAFTARAN_CONFIG.TUTUP };
+  }
   var data = sheet.getRange(2,1,sheet.getLastRow()-1,PENDAFTAR_HEADERS.length).getValues();
   var verified=0,pending=0,rejected=0,nonaktif=0,cabangs={},kecs={};
   data.forEach(function(row) {
@@ -687,7 +699,6 @@ function apiGetStats_() {
     var cb=row[COL.CABANG_LOMBA];if(cb)cabangs[cb]=1;
     var kc=row[COL.KECAMATAN];if(kc)kecs[kc]=1;
   });
-  var regStatus = isRegistrationOpen_();
   return { success:true, total:data.length, verified:verified, pending:pending, rejected:rejected, nonaktif:nonaktif,
            cabangs:Object.keys(cabangs).length, kecamatans:Object.keys(kecs).length,
            isOpen:regStatus.open, status:regStatus.status,
