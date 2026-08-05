@@ -24,7 +24,7 @@ const MTQ_CONFIG = {
   // dari backend (config.gs → PENDAFTARAN_CONFIG) saat getConfig berhasil.
   // Sesuai Juknis MTQ ke-56 Kab. Indramayu: pendaftaran online 5 s.d. 15 Agustus 2026,
   // usia dihitung per 1 November 2026.
-  PENDAFTARAN_BUKA : '2026-07-05T00:00:00',
+  PENDAFTARAN_BUKA : '2026-08-05T00:00:00',
   PENDAFTARAN_TUTUP: '2026-08-15T23:59:59',
   AGE_CUTOFF_DATE  : '2026-11-01',
 
